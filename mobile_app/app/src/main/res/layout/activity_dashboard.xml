@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F4F7FB"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <!-- Top Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#0B2545"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="14dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FlapGuard AI Mobile"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_logged_user"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Surgeon"
+                android:textColor="#93C5FD"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_refresh_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:backgroundTint="#1E3A8A"
+            android:text="Sync"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_logout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#DC2626"
+            android:text="Logout"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Live Critical Alert Banner -->
+    <TextView
+        android:id="@+id/tv_live_alert_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#DC2626"
+        android:padding="10dp"
+        android:text="ACTIVE CRITICAL ALERT"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <!-- Navigation Tabs -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#E2E8F0"
+        android:orientation="horizontal"
+        android:padding="6dp">
+
+        <Button
+            android:id="@+id/tab_patients"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="#0F4C81"
+            android:text="Patients"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/tab_scanner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="#475569"
+            android:text="Scanner"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/tab_alerts"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:backgroundTint="#475569"
+            android:text="Alerts"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/tab_outcomes"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="#475569"
+            android:text="Outcomes"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_dashboard_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#EFF6FF"
+        android:padding="8dp"
+        android:text="Synced with FlapGuard AI server."
+        android:textColor="#1E40AF"
+        android:textSize="12sp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- SECTION 1: PATIENTS RISK LIST -->
+            <LinearLayout
+                android:id="@+id/section_patients"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Risk Stratification Ward List"
+                    android:textColor="#0F172A"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/patients_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- SECTION 2: CAMERA FLAP SCANNER + MULTISENSOR AI -->
+            <LinearLayout
+                android:id="@+id/section_scanner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. Select Patient &amp; Camera Flap Scanner"
+                    android:textColor="#0F172A"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spinner_patient"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="8dp" />
+
+                <ImageView
+                    android:id="@+id/iv_flap_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="#E2E8F0"
+                    android:contentDescription="Flap scan preview"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_open_camera"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#0F4C81"
+                        android:text="Scan Camera" />
+
+                    <Button
+                        android:id="@+id/btn_pick_gallery"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:backgroundTint="#0D9488"
+                        android:text="Upload Image" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_vision_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:background="#FFFFFF"
+                    android:padding="10dp"
+                    android:text="Camera Visual Score: Not scanned yet (using default baseline)."
+                    android:textColor="#334155"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="2. Bedside Multisensor Inputs (IR Temp, SpO2, Doppler)"
+                    android:textColor="#0F172A"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/et_ir_temp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="IR Flap Temp (C)"
+                    android:inputType="numberDecimal"
+                    android:text="36.2" />
+
+                <EditText
+                    android:id="@+id/et_ctrl_temp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Control Skin Temp (C)"
+                    android:inputType="numberDecimal"
+                    android:text="36.7" />
+
+                <EditText
+                    android:id="@+id/et_spo2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Tissue SpO2 (%)"
+                    android:inputType="numberDecimal"
+                    android:text="96.5" />
+
+                <EditText
+                    android:id="@+id/et_doppler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Doppler Flow (cm/s)"
+                    android:inputType="numberDecimal"
+                    android:text="20.5" />
+
+                <EditText
+                    android:id="@+id/et_hours"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:hint="Hours Post-Op"
+                    android:inputType="numberDecimal"
+                    android:text="12.0" />
+
+                <Button
+                    android:id="@+id/btn_submit_reading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#15803D"
+                    android:text="Run AI Prediction &amp; Save" />
+
+                <TextView
+                    android:id="@+id/tv_prediction_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="#FFFFFF"
+                    android:padding="12dp"
+                    android:text="AI Prediction Result will appear here."
+                    android:textColor="#0F172A"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="3. Quick Live Alert Simulation (Viva Demo)"
+                    android:textColor="#0F172A"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_sim_venous"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:layout_weight="1"
+                        android:backgroundTint="#D97706"
+                        android:text="Sim Venous" />
+
+                    <Button
+                        android:id="@+id/btn_sim_arterial"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:backgroundTint="#DC2626"
+                        android:text="Sim Arterial" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- SECTION 3: SURGEON ALERTS -->
+            <LinearLayout
+                android:id="@+id/section_alerts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Real-Time Surgeon Alerts"
+                    android:textColor="#991B1B"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/alerts_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- SECTION 4: CONTINUOUS LEARNING OUTCOMES -->
+            <LinearLayout
+                android:id="@+id/section_outcomes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="Log Verified Postoperative Outcome"
+                    android:textColor="#0F172A"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spinner_outcome_patient"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp" />
+
+                <Spinner
+                    android:id="@+id/spinner_outcome_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp" />
+
+                <EditText
+                    android:id="@+id/et_outcome_notes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:hint="Surgeon clinical confirmation notes"
+                    android:inputType="textMultiLine"
+                    android:minLines="3" />
+
+                <Button
+                    android:id="@+id/btn_save_outcome"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#0F4C81"
+                    android:text="Save Verified Outcome" />
+
+                <TextView
+                    android:id="@+id/tv_outcome_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Outcomes logged here feed the Continuous Learning pipeline."
+                    android:textColor="#475569"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
