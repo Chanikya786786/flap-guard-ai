@@ -62,7 +62,26 @@ def _click_and_wait_reload(driver, element_id: str) -> None:
     WebDriverWait(driver, 10).until(EC.staleness_of(old_html))
     _wait_ready(driver)
 
+def _safe_staleness(element):
+    def _predicate(driver):
+        try:
+            element.is_enabled()
+            return False
+        except Exception as exc:
+            msg = str(exc).lower()
+            if (
+                type(exc).__name__ == "StaleElementReferenceException"
+                or "does not belong to the document" in msg
+                or "no such node" in msg
+                or "cannot find context" in msg
+            ):
+                try:
+                    return driver.execute_script("return document.readyState") == "complete"
+                except Exception:
+                    return False
+            raise
 
+    return _predicate
 def run_selenium_web_suite() -> str:
     rows = []
     idx = 1
