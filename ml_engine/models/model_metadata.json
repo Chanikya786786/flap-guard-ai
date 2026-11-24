@@ -1,0 +1,48 @@
+{
+  "version": "v1.0",
+  "trained_at_utc": "2026-11-24T09:12:04.302621+00:00",
+  "algorithm": "RandomForestClassifier (Multisensor Fusion)",
+  "base_samples": 1500,
+  "postop_outcomes_added": 0,
+  "total_samples": 1500,
+  "test_samples": 300,
+  "accuracy": 1.0,
+  "macro_precision": 1.0,
+  "macro_recall": 1.0,
+  "macro_f1": 1.0,
+  "confusion_matrix": [
+    [
+      100,
+      0,
+      0
+    ],
+    [
+      0,
+      100,
+      0
+    ],
+    [
+      0,
+      0,
+      100
+    ]
+  ],
+  "classes": [
+    "Normal",
+    "Venous Compromise",
+    "Arterial Compromise"
+  ],
+  "feature_importances": {
+    "perfusion_fusion_index": 0.2351,
+    "visual_pallor_index": 0.2011,
+    "visual_cyanosis_index": 0.1922,
+    "visual_perfusion_score": 0.1395,
+    "spo2_pct": 0.0769,
+    "visual_redness_index": 0.0574,
+    "doppler_flow_cm_s": 0.0445,
+    "temp_delta_c": 0.0402,
+    "ir_flap_temp_c": 0.0129,
+    "control_skin_temp_c": 0.0001,
+    "hours_post_op": 0.0001
+  }
+}
