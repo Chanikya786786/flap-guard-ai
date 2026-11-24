@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Surgeon Alerts | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Real-Time Surgeon Alert Log</h2>
+  <p class="muted">Every High or Critical venous/arterial prediction automatically appears here and pushes to the surgeon's Android phone.</p>
+  <div class="table-wrap">
+    <table id="alerts-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Patient</th>
+          <th>Risk Tier</th>
+          <th>Alert Details</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in alerts %}
+        <tr>
+          <td>#{{ a.id }}</td>
+          <td><a href="{{ url_for('main.patient_detail', patient_id=a.patient_id) }}"><strong>{{ a.patient.full_name }}</strong></a><br><span class="muted">{{ a.patient.mrn }}</span></td>
+          <td><span class="badge badge-{{ a.risk_tier|lower }}">{{ a.risk_tier }}</span></td>
+          <td>{{ a.alert_message }}</td>
+          <td>
+            {% if a.alert_acknowledged %}
+              <span class="badge badge-low">Acknowledged by {{ a.acknowledged_by }}</span>
+            {% else %}
+              <span class="badge badge-critical">Pending Surgeon Review</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not a.alert_acknowledged %}
+            <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=a.id) }}" style="margin:0;">
+              <button type="submit" class="btn btn-sm ack-alert-btn">Acknowledge</button>
+            </form>
+            {% else %}
+              <span class="muted">Reviewed</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted">No active compromise alerts recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

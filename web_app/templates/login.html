@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Login | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card auth-box">
+  <h2>Clinician Sign In</h2>
+  <p class="muted">AI-Based Early Free Flap Failure Prediction &amp; Risk Stratification System</p>
+  <form method="POST" action="{{ url_for('main.login') }}" id="login-form">
+    <div class="form-group">
+      <label for="login-email">Email Address</label>
+      <input id="login-email" name="email" type="email" required placeholder="surgeon@flapguard.local">
+    </div>
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" required placeholder="Enter password">
+    </div>
+    <button id="login-submit" type="submit" class="btn" style="width:100%;">Sign In</button>
+  </form>
+  <p class="muted" style="margin-top:14px;">
+    New clinician? <a id="goto-register" href="{{ url_for('main.register') }}">Create an account</a>
+  </p>
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:14px 0;">
+  <div class="muted" style="font-size:0.82rem;">
+    <strong>Demo Surgeon:</strong> surgeon@flapguard.local / Surgeon@123<br>
+    <strong>Demo Nurse:</strong> nurse@flapguard.local / Nurse@123
+  </div>
+</div>
+{% endblock %}

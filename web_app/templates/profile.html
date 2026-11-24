@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Profile | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card auth-box">
+  <h2>Clinician Profile</h2>
+  <p><strong>Name:</strong> {{ current_user.full_name }}<br>
+     <strong>Email:</strong> {{ current_user.email }}<br>
+     <strong>Role:</strong> {{ current_user.role }}</p>
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">
+  <h3>Change Password</h3>
+  <form method="POST" action="{{ url_for('main.profile') }}" id="password-form">
+    <div class="form-group">
+      <label for="current-pw">Current Password</label>
+      <input id="current-pw" name="current_password" type="password" required>
+    </div>
+    <div class="form-group">
+      <label for="new-pw">New Password (min 8 chars)</label>
+      <input id="new-pw" name="new_password" type="password" minlength="8" required>
+    </div>
+    <div class="form-group">
+      <label for="confirm-pw">Confirm New Password</label>
+      <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required>
+    </div>
+    <button id="change-pw-submit" type="submit" class="btn">Update Password</button>
+  </form>
+</div>
+{% endblock %}

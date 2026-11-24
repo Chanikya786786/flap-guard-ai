@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Continuous Learning | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <h2>Active Local AI Model ({{ model_meta.version }})</h2>
+    <p class="muted">Algorithm: {{ model_meta.algorithm }}</p>
+    <table>
+      <tbody>
+        <tr><th>Test Accuracy</th><td id="model-accuracy-val"><strong>{{ (model_meta.accuracy * 100)|round(2) }}%</strong></td></tr>
+        <tr><th>Macro F1-Score</th><td>{{ (model_meta.macro_f1 * 100)|round(2) }}%</td></tr>
+        <tr><th>Total Training Samples</th><td>{{ model_meta.total_samples }} (incl. {{ model_meta.postop_outcomes_added }} post-op outcomes)</td></tr>
+        <tr><th>Last Trained (UTC)</th><td>{{ model_meta.trained_at_utc }}</td></tr>
+      </tbody>
+    </table>
+    <form method="POST" action="{{ url_for('main.retrain_model') }}" style="margin-top:16px;">
+      <button id="retrain-btn" type="submit" class="btn btn-success">Retrain Local Model With Verified Outcomes</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Log Verified Postoperative Outcome</h2>
+    <p class="muted">Record ground-truth clinical findings after exploration or follow-up so the model learns continuously.</p>
+    <form method="POST" action="{{ url_for('main.log_outcome') }}" id="outcome-form">
+      <div class="form-group">
+        <label for="outcome-patient">Patient</label>
+        <select id="outcome-patient" name="patient_id" required>
+          {% for p in patients %}
+            <option value="{{ p.id }}">{{ p.full_name }} ({{ p.mrn }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="outcome-label">Verified Clinical Outcome</label>
+        <select id="outcome-label" name="verified_outcome" required>
+          <option value="Normal">Normal (Viable Flap)</option>
+          <option value="Venous Compromise">Venous Compromise (Confirmed Congestion)</option>
+          <option value="Arterial Compromise">Arterial Compromise (Confirmed Ischemia)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="outcome-notes">Surgeon Notes</label>
+        <textarea id="outcome-notes" name="surgeon_notes" rows="3" placeholder="e.g., Confirmed venous thrombosis on salvage re-exploration."></textarea>
+      </div>
+      <button id="save-outcome-btn" type="submit" class="btn">Save Verified Outcome</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Continuous Learning Model Version History</h3>
+  <div class="table-wrap">
+    <table id="model-versions-table">
+      <thead>
+        <tr>
+          <th>Version</th>
+          <th>Accuracy</th>
+          <th>Macro F1</th>
+          <th>Total Samples</th>
+          <th>Post-Op Outcomes</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in versions %}
+        <tr>
+          <td><strong>{{ v.version }}</strong></td>
+          <td>{{ (v.accuracy * 100)|round(2) }}%</td>
+          <td>{{ (v.macro_f1 * 100)|round(2) }}%</td>
+          <td>{{ v.total_samples }}</td>
+          <td>{{ v.postop_outcomes_added }}</td>
+          <td class="muted">{{ v.notes }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

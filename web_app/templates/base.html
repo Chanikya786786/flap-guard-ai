@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FlapGuard AI{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="{{ url_for('main.dashboard') }}">FlapGuard AI &mdash; Early Flap Failure Prediction</a>
+    {% if current_user.is_authenticated %}
+    <div class="nav-links">
+      <a id="nav-dashboard" href="{{ url_for('main.dashboard') }}">Risk Dashboard</a>
+      <a id="nav-alerts" href="{{ url_for('main.alerts_center') }}">Surgeon Alerts</a>
+      <a id="nav-learning" href="{{ url_for('main.learning_center') }}">Continuous Learning</a>
+      <a id="nav-profile" href="{{ url_for('main.profile') }}">Profile</a>
+      <span class="nav-user">{{ current_user.full_name }} ({{ current_user.role }})</span>
+      <a id="nav-logout" href="{{ url_for('main.logout') }}">Logout</a>
+    </div>
+    {% else %}
+    <div class="nav-links">
+      <a id="nav-login" href="{{ url_for('main.login') }}">Login</a>
+      <a id="nav-register" href="{{ url_for('main.register') }}">Sign Up</a>
+    </div>
+    {% endif %}
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

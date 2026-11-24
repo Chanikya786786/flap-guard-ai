@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Risk Stratification Dashboard | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="grid-4">
+  <div class="kpi kpi-critical">
+    <div class="kpi-label">Critical Risk Flaps</div>
+    <div class="kpi-value" id="kpi-critical">{{ tier_counts['Critical'] }}</div>
+  </div>
+  <div class="kpi kpi-high">
+    <div class="kpi-label">High Risk Flaps</div>
+    <div class="kpi-value" id="kpi-high">{{ tier_counts['High'] }}</div>
+  </div>
+  <div class="kpi kpi-moderate">
+    <div class="kpi-label">Moderate Risk</div>
+    <div class="kpi-value" id="kpi-moderate">{{ tier_counts['Moderate'] }}</div>
+  </div>
+  <div class="kpi kpi-low">
+    <div class="kpi-label">Low Risk / Healthy</div>
+    <div class="kpi-value" id="kpi-low">{{ tier_counts['Low'] }}</div>
+  </div>
+</div>
+
+{% if active_alerts %}
+<div class="card" style="border-left:5px solid #dc2626;background:#fef2f2;">
+  <h3 style="color:#991b1b;">Active Unacknowledged Surgeon Alerts ({{ active_alerts|length }})</h3>
+  {% for alert in active_alerts[:3] %}
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #fecaca;">
+    <div>
+      <strong>{{ alert.patient.full_name }} ({{ alert.patient.mrn }})</strong> &mdash; {{ alert.alert_message }}
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-sm" href="{{ url_for('main.patient_detail', patient_id=alert.patient_id) }}">Inspect</a>
+      <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=alert.id) }}" style="margin:0;">
+        <button type="submit" class="btn btn-sm btn-secondary">Acknowledge</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+    <h2 style="margin:0;">Postoperative Free-Flap Risk Stratification</h2>
+    <span class="muted">Active AI Model: <strong>{{ model_meta.version }}</strong> (Accuracy: {{ (model_meta.accuracy * 100)|round(2) }}%)</span>
+  </div>
+  <div class="table-wrap">
+    <table id="risk-dashboard-table">
+      <thead>
+        <tr>
+          <th>Risk Tier</th>
+          <th>Patient / MRN</th>
+          <th>Flap &amp; Site</th>
+          <th>Delta-T (&deg;C)</th>
+          <th>SpO<sub>2</sub> (%)</th>
+          <th>Doppler (cm/s)</th>
+          <th>Visual Score</th>
+          <th>AI Prediction</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in patient_cards %}
+        {% set p = item.patient %}
+        {% set r = item.latest %}
+        <tr>
+          <td><span class="badge badge-{{ item.tier|lower }}">{{ item.tier }}</span></td>
+          <td><strong>{{ p.full_name }}</strong><br><span class="muted">{{ p.mrn }} &middot; {{ p.age }}y</span></td>
+          <td>{{ p.flap_type }}<br><span class="muted">{{ p.surgery_site }}</span></td>
+          <td>{{ "%.2f"|format(r.temp_delta_c) if r else "-" }}</td>
+          <td>{{ "%.1f"|format(r.spo2_pct) if r else "-" }}</td>
+          <td>{{ "%.1f"|format(r.doppler_flow_cm_s) if r else "-" }}</td>
+          <td>{{ "%.1f"|format(r.visual_perfusion_score) if r else "-" }}</td>
+          <td>
+            {% if r %}
+              <strong>{{ r.predicted_class }}</strong><br>
+              <span class="muted">Risk: {{ r.risk_score_pct }}%</span>
+            {% else %}
+              <span class="muted">Awaiting first reading</span>
+            {% endif %}
+          </td>
+          <td>
+            <a class="btn btn-sm open-patient-btn" href="{{ url_for('main.patient_detail', patient_id=p.id) }}">Monitor</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Enroll New Postoperative Flap Patient</h2>
+  <form method="POST" action="{{ url_for('main.create_patient') }}" id="add-patient-form">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="patient-mrn">MRN / Hospital ID</label>
+        <input id="patient-mrn" name="mrn" type="text" required placeholder="MRN-2026-104">
+      </div>
+      <div class="form-group">
+        <label for="patient-name">Patient Full Name</label>
+        <input id="patient-name" name="full_name" type="text" required placeholder="Anitha Krishnan">
+      </div>
+      <div class="form-group">
+        <label for="patient-age">Age</label>
+        <input id="patient-age" name="age" type="number" min="1" max="120" required value="52">
+      </div>
+      <div class="form-group">
+        <label for="patient-flap">Flap Type</label>
+        <input id="patient-flap" name="flap_type" type="text" required placeholder="Radial Forearm Free Flap">
+      </div>
+      <div class="form-group">
+        <label for="patient-site">Surgical Site</label>
+        <input id="patient-site" name="surgery_site" type="text" required placeholder="Left Mandible">
+      </div>
+      <div class="form-group">
+        <label for="patient-hours">Hours Post-Op</label>
+        <input id="patient-hours" name="hours_post_op" type="number" step="0.5" min="0" max="720" required value="4.0">
+      </div>
+    </div>
+    <button id="add-patient-submit" type="submit" class="btn">Enroll Patient</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.full_name }} | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h2 style="margin-bottom:4px;">{{ patient.full_name }} ({{ patient.mrn }})</h2>
+      <div class="muted">{{ patient.age }} yrs &middot; {{ patient.flap_type }} &middot; {{ patient.surgery_site }} &middot; {{ patient.hours_post_op }} hrs post-op</div>
+    </div>
+    <div>
+      {% if latest %}
+        <span id="current-risk-badge" class="badge badge-{{ latest.risk_tier|lower }}" style="font-size:0.95rem;padding:6px 14px;">
+          {{ latest.risk_tier }} Risk &mdash; {{ latest.predicted_class }} ({{ latest.risk_score_pct }}%)
+        </span>
+      {% else %}
+        <span id="current-risk-badge" class="badge badge-unassessed">No Readings Yet</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if latest %}
+  <ul class="notes-list">
+    {% for note in latest.clinical_notes %}
+      <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>1. Camera Flap Scanner &amp; Image Upload (Local OpenCV)</h3>
+    <p class="muted">Analyzes flap redness, dusky cyanosis (venous), and pallor (arterial) offline and fuses with bedside sensors.</p>
+    <div class="camera-stage">
+      <video id="webcam-video" autoplay playsinline></video>
+      <img id="uploaded-preview" alt="Flap preview">
+      <div class="btn-row" style="justify-content:center;">
+        <button id="start-camera-btn" type="button" class="btn btn-sm">Start Live Camera</button>
+        <button id="capture-camera-btn" type="button" class="btn btn-sm btn-success" disabled>Scan Flap Frame</button>
+        <button id="stop-camera-btn" type="button" class="btn btn-sm btn-secondary" disabled>Stop Camera</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="flap-image-upload">Or Upload Flap Image (PNG / JPG)</label>
+      <div class="btn-row">
+        <input id="flap-image-upload" type="file" accept="image/*" style="flex:1;">
+        <button id="analyze-upload-btn" type="button" class="btn btn-sm">Analyze Image</button>
+      </div>
+    </div>
+    <div id="camera-result-box" class="flash flash-info" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <h3>2. Live Multisensor Simulator (Viva Real-Time Demo)</h3>
+    <p class="muted">Streams IR temperature, SpO<sub>2</sub>, Doppler flow, and visual color readings live to demonstrate early failure alerts.</p>
+    <div class="form-group">
+      <label for="sim-scenario">Clinical Scenario</label>
+      <select id="sim-scenario">
+        <option value="normal">Healthy Postoperative Course</option>
+        <option value="venous_deteriorating">Venous Compromise (Progressive Congestion)</option>
+        <option value="arterial_deteriorating">Arterial Compromise (Rapid Ischemia)</option>
+      </select>
+    </div>
+    <div class="btn-row" style="margin-bottom:12px;">
+      <button id="sim-start-btn" type="button" class="btn btn-danger" data-patient-id="{{ patient.id }}">Start Live Stream</button>
+      <button id="sim-stop-btn" type="button" class="btn btn-secondary" disabled>Stop Stream</button>
+    </div>
+    <div id="sim-live-status" class="flash flash-info" style="display:none;"></div>
+
+    <h3 style="margin-top:16px;">Multisensor Trend Chart</h3>
+    <canvas id="sensor-trend-chart" class="chart-canvas"></canvas>
+    <script id="chart-data-json" type="application/json">{{ chart_payload_json|safe }}</script>
+  </div>
+</div>
+
+<div class="card">
+  <h3>3. Log Multisensor Fusion Assessment (IR Temp + SpO<sub>2</sub> + Doppler + Camera)</h3>
+  <form method="POST" action="{{ url_for('main.add_reading', patient_id=patient.id) }}" id="sensor-reading-form">
+    <input id="source-mode-input" type="hidden" name="source_mode" value="Bedside + Camera Fusion">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="ir-temp-input">IR Flap Temp (&deg;C)</label>
+        <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required value="{{ latest.ir_flap_temp_c if latest else 36.2 }}">
+      </div>
+      <div class="form-group">
+        <label for="ctrl-temp-input">Control Skin Temp (&deg;C)</label>
+        <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required value="{{ latest.control_skin_temp_c if latest else 36.7 }}">
+      </div>
+      <div class="form-group">
+        <label for="spo2-input">Tissue SpO<sub>2</sub> (%)</label>
+        <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required value="{{ latest.spo2_pct if latest else 96.5 }}">
+      </div>
+      <div class="form-group">
+        <label for="doppler-input">Doppler Flow (cm/s)</label>
+        <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required value="{{ latest.doppler_flow_cm_s if latest else 20.5 }}">
+      </div>
+      <div class="form-group">
+        <label for="hours-input">Hours Post-Op</label>
+        <input id="hours-input" name="hours_post_op" type="number" step="0.5" required value="{{ patient.hours_post_op }}">
+      </div>
+      <div class="form-group">
+        <label for="visual-redness-input">Camera Redness Index (0-1)</label>
+        <input id="visual-redness-input" name="visual_redness_index" type="number" step="0.0001" required value="{{ latest.visual_redness_index if latest else 0.14 }}">
+      </div>
+      <div class="form-group">
+        <label for="visual-cyanosis-input">Camera Cyanosis Index (0-1)</label>
+        <input id="visual-cyanosis-input" name="visual_cyanosis_index" type="number" step="0.0001" required value="{{ latest.visual_cyanosis_index if latest else 0.03 }}">
+      </div>
+      <div class="form-group">
+        <label for="visual-pallor-input">Camera Pallor Index (0-1)</label>
+        <input id="visual-pallor-input" name="visual_pallor_index" type="number" step="0.0001" required value="{{ latest.visual_pallor_index if latest else 0.42 }}">
+      </div>
+    </div>
+    <button id="submit-reading-btn" type="submit" class="btn">Run AI Prediction &amp; Save Reading</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Recent Multisensor History</h3>
+  <div class="table-wrap">
+    <table id="readings-history-table">
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>Flap / Ctrl (&Delta;T)</th>
+          <th>SpO<sub>2</sub></th>
+          <th>Doppler</th>
+          <th>Visual</th>
+          <th>Fusion Index</th>
+          <th>Prediction</th>
+          <th>Risk Tier</th>
+          <th>Mode</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in readings %}
+        <tr>
+          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') if r.created_at else '-' }}</td>
+          <td>{{ r.ir_flap_temp_c }} / {{ r.control_skin_temp_c }} (&Delta;{{ r.temp_delta_c }})</td>
+          <td>{{ r.spo2_pct }}%</td>
+          <td>{{ r.doppler_flow_cm_s }} cm/s</td>
+          <td>{{ r.visual_perfusion_score }}</td>
+          <td>{{ r.perfusion_fusion_index }}</td>
+          <td><strong>{{ r.predicted_class }}</strong> ({{ r.risk_score_pct }}%)</td>
+          <td><span class="badge badge-{{ r.risk_tier|lower }}">{{ r.risk_tier }}</span></td>
+          <td class="muted">{{ r.source_mode }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/patient_monitor.js') }}"></script>
+{% endblock %}
