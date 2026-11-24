@@ -8,3 +8,4 @@ reports/*.xlsx
 ml_engine/data/sample_images/
 mobile_app/.gradle/
 mobile_app/app/build/instance/
+mobile_app/local.properties
