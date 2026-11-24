@@ -1,0 +1,4 @@
+selenium>=4.25.0
+Appium-Python-Client>=4.0.0
+requests>=2.32.0
+bandit>=1.7.9
