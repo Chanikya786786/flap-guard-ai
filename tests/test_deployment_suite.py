@@ -70,7 +70,7 @@ def run_deployment_suite() -> str:
         idx += 1
 
     # 2. Boot Live Threaded Server on Ephemeral Local Port
-    app = create_app({"TESTING": False, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    app = create_app({"TESTING": False, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "SEED_SAMPLE_PATIENTS": True})
     server = make_server("127.0.0.1", 0, app, threaded=True)
     port = server.server_port
     base_url = f"http://127.0.0.1:{port}"
@@ -102,8 +102,8 @@ def run_deployment_suite() -> str:
             ("Register page render", "GET", "/register", "public", 200, "Create Clinician Account"),
             ("Static CSS asset delivery", "GET", "/static/css/style.css", "public", 200, "--primary"),
             ("Static JS asset delivery", "GET", "/static/js/patient_monitor.js", "public", 200, "drawTrendChart"),
-            ("Dashboard authenticated render", "GET", "/", "web", 200, "Risk Stratification"),
-            ("Patient detail page render", "GET", "/patients/1", "web", 200, "Camera Flap Scanner"),
+            ("Dashboard authenticated render", "GET", "/", "web", 200, "Postoperative Free-Flap Ward"),
+            ("Patient detail page render", "GET", "/patients/1", "web", 200, "Guided Flap Color Scanner"),
             ("Surgeon alerts page render", "GET", "/alerts", "web", 200, "Surgeon Alert Log"),
             ("Continuous learning page render", "GET", "/learning", "web", 200, "Retrain Local Model"),
             ("Clinician profile page render", "GET", "/profile", "web", 200, "Clinician Profile"),

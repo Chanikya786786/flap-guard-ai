@@ -1,27 +1,60 @@
 {% extends "base.html" %}
-{% block title %}Profile | FlapGuard AI{% endblock %}
+{% block title %}Clinician Profile | FlapGuard AI{% endblock %}
 {% block content %}
-<div class="card auth-box">
-  <h2>Clinician Profile</h2>
-  <p><strong>Name:</strong> {{ current_user.full_name }}<br>
-     <strong>Email:</strong> {{ current_user.email }}<br>
-     <strong>Role:</strong> {{ current_user.role }}</p>
-  <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;">
-  <h3>Change Password</h3>
-  <form method="POST" action="{{ url_for('main.profile') }}" id="password-form">
-    <div class="form-group">
-      <label for="current-pw">Current Password</label>
-      <input id="current-pw" name="current_password" type="password" required>
+<div class="page-header">
+  <h1>Clinician Profile &amp; Ward Settings</h1>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card">
+      <div class="profile-header">
+        <div class="avatar-circle">{{ current_user.full_name[:2]|upper }}</div>
+        <div>
+          <h2 style="margin-bottom:2px;">{{ current_user.full_name }}</h2>
+          <div class="muted">{{ current_user.email }}</div>
+          <span class="badge badge-moderate" style="margin-top:6px;">{{ current_user.role }}</span>
+        </div>
+      </div>
+      <div class="muted" style="padding-top:10px;border-top:1px solid var(--border);">
+        <strong>Active Ward Patients:</strong> {{ patients_count if patients_count is defined else 0 }} &nbsp;&middot;&nbsp;
+        <strong>Logged Sensor Readings:</strong> {{ readings_count if readings_count is defined else 0 }}
+      </div>
     </div>
-    <div class="form-group">
-      <label for="new-pw">New Password (min 8 chars)</label>
-      <input id="new-pw" name="new_password" type="password" minlength="8" required>
+
+    <div class="card">
+      <h3>Ward Demo Data Controls</h3>
+      <p class="muted" style="margin-bottom:14px;">
+        The ward starts empty by default so no dummy patients clutter your workspace. Use these controls during demonstrations to populate or reset sample OMFS microsurgical cases.
+      </p>
+      <div class="btn-row">
+        <form method="POST" action="{{ url_for('main.profile_load_samples') }}" style="margin:0;">
+          <button id="load-samples-btn" type="submit" class="btn btn-accent">Load Sample OMFS Cases (3)</button>
+        </form>
+        <form method="POST" action="{{ url_for('main.profile_clear_ward') }}" style="margin:0;" onsubmit="return confirm('Clear all patients, readings, and alerts from the ward?');">
+          <button id="clear-ward-btn" type="submit" class="btn btn-outline-danger">Clear Entire Ward</button>
+        </form>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="confirm-pw">Confirm New Password</label>
-      <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required>
-    </div>
-    <button id="change-pw-submit" type="submit" class="btn">Update Password</button>
-  </form>
+  </div>
+
+  <div class="card">
+    <h3>Change Password</h3>
+    <form method="POST" action="{{ url_for('main.profile') }}" id="password-form">
+      <div class="form-group">
+        <label for="current-pw">Current Password</label>
+        <input id="current-pw" name="current_password" type="password" required>
+      </div>
+      <div class="form-group">
+        <label for="new-pw">New Password (min 8 chars)</label>
+        <input id="new-pw" name="new_password" type="password" minlength="8" required>
+      </div>
+      <div class="form-group">
+        <label for="confirm-pw">Confirm New Password</label>
+        <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required>
+      </div>
+      <button id="change-pw-submit" type="submit" class="btn">Update Password</button>
+    </form>
+  </div>
 </div>
 {% endblock %}

@@ -4,20 +4,24 @@
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
     <div>
-      <h2 style="margin-bottom:4px;">{{ patient.full_name }} ({{ patient.mrn }})</h2>
+      <a href="{{ url_for('main.dashboard') }}" class="muted" style="font-size:0.82rem;">&larr; Back to Ward</a>
+      <h2 style="margin:4px 0;">{{ patient.full_name }} <span class="muted">({{ patient.mrn }})</span></h2>
       <div class="muted">{{ patient.age }} yrs &middot; {{ patient.flap_type }} &middot; {{ patient.surgery_site }} &middot; {{ patient.hours_post_op }} hrs post-op</div>
     </div>
-    <div>
+    <div class="btn-row">
       {% if latest %}
-        <span id="current-risk-badge" class="badge badge-{{ latest.risk_tier|lower }}" style="font-size:0.95rem;padding:6px 14px;">
+        <span id="current-risk-badge" class="badge badge-{{ latest.risk_tier|lower }}" style="font-size:0.88rem;padding:7px 14px;">
           {{ latest.risk_tier }} Risk &mdash; {{ latest.predicted_class }} ({{ latest.risk_score_pct }}%)
         </span>
       {% else %}
-        <span id="current-risk-badge" class="badge badge-unassessed">No Readings Yet</span>
+        <span id="current-risk-badge" class="badge badge-unassessed" style="font-size:0.88rem;padding:7px 14px;">Awaiting First Reading</span>
       {% endif %}
+      <form method="POST" action="{{ url_for('main.delete_patient', patient_id=patient.id) }}" style="margin:0;" onsubmit="return confirm('Remove {{ patient.full_name }} and all associated readings?');">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+      </form>
     </div>
   </div>
-  {% if latest %}
+  {% if latest and latest.clinical_notes %}
   <ul class="notes-list">
     {% for note in latest.clinical_notes %}
       <li>{{ note }}</li>
@@ -28,94 +32,110 @@
 
 <div class="grid-2">
   <div class="card">
-    <h3>1. Camera Flap Scanner &amp; Image Upload (Local OpenCV)</h3>
-    <p class="muted">Analyzes flap redness, dusky cyanosis (venous), and pallor (arterial) offline and fuses with bedside sensors.</p>
+    <h3>1. Guided Flap Color Scanner (CIE-LAB ROI)</h3>
+    <p class="muted" style="margin-bottom:12px;">
+      Center flap tissue inside the dashed 50% ROI frame under even lighting. Extracts colorimetric redness, cyanosis, and pallor (fused with bedside sensors).
+    </p>
     <div class="camera-stage">
-      <video id="webcam-video" autoplay playsinline></video>
-      <img id="uploaded-preview" alt="Flap preview">
+      <div class="camera-viewport">
+        <div class="camera-placeholder" id="camera-placeholder">Start live camera or upload a flap photo below</div>
+        <video id="webcam-video" autoplay playsinline></video>
+        <img id="uploaded-preview" alt="Flap preview">
+        <div class="roi-overlay"></div>
+        <div class="roi-label">Analyzed Center 50% Flap ROI</div>
+      </div>
       <div class="btn-row" style="justify-content:center;">
-        <button id="start-camera-btn" type="button" class="btn btn-sm">Start Live Camera</button>
-        <button id="capture-camera-btn" type="button" class="btn btn-sm btn-success" disabled>Scan Flap Frame</button>
-        <button id="stop-camera-btn" type="button" class="btn btn-sm btn-secondary" disabled>Stop Camera</button>
+        <button id="start-camera-btn" type="button" class="btn btn-sm btn-accent">Start Camera</button>
+        <button id="capture-camera-btn" type="button" class="btn btn-sm btn-success" disabled>Scan Flap ROI</button>
+        <button id="stop-camera-btn" type="button" class="btn btn-sm btn-secondary" disabled>Stop</button>
       </div>
     </div>
-    <div class="form-group">
+    <div class="form-group" style="margin-bottom:8px;">
       <label for="flap-image-upload">Or Upload Flap Image (PNG / JPG)</label>
       <div class="btn-row">
         <input id="flap-image-upload" type="file" accept="image/*" style="flex:1;">
-        <button id="analyze-upload-btn" type="button" class="btn btn-sm">Analyze Image</button>
+        <button id="analyze-upload-btn" type="button" class="btn btn-sm">Analyze Photo</button>
       </div>
     </div>
-    <div id="camera-result-box" class="flash flash-info" style="display:none;"></div>
+    <div id="camera-result-box" class="flash flash-info" style="display:none;margin-bottom:0;"></div>
   </div>
 
   <div class="card">
-    <h3>2. Live Multisensor Simulator (Viva Real-Time Demo)</h3>
-    <p class="muted">Streams IR temperature, SpO<sub>2</sub>, Doppler flow, and visual color readings live to demonstrate early failure alerts.</p>
-    <div class="form-group">
-      <label for="sim-scenario">Clinical Scenario</label>
-      <select id="sim-scenario">
-        <option value="normal">Healthy Postoperative Course</option>
-        <option value="venous_deteriorating">Venous Compromise (Progressive Congestion)</option>
-        <option value="arterial_deteriorating">Arterial Compromise (Rapid Ischemia)</option>
-      </select>
-    </div>
-    <div class="btn-row" style="margin-bottom:12px;">
-      <button id="sim-start-btn" type="button" class="btn btn-danger" data-patient-id="{{ patient.id }}">Start Live Stream</button>
-      <button id="sim-stop-btn" type="button" class="btn btn-secondary" disabled>Stop Stream</button>
-    </div>
-    <div id="sim-live-status" class="flash flash-info" style="display:none;"></div>
+    <h3>2. Bedside Sensor Assessment</h3>
+    <p class="muted" style="margin-bottom:12px;">
+      Enter thermal, tissue oximetry, and Doppler metrics. Visual color indices auto-populate when a photo is scanned.
+    </p>
+    <form method="POST" action="{{ url_for('main.add_reading', patient_id=patient.id) }}" id="sensor-reading-form">
+      <input id="source-mode-input" type="hidden" name="source_mode" value="Bedside + Camera Fusion">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="ir-temp-input">IR Flap Temp (&deg;C)</label>
+          <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required value="{{ latest.ir_flap_temp_c if latest else 36.2 }}">
+        </div>
+        <div class="form-group">
+          <label for="ctrl-temp-input">Control Skin Temp (&deg;C)</label>
+          <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required value="{{ latest.control_skin_temp_c if latest else 36.7 }}">
+        </div>
+        <div class="form-group">
+          <label for="spo2-input">Tissue SpO<sub>2</sub> (%)</label>
+          <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required value="{{ latest.spo2_pct if latest else 96.5 }}">
+        </div>
+        <div class="form-group">
+          <label for="doppler-input">Doppler Flow (cm/s)</label>
+          <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required value="{{ latest.doppler_flow_cm_s if latest else 20.5 }}">
+        </div>
+        <div class="form-group">
+          <label for="hours-input">Hours Post-Op</label>
+          <input id="hours-input" name="hours_post_op" type="number" step="0.5" required value="{{ patient.hours_post_op }}">
+        </div>
+      </div>
 
-    <h3 style="margin-top:16px;">Multisensor Trend Chart</h3>
-    <canvas id="sensor-trend-chart" class="chart-canvas"></canvas>
-    <script id="chart-data-json" type="application/json">{{ chart_payload_json|safe }}</script>
+      <details class="advanced-drawer" id="visual-indices-drawer">
+        <summary>Colorimetric ROI Indices (Auto-Filled by Scanner)</summary>
+        <div class="form-grid">
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="visual-redness-input">Redness Index (0-1)</label>
+            <input id="visual-redness-input" name="visual_redness_index" type="number" step="0.0001" required value="{{ latest.visual_redness_index if latest else 0.14 }}">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="visual-cyanosis-input">Cyanosis Index (0-1)</label>
+            <input id="visual-cyanosis-input" name="visual_cyanosis_index" type="number" step="0.0001" required value="{{ latest.visual_cyanosis_index if latest else 0.03 }}">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="visual-pallor-input">Pallor Index (0-1)</label>
+            <input id="visual-pallor-input" name="visual_pallor_index" type="number" step="0.0001" required value="{{ latest.visual_pallor_index if latest else 0.42 }}">
+          </div>
+        </div>
+      </details>
+
+      <button id="submit-reading-btn" type="submit" class="btn" style="width:100%;">Run AI Prediction &amp; Save Assessment</button>
+    </form>
   </div>
 </div>
 
 <div class="card">
-  <h3>3. Log Multisensor Fusion Assessment (IR Temp + SpO<sub>2</sub> + Doppler + Camera)</h3>
-  <form method="POST" action="{{ url_for('main.add_reading', patient_id=patient.id) }}" id="sensor-reading-form">
-    <input id="source-mode-input" type="hidden" name="source_mode" value="Bedside + Camera Fusion">
-    <div class="form-grid">
-      <div class="form-group">
-        <label for="ir-temp-input">IR Flap Temp (&deg;C)</label>
-        <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required value="{{ latest.ir_flap_temp_c if latest else 36.2 }}">
-      </div>
-      <div class="form-group">
-        <label for="ctrl-temp-input">Control Skin Temp (&deg;C)</label>
-        <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required value="{{ latest.control_skin_temp_c if latest else 36.7 }}">
-      </div>
-      <div class="form-group">
-        <label for="spo2-input">Tissue SpO<sub>2</sub> (%)</label>
-        <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required value="{{ latest.spo2_pct if latest else 96.5 }}">
-      </div>
-      <div class="form-group">
-        <label for="doppler-input">Doppler Flow (cm/s)</label>
-        <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required value="{{ latest.doppler_flow_cm_s if latest else 20.5 }}">
-      </div>
-      <div class="form-group">
-        <label for="hours-input">Hours Post-Op</label>
-        <input id="hours-input" name="hours_post_op" type="number" step="0.5" required value="{{ patient.hours_post_op }}">
-      </div>
-      <div class="form-group">
-        <label for="visual-redness-input">Camera Redness Index (0-1)</label>
-        <input id="visual-redness-input" name="visual_redness_index" type="number" step="0.0001" required value="{{ latest.visual_redness_index if latest else 0.14 }}">
-      </div>
-      <div class="form-group">
-        <label for="visual-cyanosis-input">Camera Cyanosis Index (0-1)</label>
-        <input id="visual-cyanosis-input" name="visual_cyanosis_index" type="number" step="0.0001" required value="{{ latest.visual_cyanosis_index if latest else 0.03 }}">
-      </div>
-      <div class="form-group">
-        <label for="visual-pallor-input">Camera Pallor Index (0-1)</label>
-        <input id="visual-pallor-input" name="visual_pallor_index" type="number" step="0.0001" required value="{{ latest.visual_pallor_index if latest else 0.42 }}">
-      </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+    <div>
+      <h3 style="margin-bottom:2px;">3. Multisensor Perfusion Trend &amp; Live Deterioration Simulator</h3>
+      <span class="muted">Tracks SpO<sub>2</sub>, Doppler velocity, &Delta;T, and AI compromise probability over time.</span>
     </div>
-    <button id="submit-reading-btn" type="submit" class="btn">Run AI Prediction &amp; Save Reading</button>
-  </form>
+    <div class="btn-row">
+      <select id="sim-scenario" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.86rem;">
+        <option value="normal">Healthy Post-Op Course</option>
+        <option value="venous_deteriorating">Venous Congestion Crisis</option>
+        <option value="arterial_deteriorating">Arterial Ischemia Crisis</option>
+      </select>
+      <button id="sim-start-btn" type="button" class="btn btn-sm btn-danger" data-patient-id="{{ patient.id }}">Start Live Stream</button>
+      <button id="sim-stop-btn" type="button" class="btn btn-sm btn-secondary" disabled>Stop</button>
+    </div>
+  </div>
+  <div id="sim-live-status" class="flash flash-info" style="display:none;"></div>
+  <canvas id="sensor-trend-chart" class="chart-canvas"></canvas>
+  <script id="chart-data-json" type="application/json">{{ chart_payload_json|safe }}</script>
 </div>
 
 <div class="card">
-  <h3>Recent Multisensor History</h3>
+  <h3>4. Assessment History</h3>
   <div class="table-wrap">
     <table id="readings-history-table">
       <thead>

@@ -2,30 +2,36 @@ package com.flapguard.ai
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
-    private val executor = Executors.newSingleThreadExecutor()
+    private val executor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isRegisterMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefs = getSharedPreferences("flapguard_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
         if (!prefs.getString("auth_token", null).isNullOrBlank()) {
             startActivity(Intent(this, DashboardActivity::class.java))
             finish()
@@ -34,63 +40,95 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-        val etServerUrl = findViewById<EditText>(R.id.et_server_url)
-        val btnModeLogin = findViewById<Button>(R.id.btn_mode_login)
-        val btnModeRegister = findViewById<Button>(R.id.btn_mode_register)
-        val etFullName = findViewById<EditText>(R.id.et_full_name)
+        val tvConnectionPill = findViewById<TextView>(R.id.tv_connection_pill)
+        val btnConnectionSettings = findViewById<ImageButton>(R.id.btn_connection_settings)
+        val btnModeLogin = findViewById<MaterialButton>(R.id.btn_mode_login)
+        val btnModeRegister = findViewById<MaterialButton>(R.id.btn_mode_register)
+        val tilFullName = findViewById<TextInputLayout>(R.id.til_full_name)
+        val etFullName = findViewById<TextInputEditText>(R.id.et_full_name)
+        val layoutRole = findViewById<LinearLayout>(R.id.layout_role_container)
         val spinnerRole = findViewById<Spinner>(R.id.spinner_role)
-        val etEmail = findViewById<EditText>(R.id.et_email)
-        val etPassword = findViewById<EditText>(R.id.et_password)
-        val btnSubmit = findViewById<Button>(R.id.btn_auth_submit)
-        val btnDemoFill = findViewById<Button>(R.id.btn_demo_fill)
+        val etEmail = findViewById<TextInputEditText>(R.id.et_email)
+        val etPassword = findViewById<TextInputEditText>(R.id.et_password)
+        val btnSubmit = findViewById<MaterialButton>(R.id.btn_auth_submit)
+        val progressAuth = findViewById<ProgressBar>(R.id.progress_auth)
         val tvStatus = findViewById<TextView>(R.id.tv_auth_status)
 
-        etServerUrl.setText(prefs.getString("server_url", "http://127.0.0.1:5000"))
+        fun refreshConnectionBadge() {
+            val usb = ApiClient.isLocalUsbMode(this)
+            tvConnectionPill.text = if (usb) "Offline USB Mode" else "Live Cloud"
+            val bg = if (usb) "#FEF3C7" else "#E8F1FA"
+            val fg = if (usb) "#B45309" else "#0F4C81"
+            tvConnectionPill.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
+            tvConnectionPill.setTextColor(Color.parseColor(fg))
+        }
+        refreshConnectionBadge()
+
+        btnConnectionSettings.setOnClickListener {
+            val options = arrayOf(
+                "Live Cloud (flap-guard-ai.onrender.com)",
+                "Offline USB Viva Mode (127.0.0.1:5000)"
+            )
+            val checked = if (ApiClient.isLocalUsbMode(this)) 1 else 0
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Server Connection")
+                .setSingleChoiceItems(options, checked) { dialog, which ->
+                    ApiClient.setLocalUsbMode(this, which == 1)
+                    refreshConnectionBadge()
+                    tvStatus.text = ""
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Close", null)
+                .show()
+        }
 
         val roles = listOf("Surgeon", "Nurse", "Resident", "Admin")
         spinnerRole.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, roles)
 
         fun updateMode(register: Boolean) {
             isRegisterMode = register
-            etFullName.visibility = if (register) View.VISIBLE else View.GONE
-            spinnerRole.visibility = if (register) View.VISIBLE else View.GONE
+            tilFullName.visibility = if (register) View.VISIBLE else View.GONE
+            layoutRole.visibility = if (register) View.VISIBLE else View.GONE
             btnSubmit.text = if (register) "Create Clinician Account" else "Sign In"
-            btnModeLogin.setBackgroundColor(Color.parseColor(if (!register) "#0F4C81" else "#64748B"))
-            btnModeRegister.setBackgroundColor(Color.parseColor(if (register) "#0F4C81" else "#64748B"))
+
+            val activeBg = ColorStateList.valueOf(Color.parseColor("#0F4C81"))
+            val idleBg = ColorStateList.valueOf(Color.parseColor("#F1F5F9"))
+            btnModeLogin.backgroundTintList = if (!register) activeBg else idleBg
+            btnModeLogin.setTextColor(Color.parseColor(if (!register) "#FFFFFF" else "#475569"))
+            btnModeRegister.backgroundTintList = if (register) activeBg else idleBg
+            btnModeRegister.setTextColor(Color.parseColor(if (register) "#FFFFFF" else "#475569"))
+            tvStatus.text = ""
         }
 
         btnModeLogin.setOnClickListener { updateMode(false) }
         btnModeRegister.setOnClickListener { updateMode(true) }
 
-        btnDemoFill.setOnClickListener {
-            updateMode(false)
-            etEmail.setText("surgeon@flapguard.local")
-            etPassword.setText("Surgeon@123")
-            tvStatus.setTextColor(Color.parseColor("#15803D"))
-            tvStatus.text = "Demo surgeon credentials filled. Tap Sign In."
-        }
-
         btnSubmit.setOnClickListener {
-            val serverUrl = etServerUrl.text.toString().trim().ifBlank { "http://127.0.0.1:5000" }
-            val email = etEmail.text.toString().trim()
-            val password = etPassword.text.toString()
-            val fullName = etFullName.text.toString().trim()
+            val serverUrl = ApiClient.getServerUrl(this)
+            val email = etEmail.text?.toString()?.trim().orEmpty()
+            val password = etPassword.text?.toString().orEmpty()
+            val fullName = etFullName.text?.toString()?.trim().orEmpty()
             val role = spinnerRole.selectedItem.toString()
 
-            if (email.isBlank() || password.length < 8) {
+            if (email.isBlank() || !email.contains("@") || password.length < 8) {
                 tvStatus.setTextColor(Color.parseColor("#DC2626"))
-                tvStatus.text = "Enter a valid email and password (at least 8 characters)."
+                tvStatus.text = "Enter a valid email and password (8+ characters)."
                 return@setOnClickListener
             }
             if (isRegisterMode && fullName.length < 2) {
                 tvStatus.setTextColor(Color.parseColor("#DC2626"))
-                tvStatus.text = "Enter your full name to register."
+                tvStatus.text = "Enter your full name to create an account."
                 return@setOnClickListener
             }
 
             btnSubmit.isEnabled = false
+            progressAuth.visibility = View.VISIBLE
             tvStatus.setTextColor(Color.parseColor("#0F4C81"))
-            tvStatus.text = "Connecting to $serverUrl ..."
+            tvStatus.text = if (ApiClient.isLocalUsbMode(this)) {
+                "Connecting to local USB server..."
+            } else {
+                "Signing in to FlapGuard Cloud..."
+            }
 
             executor.execute {
                 val payload = JSONObject().apply {
@@ -106,14 +144,15 @@ class MainActivity : AppCompatActivity() {
 
                 mainHandler.post {
                     btnSubmit.isEnabled = true
+                    progressAuth.visibility = View.GONE
                     if (result.ok) {
                         val token = result.json.optString("token")
                         val userObj = result.json.optJSONObject("user")
                         prefs.edit()
-                            .putString("server_url", serverUrl)
                             .putString("auth_token", token)
                             .putString("user_name", userObj?.optString("full_name") ?: email)
                             .putString("user_role", userObj?.optString("role") ?: "Surgeon")
+                            .putString("user_email", userObj?.optString("email") ?: email)
                             .apply()
 
                         startActivity(Intent(this, DashboardActivity::class.java))
@@ -125,5 +164,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        executor.shutdownNow()
     }
 }

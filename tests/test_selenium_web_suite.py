@@ -1,6 +1,8 @@
 """
-Selenium Web Automation Test Suite (330+ real browser checks).
-Generates reports/selenium-web-report.xlsx using one persistent headless Chrome session.
+Selenium Web Automation Test Suite (335+ real browser checks).
+Covers empty-start ward, Profile on-demand sample loading, Enroll Patient modal,
+guided 50% Flap ROI scanner, multisensor fusion, live simulator, alerts,
+continuous learning, and session security.
 """
 
 import os
@@ -27,6 +29,28 @@ def _wait_ready(driver, timeout: int = 10) -> None:
     WebDriverWait(driver, timeout).until(
         lambda d: d.execute_script("return document.readyState") == "complete"
     )
+
+
+def _safe_staleness(element):
+    def _predicate(driver):
+        try:
+            element.is_enabled()
+            return False
+        except Exception as exc:
+            msg = str(exc).lower()
+            if (
+                type(exc).__name__ == "StaleElementReferenceException"
+                or "does not belong to the document" in msg
+                or "no such node" in msg
+                or "cannot find context" in msg
+            ):
+                try:
+                    return driver.execute_script("return document.readyState") == "complete"
+                except Exception:
+                    return False
+            raise
+
+    return _predicate
 
 
 def _set_input(driver, element_id: str, value: str) -> None:
@@ -56,32 +80,12 @@ def _click_id(driver, element_id: str) -> None:
 
 
 def _click_and_wait_reload(driver, element_id: str) -> None:
-    """Click a form submit or nav link and wait until Chrome finishes the full page reload."""
     old_html = driver.find_element(By.TAG_NAME, "html")
     _click_id(driver, element_id)
-    WebDriverWait(driver, 10).until(EC.staleness_of(old_html))
+    WebDriverWait(driver, 10).until(_safe_staleness(old_html))
     _wait_ready(driver)
 
-def _safe_staleness(element):
-    def _predicate(driver):
-        try:
-            element.is_enabled()
-            return False
-        except Exception as exc:
-            msg = str(exc).lower()
-            if (
-                type(exc).__name__ == "StaleElementReferenceException"
-                or "does not belong to the document" in msg
-                or "no such node" in msg
-                or "cannot find context" in msg
-            ):
-                try:
-                    return driver.execute_script("return document.readyState") == "complete"
-                except Exception:
-                    return False
-            raise
 
-    return _predicate
 def run_selenium_web_suite() -> str:
     rows = []
     idx = 1
@@ -126,7 +130,7 @@ def run_selenium_web_suite() -> str:
         t0 = time.perf_counter()
         driver.get(f"{base_url}/login")
         _wait_ready(driver)
-        record("Auth UI", "Load /login page", f"{base_url}/login", "Title contains Login", driver.title, t0, "Login" in driver.title)
+        record("Auth UI", "Load /login page", f"{base_url}/login", "Title contains Sign In", driver.title, t0, "Sign In" in driver.title)
 
         login_ids = ["login-form", "login-email", "login-password", "login-submit", "goto-register", "nav-login", "nav-register"]
         for i in range(14):
@@ -157,7 +161,7 @@ def run_selenium_web_suite() -> str:
             el = wait.until(EC.presence_of_element_located((By.ID, eid)))
             record("Signup UI", f"Verify register field #{eid}", f"ID={eid}", "Visible", f"visible={el.is_displayed()}", t0, el.is_displayed())
 
-        # Create a real new surgeon account via browser form
+        # Create a real new surgeon account via browser form -> lands on empty-start ward
         t0 = time.perf_counter()
         _set_input(driver, "reg-name", "Dr. Selenium Tester")
         _set_input(driver, "reg-email", "selenium.surgeon@flapguard.local")
@@ -165,12 +169,20 @@ def run_selenium_web_suite() -> str:
         _set_input(driver, "reg-password", "Selenium@2026")
         _set_input(driver, "reg-confirm", "Selenium@2026")
         _click_and_wait_reload(driver, "register-submit")
-        wait.until(EC.presence_of_element_located((By.ID, "risk-dashboard-table")))
-        record("Signup Flow", "Register new clinician & auto-login", "selenium.surgeon@flapguard.local", "Redirect to Risk Dashboard", driver.current_url, t0, "/login" not in driver.current_url)
+        wait.until(EC.presence_of_element_located((By.ID, "empty-ward-state")))
+        record("Signup Flow", "Register new clinician & verify empty-start ward", "selenium.surgeon@flapguard.local", "Empty ward onboarding visible", driver.current_url, t0, "/login" not in driver.current_url)
 
         t0 = time.perf_counter()
         body_text = driver.find_element(By.TAG_NAME, "body").text
         record("Signup Flow", "Verify authenticated clinician name in navbar", "Navbar user text", "Dr. Selenium Tester visible", "Found" if "Dr. Selenium Tester" in body_text else "Missing", t0, "Dr. Selenium Tester" in body_text)
+
+        # Load Sample OMFS Cases via Profile Settings (verifies on-demand seeding)
+        t0 = time.perf_counter()
+        _click_and_wait_reload(driver, "nav-profile")
+        wait.until(EC.presence_of_element_located((By.ID, "load-samples-btn")))
+        _click_and_wait_reload(driver, "load-samples-btn")
+        wait.until(EC.presence_of_element_located((By.ID, "risk-dashboard-table")))
+        record("Ward Controls", "Load 3 sample OMFS cases from Profile", "Click load-samples-btn", "Redirect to populated ward table", driver.current_url, t0, "/profile" not in driver.current_url)
 
         # 2. Risk Stratification Dashboard Checks (45 checks)
         kpi_ids = ["kpi-critical", "kpi-high", "kpi-moderate", "kpi-low"]
@@ -180,7 +192,7 @@ def run_selenium_web_suite() -> str:
             val = driver.find_element(By.ID, kid).text.strip()
             record("Dashboard KPI", f"Read KPI widget #{kid} pass {i+1}", f"ID={kid}", "Numeric integer >= 0", f"value={val}", t0, val.isdigit())
 
-        dash_elements = ["risk-dashboard-table", "add-patient-form", "nav-dashboard", "nav-alerts", "nav-learning", "nav-profile", "nav-logout"]
+        dash_elements = ["risk-dashboard-table", "open-enroll-modal-btn", "nav-dashboard", "nav-alerts", "nav-learning", "nav-profile", "nav-logout"]
         for i in range(21):
             t0 = time.perf_counter()
             eid = dash_elements[i % len(dash_elements)]
@@ -190,9 +202,9 @@ def run_selenium_web_suite() -> str:
         for patient_name in ["Meena Devi", "Ramesh Kumar", "Karthik Sundaram", "Venous Compromise"]:
             t0 = time.perf_counter()
             tbl_text = driver.find_element(By.ID, "risk-dashboard-table").text
-            record("Dashboard Data", f"Verify seeded record '{patient_name}'", "risk-dashboard-table", f"Contains '{patient_name}'", "Present" if patient_name in tbl_text else "Missing", t0, patient_name in tbl_text)
+            record("Dashboard Data", f"Verify sample case '{patient_name}'", "risk-dashboard-table", f"Contains '{patient_name}'", "Present" if patient_name in tbl_text else "Missing", t0, patient_name in tbl_text)
 
-        # 3. Enroll 6 New Patients via Browser Form (36 checks)
+        # 3. Enroll 6 New Patients via Clean Modal Form (36 checks)
         created_patient_url = None
         for i in range(6):
             driver.get(f"{base_url}/")
@@ -200,6 +212,8 @@ def run_selenium_web_suite() -> str:
             mrn = f"MRN-SEL-{100 + i}"
             pname = f"Selenium Patient {i + 1}"
             t0 = time.perf_counter()
+            _click_id(driver, "open-enroll-modal-btn")
+            wait.until(EC.visibility_of_element_located((By.ID, "patient-mrn")))
             _set_input(driver, "patient-mrn", mrn)
             _set_input(driver, "patient-name", pname)
             _set_input(driver, "patient-age", str(42 + i))
@@ -222,7 +236,7 @@ def run_selenium_web_suite() -> str:
                 el = driver.find_element(By.ID, eid)
                 record("Patient Detail DOM", f"{mrn}: {check_name}", f"ID={eid}", "Displayed", f"displayed={el.is_displayed()}", t0, el.is_displayed())
 
-        # 4. Camera / Image Upload Local OpenCV Scanner UI Tests (48 checks)
+        # 4. Guided CIE-LAB ROI Camera / Image Upload Tests (48 checks)
         driver.get(created_patient_url)
         _wait_ready(driver)
         upload_scenarios = [
@@ -261,6 +275,7 @@ def run_selenium_web_suite() -> str:
         for i in range(12):
             label, ir_t, ctrl_t, spo2, dopp, red, cya, pal, exp_cls, exp_tier = clinical_submissions[i % 3]
             t0 = time.perf_counter()
+            driver.execute_script("document.getElementById('visual-indices-drawer').open = true;")
             _set_input(driver, "ir-temp-input", str(ir_t))
             _set_input(driver, "ctrl-temp-input", str(ctrl_t))
             _set_input(driver, "spo2-input", str(spo2))
@@ -308,8 +323,8 @@ def run_selenium_web_suite() -> str:
             record("Live Simulator", f"Start button re-enabled after stop (#{i+1})", "sim-start-btn", "Enabled=True", f"enabled={start_enabled}", t0, start_enabled)
 
             t0 = time.perf_counter()
-            has_delta = "Delta-T:" in status_text and "SpO2:" in status_text
-            record("Live Simulator", f"Verify telemetry format (#{i+1})", status_text[:60], "Contains Delta-T & SpO2", f"valid={has_delta}", t0, has_delta)
+            has_delta = ("ΔT:" in status_text or "Delta-T:" in status_text) and "SpO2:" in status_text
+            record("Live Simulator", f"Verify telemetry format (#{i+1})", status_text[:60], "Contains ΔT & SpO2", f"valid={has_delta}", t0, has_delta)
 
         # 7. Surgeon Alerts Center & Acknowledge Flow (30 checks)
         t0 = time.perf_counter()
@@ -323,7 +338,7 @@ def run_selenium_web_suite() -> str:
                 t0 = time.perf_counter()
                 old_html = driver.find_element(By.TAG_NAME, "html")
                 ack_buttons[0].click()
-                wait.until(EC.staleness_of(old_html))
+                wait.until(_safe_staleness(old_html))
                 _wait_ready(driver)
                 msg = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".flash-success"))).text
                 record("Alerts Center", f"Acknowledge alert #{i+1}", "Click Acknowledge", "Acknowledged confirmation flash", msg, t0, "acknowledged" in msg.lower())

@@ -22,7 +22,8 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from sqlalchemy import text
+from sqlalchemy import func, text
+from sqlalchemy.orm import joinedload
 
 from ml_engine.fusion import classify_visual_triage
 from ml_engine.model_service import (
@@ -33,6 +34,11 @@ from ml_engine.model_service import (
 from ml_engine.simulator import SCENARIOS, generate_simulated_reading
 from ml_engine.vision_analyzer import analyze_flap_image_bytes
 from web_app.models import ModelVersionLog, Patient, PostOpOutcome, SensorReading, User, db
+from web_app.ward_service import (
+    clear_all_ward_patients,
+    fetch_patients_with_latest_readings,
+    load_sample_ward_cases,
+)
 
 
 bp = Blueprint("main", __name__)
@@ -173,18 +179,23 @@ def _collect_outcome_records_for_retraining() -> list:
 # ---------------------------------------------------------------------------
 @bp.route("/health")
 def health():
-    db.session.execute(text("SELECT 1"))
-    _, meta = load_model_and_metadata()
-    return jsonify(
-        {
-            "status": "ok",
-            "service": "FlapGuard AI",
-            "database": "connected",
-            "model_version": meta["version"],
-            "model_accuracy": meta["accuracy"],
-            "patients_count": Patient.query.count(),
-        }
-    )
+    try:
+        db.session.execute(text("SELECT 1"))
+        patients_count = db.session.query(func.count(Patient.id)).scalar() or 0
+        _, meta = load_model_and_metadata()
+        return jsonify(
+            {
+                "status": "ok",
+                "service": "FlapGuard AI",
+                "database": "connected",
+                "model_version": meta["version"],
+                "model_accuracy": meta["accuracy"],
+                "patients_count": int(patients_count),
+            }
+        )
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"status": "error", "database": "error", "detail": str(exc)}), 503
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +283,33 @@ def profile():
             db.session.commit()
             flash("Password updated successfully.", "success")
 
-    return render_template("profile.html")
+    return render_template(
+        "profile.html",
+        patients_count=Patient.query.count(),
+        readings_count=SensorReading.query.count(),
+    )
+
+
+@bp.route("/profile/load-samples", methods=["POST"])
+@login_required
+def profile_load_samples():
+    created = load_sample_ward_cases(
+        assigned_surgeon_id=current_user.id,
+        recorded_by_id=current_user.id,
+    )
+    if created > 0:
+        flash(f"Loaded {created} sample OMFS clinical cases into the ward.", "success")
+    else:
+        flash("Sample clinical cases are already loaded in the ward.", "info")
+    return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/profile/clear-ward", methods=["POST"])
+@login_required
+def profile_clear_ward():
+    removed = clear_all_ward_patients()
+    flash(f"Cleared {removed} patient record(s). Ward is now empty.", "success")
+    return redirect(url_for("main.dashboard"))
 
 
 # ---------------------------------------------------------------------------
@@ -281,12 +318,27 @@ def profile():
 @bp.route("/")
 @login_required
 def dashboard():
-    patients = Patient.query.all()
+    patients = Patient.query.order_by(Patient.created_at.desc()).all()
+    latest_by_pid = {}
+    if patients:
+        pids = [p.id for p in patients]
+        latest_subq = (
+            db.session.query(
+                SensorReading.patient_id,
+                func.max(SensorReading.id).label("max_id"),
+            )
+            .filter(SensorReading.patient_id.in_(pids))
+            .group_by(SensorReading.patient_id)
+            .subquery()
+        )
+        for r in SensorReading.query.join(latest_subq, SensorReading.id == latest_subq.c.max_id).all():
+            latest_by_pid[r.patient_id] = r
+
     patient_cards = []
     tier_counts = {"Critical": 0, "High": 0, "Moderate": 0, "Low": 0}
 
     for p in patients:
-        latest = p.latest_reading
+        latest = latest_by_pid.get(p.id)
         tier = latest.risk_tier if latest else "Unassessed"
         if tier in tier_counts:
             tier_counts[tier] += 1
@@ -300,7 +352,8 @@ def dashboard():
     )
 
     active_alerts = (
-        SensorReading.query.filter_by(alert_required=True, alert_acknowledged=False)
+        SensorReading.query.options(joinedload(SensorReading.patient))
+        .filter_by(alert_required=True, alert_acknowledged=False)
         .order_by(SensorReading.created_at.desc())
         .limit(10)
         .all()
@@ -354,6 +407,20 @@ def create_patient():
         flash(f"Patient {patient.full_name} ({patient.mrn}) added for monitoring.", "success")
         return redirect(url_for("main.patient_detail", patient_id=patient.id))
 
+    return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/patients/<int:patient_id>/delete", methods=["POST"])
+@login_required
+def delete_patient(patient_id: int):
+    patient = db.session.get(Patient, patient_id)
+    if not patient:
+        flash("Patient record not found.", "warning")
+    else:
+        name = patient.full_name
+        db.session.delete(patient)
+        db.session.commit()
+        flash(f"Removed patient {name} from ward monitoring.", "success")
     return redirect(url_for("main.dashboard"))
 
 
@@ -668,10 +735,13 @@ def mobile_patients():
         db.session.commit()
         return jsonify(patient.to_dict()), 201
 
-    patients = [p.to_dict() for p in Patient.query.all()]
+    patients = fetch_patients_with_latest_readings()
     patients.sort(
-        key=lambda item: RISK_PRIORITY.get(
-            (item["latest_reading"] or {}).get("risk_tier", "Unassessed"), 4
+        key=lambda item: (
+            RISK_PRIORITY.get(
+                (item["latest_reading"] or {}).get("risk_tier", "Unassessed"), 4
+            ),
+            -float((item["latest_reading"] or {}).get("risk_score_pct", 0.0)),
         )
     )
     return jsonify({"patients": patients})
@@ -681,7 +751,8 @@ def mobile_patients():
 @mobile_auth_required
 def mobile_alerts():
     alerts = (
-        SensorReading.query.filter_by(alert_required=True)
+        SensorReading.query.options(joinedload(SensorReading.patient))
+        .filter_by(alert_required=True)
         .order_by(SensorReading.alert_acknowledged.asc(), SensorReading.created_at.desc())
         .limit(30)
         .all()
@@ -813,3 +884,91 @@ def mobile_log_outcome():
     db.session.add(outcome)
     db.session.commit()
     return jsonify({"outcome": outcome.to_dict()}), 201
+
+
+@bp.route("/mobile/patients/<int:patient_id>", methods=["DELETE"])
+@bp.route("/mobile/patients/<int:patient_id>/delete", methods=["POST"])
+@mobile_auth_required
+def mobile_delete_patient(patient_id: int):
+    patient = db.session.get(Patient, patient_id)
+    if not patient:
+        return jsonify({"error": "Patient not found."}), 404
+    name = patient.full_name
+    db.session.delete(patient)
+    db.session.commit()
+    return jsonify({"status": "deleted", "patient_id": patient_id, "full_name": name})
+
+
+@bp.route("/mobile/patients/<int:patient_id>/readings", methods=["GET"])
+@mobile_auth_required
+def mobile_patient_readings(patient_id: int):
+    patient = db.session.get(Patient, patient_id)
+    if not patient:
+        return jsonify({"error": "Patient not found."}), 404
+    readings = (
+        SensorReading.query.filter_by(patient_id=patient.id)
+        .order_by(SensorReading.created_at.desc())
+        .limit(15)
+        .all()
+    )
+    return jsonify({"patient": patient.to_dict(), "readings": [r.to_dict() for r in readings]})
+
+
+@bp.route("/mobile/profile", methods=["GET"])
+@mobile_auth_required
+def mobile_profile():
+    _, meta = load_model_and_metadata()
+    patients_count = db.session.query(func.count(Patient.id)).scalar() or 0
+    unack_alerts = (
+        db.session.query(func.count(SensorReading.id))
+        .filter_by(alert_required=True, alert_acknowledged=False)
+        .scalar()
+        or 0
+    )
+    return jsonify(
+        {
+            "user": request.mobile_user.to_dict(),
+            "patients_count": int(patients_count),
+            "unacknowledged_alerts": int(unack_alerts),
+            "model_version": meta["version"],
+            "model_accuracy": meta["accuracy"],
+        }
+    )
+
+
+@bp.route("/mobile/profile/password", methods=["POST"])
+@mobile_auth_required
+def mobile_change_password():
+    data = request.get_json(silent=True) or {}
+    current_pw = str(data.get("current_password", ""))
+    new_pw = str(data.get("new_password", ""))
+    if not request.mobile_user.check_password(current_pw):
+        return jsonify({"error": "Current password is incorrect."}), 400
+    if len(new_pw) < 8:
+        return jsonify({"error": "New password must be at least 8 characters."}), 400
+    request.mobile_user.set_password(new_pw)
+    db.session.commit()
+    return jsonify({"status": "password_updated"})
+
+
+@bp.route("/mobile/ward/load-samples", methods=["POST"])
+@mobile_auth_required
+def mobile_load_samples():
+    created = load_sample_ward_cases(
+        assigned_surgeon_id=request.mobile_user.id,
+        recorded_by_id=request.mobile_user.id,
+    )
+    return jsonify(
+        {
+            "status": "ok",
+            "created_count": created,
+            "patients_count": Patient.query.count(),
+        }
+    )
+
+
+@bp.route("/mobile/ward/clear", methods=["POST"])
+@mobile_auth_required
+def mobile_clear_ward():
+    removed = clear_all_ward_patients()
+    return jsonify({"status": "cleared", "removed_count": removed})

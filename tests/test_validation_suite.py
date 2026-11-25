@@ -102,7 +102,7 @@ def run_validation_suite() -> str:
         idx += 1
 
     # 3. Web & Mobile Form/Payload Validation (55 cases)
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "SEED_SAMPLE_PATIENTS": True})
     client = app.test_client()
 
     auth_res = client.post("/mobile/login", json={"email": "surgeon@flapguard.local", "password": "Surgeon@123"})

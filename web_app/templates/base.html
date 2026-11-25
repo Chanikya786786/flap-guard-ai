@@ -8,20 +8,23 @@
 </head>
 <body>
   <nav class="navbar">
-    <a class="brand" href="{{ url_for('main.dashboard') }}">FlapGuard AI &mdash; Early Flap Failure Prediction</a>
+    <div class="brand-wrap">
+      <a class="brand" href="{{ url_for('main.dashboard') }}">FlapGuard AI</a>
+      <span class="brand-sub">OMFS &amp; Microsurgical Post-Op Free-Flap Monitoring</span>
+    </div>
     {% if current_user.is_authenticated %}
     <div class="nav-links">
-      <a id="nav-dashboard" href="{{ url_for('main.dashboard') }}">Risk Dashboard</a>
-      <a id="nav-alerts" href="{{ url_for('main.alerts_center') }}">Surgeon Alerts</a>
-      <a id="nav-learning" href="{{ url_for('main.learning_center') }}">Continuous Learning</a>
-      <a id="nav-profile" href="{{ url_for('main.profile') }}">Profile</a>
-      <span class="nav-user">{{ current_user.full_name }} ({{ current_user.role }})</span>
-      <a id="nav-logout" href="{{ url_for('main.logout') }}">Logout</a>
+      <a id="nav-dashboard" class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}">Ward</a>
+      <a id="nav-alerts" class="{{ 'active' if request.endpoint == 'main.alerts_center' else '' }}" href="{{ url_for('main.alerts_center') }}">Alerts</a>
+      <a id="nav-learning" class="{{ 'active' if request.endpoint == 'main.learning_center' else '' }}" href="{{ url_for('main.learning_center') }}">Learning</a>
+      <a id="nav-profile" class="{{ 'active' if request.endpoint == 'main.profile' else '' }}" href="{{ url_for('main.profile') }}">Profile</a>
+      <span class="nav-user">{{ current_user.full_name }} &middot; {{ current_user.role }}</span>
+      <a id="nav-logout" href="{{ url_for('main.logout') }}">Sign Out</a>
     </div>
     {% else %}
     <div class="nav-links">
-      <a id="nav-login" href="{{ url_for('main.login') }}">Login</a>
-      <a id="nav-register" href="{{ url_for('main.register') }}">Sign Up</a>
+      <a id="nav-login" class="{{ 'active' if request.endpoint == 'main.login' else '' }}" href="{{ url_for('main.login') }}">Sign In</a>
+      <a id="nav-register" class="{{ 'active' if request.endpoint == 'main.register' else '' }}" href="{{ url_for('main.register') }}">Create Account</a>
     </div>
     {% endif %}
   </nav>
@@ -37,6 +40,10 @@
 
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="footer-note">
+    FlapGuard AI &mdash; Clinical Decision Support for Oral &amp; Maxillofacial Surgeons and Post-Op ICU Nurses. Always confirm findings clinically.
+  </footer>
 
   {% block scripts %}{% endblock %}
 </body>

@@ -1,7 +1,7 @@
 /* Pure Offline JavaScript for FlapGuard AI:
-   - HTML5 Canvas Multisensor Trend Chart (Zero external chart libraries)
-   - Live Webcam Flap Scanner & Image Upload Analyzer
-   - Live Virtual Sensor Stream Simulator
+- HTML5 Canvas Multisensor Trend Chart (Zero external libraries)
+- Guided CIE-LAB Flap ROI Scanner & Quality Diagnostics
+- Live Virtual Sensor Stream Simulator with Real-Time Badge Updates
 */
 
 (function () {
@@ -19,7 +19,7 @@
     if (!points || points.length === 0) {
       ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
-      ctx.fillText("No sensor readings recorded yet. Submit a reading or start simulation.", 20, h / 2);
+      ctx.fillText("No readings yet — log a bedside assessment or start a simulated stream.", 20, h / 2);
       return;
     }
 
@@ -27,7 +27,6 @@
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
 
-    // Horizontal grid lines (0..100 scale)
     ctx.strokeStyle = "#e2e8f0";
     ctx.lineWidth = 1;
     ctx.fillStyle = "#64748b";
@@ -60,7 +59,6 @@
       });
       ctx.stroke();
 
-      // Dots
       ctx.fillStyle = s.color;
       points.forEach((pt, idx) => {
         const x = points.length === 1 ? pad.left + plotW / 2 : pad.left + (idx / (points.length - 1)) * plotW;
@@ -71,7 +69,6 @@
       });
     });
 
-    // Legend
     let lx = pad.left;
     series.forEach((s) => {
       ctx.fillStyle = s.color;
@@ -82,7 +79,6 @@
       lx += 118;
     });
 
-    // X-axis first/last timestamps
     ctx.fillStyle = "#475569";
     ctx.fillText(points[0].label || "Start", pad.left, h - 10);
     if (points.length > 1) {
@@ -101,28 +97,37 @@
     if (redInput) redInput.value = data.visual_redness_index;
     if (cyaInput) cyaInput.value = data.visual_cyanosis_index;
     if (palInput) palInput.value = data.visual_pallor_index;
-    if (modeInput) modeInput.value = "Camera Scan + Multisensor Fusion";
+    if (modeInput) modeInput.value = "CIE-LAB ROI Camera + Sensor Fusion";
 
     if (statusBox) {
+      const qStatus = data.quality_status || "Good";
+      const warnings = Array.isArray(data.quality_warnings) ? data.quality_warnings : [];
       statusBox.style.display = "block";
-      statusBox.innerHTML =
-        "<strong>Camera Visual Triage:</strong> " +
+      statusBox.className = "flash " + (qStatus === "Poor" ? "flash-danger" : qStatus === "Caution" ? "flash-warning" : "flash-info");
+
+      let html =
+        "<strong>Visual Triage:</strong> " +
         data.visual_triage_label +
-        " | <strong>Visual Perfusion Score:</strong> " +
+        " &middot; <strong>Score:</strong> " +
         data.visual_perfusion_score +
-        "/100<br>" +
-        "<span class='muted'>Redness: " +
+        "/100 &middot; <strong>Quality:</strong> " +
+        qStatus +
+        "<br><span class='muted'>Redness: " +
         data.visual_redness_index +
         " | Cyanosis: " +
         data.visual_cyanosis_index +
         " | Pallor: " +
         data.visual_pallor_index +
-        " (Auto-filled into sensor form below)</span>";
+        " (Auto-filled into sensor form)</span>";
+
+      if (warnings.length > 0) {
+        html += "<br><span style='font-size:0.83rem;'><strong>Capture Note:</strong> " + warnings[0] + "</span>";
+      }
+      statusBox.innerHTML = html;
     }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    // 1. Render initial trend chart
     const payloadEl = document.getElementById("chart-data-json");
     let chartPoints = [];
     if (payloadEl) {
@@ -135,9 +140,9 @@
       window.addEventListener("resize", () => drawTrendChart("sensor-trend-chart", chartPoints));
     }
 
-    // 2. Live Webcam Flap Scanner
     const videoEl = document.getElementById("webcam-video");
     const previewImg = document.getElementById("uploaded-preview");
+    const placeholder = document.getElementById("camera-placeholder");
     const startCamBtn = document.getElementById("start-camera-btn");
     const captureCamBtn = document.getElementById("capture-camera-btn");
     const stopCamBtn = document.getElementById("stop-camera-btn");
@@ -151,12 +156,14 @@
           videoEl.srcObject = activeStream;
           videoEl.style.display = "block";
           if (previewImg) previewImg.style.display = "none";
+          if (placeholder) placeholder.style.display = "none";
           if (captureCamBtn) captureCamBtn.disabled = false;
           if (stopCamBtn) stopCamBtn.disabled = false;
         } catch (err) {
           if (statusBox) {
             statusBox.style.display = "block";
-            statusBox.textContent = "Camera access unavailable in this browser. Use Upload Flap Image below.";
+            statusBox.className = "flash flash-warning";
+            statusBox.textContent = "Camera access unavailable in this browser. Upload a flap photo below instead.";
           }
         }
       });
@@ -165,8 +172,8 @@
     if (captureCamBtn && videoEl) {
       captureCamBtn.addEventListener("click", async function () {
         const snap = document.createElement("canvas");
-        snap.width = videoEl.videoWidth || 320;
-        snap.height = videoEl.videoHeight || 240;
+        snap.width = videoEl.videoWidth || 640;
+        snap.height = videoEl.videoHeight || 480;
         snap.getContext("2d").drawImage(videoEl, 0, 0, snap.width, snap.height);
         const dataUrl = snap.toDataURL("image/jpeg", 0.9);
 
@@ -180,6 +187,7 @@
           applyVisionResult(data);
         } else if (statusBox) {
           statusBox.style.display = "block";
+          statusBox.className = "flash flash-danger";
           statusBox.textContent = data.error || "Image analysis failed.";
         }
       });
@@ -192,12 +200,14 @@
           activeStream = null;
         }
         if (videoEl) videoEl.style.display = "none";
+        if (placeholder && (!previewImg || previewImg.style.display === "none")) {
+          placeholder.style.display = "flex";
+        }
         if (captureCamBtn) captureCamBtn.disabled = true;
         stopCamBtn.disabled = true;
       });
     }
 
-    // 3. Upload Flap Image Analyzer
     const uploadInput = document.getElementById("flap-image-upload");
     const analyzeUploadBtn = document.getElementById("analyze-upload-btn");
     if (analyzeUploadBtn && uploadInput) {
@@ -205,7 +215,8 @@
         if (!uploadInput.files || !uploadInput.files[0]) {
           if (statusBox) {
             statusBox.style.display = "block";
-            statusBox.textContent = "Please choose an image file first.";
+            statusBox.className = "flash flash-warning";
+            statusBox.textContent = "Choose a flap image file first.";
           }
           return;
         }
@@ -215,6 +226,7 @@
           previewImg.style.display = "block";
         }
         if (videoEl) videoEl.style.display = "none";
+        if (placeholder) placeholder.style.display = "none";
 
         const formData = new FormData();
         formData.append("image", file);
@@ -224,16 +236,17 @@
           applyVisionResult(data);
         } else if (statusBox) {
           statusBox.style.display = "block";
+          statusBox.className = "flash flash-danger";
           statusBox.textContent = data.error || "Could not analyze image.";
         }
       });
     }
 
-    // 4. Live Virtual Sensor Stream Simulator
     const simStartBtn = document.getElementById("sim-start-btn");
     const simStopBtn = document.getElementById("sim-stop-btn");
     const simScenarioEl = document.getElementById("sim-scenario");
     const simStatusEl = document.getElementById("sim-live-status");
+    const riskBadgeEl = document.getElementById("current-risk-badge");
     let simTimer = null;
     let simStep = 0;
 
@@ -258,8 +271,13 @@
           simStatusEl.style.display = "block";
           simStatusEl.className = "flash " + (r.alert_required ? "flash-danger" : "flash-info");
           simStatusEl.textContent =
-            `Step ${simStep} | Delta-T: ${r.temp_delta_c} C | SpO2: ${r.spo2_pct}% | Doppler: ${r.doppler_flow_cm_s} cm/s -> ` +
+            `Step ${simStep} | ΔT: ${r.temp_delta_c}°C | SpO2: ${r.spo2_pct}% | Doppler: ${r.doppler_flow_cm_s} cm/s -> ` +
             `${r.predicted_class} [${r.risk_tier} - ${r.risk_score_pct}%]`;
+        }
+
+        if (riskBadgeEl) {
+          riskBadgeEl.className = "badge badge-" + String(r.risk_tier || "unassessed").toLowerCase();
+          riskBadgeEl.textContent = `${r.risk_tier} Risk — ${r.predicted_class} (${r.risk_score_pct}%)`;
         }
 
         chartPoints.push({
