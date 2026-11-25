@@ -254,6 +254,7 @@ class DashboardActivity : AppCompatActivity() {
                 R.id.nav_assess -> {
                     tvToolbarTitle.text = "Flap Assessment"
                     tvToolbarSubtitle.text = "CIE-LAB Colorimetry + Multisensor Fusion"
+                    sectionAssess.post { sectionAssess.scrollTo(0, 0) }
                 }
                 R.id.nav_alerts -> {
                     tvToolbarTitle.text = "Surgeon Alerts"
@@ -263,6 +264,7 @@ class DashboardActivity : AppCompatActivity() {
                 R.id.nav_profile -> {
                     tvToolbarTitle.text = "Clinician Profile"
                     tvToolbarSubtitle.text = "$userName • $userRole"
+                    sectionProfile.post { sectionProfile.scrollTo(0, 0) }
                     fetchProfileStats()
                 }
             }
@@ -861,15 +863,20 @@ class DashboardActivity : AppCompatActivity() {
         val spOutcome = Spinner(this).apply {
             adapter = ArrayAdapter(this@DashboardActivity, android.R.layout.simple_spinner_dropdown_item, outcomes)
         }
-        val etNotes = EditText(this).apply { hint = "Surgeon intraoperative / clinical notes" }
+        val etNotes = EditText(this).apply {
+            hint = "Surgeon intraoperative / clinical notes"
+            contentDescription = "outcome_notes_input"
+        }
 
         container.addView(spPatient)
         container.addView(spOutcome)
         container.addView(etNotes)
 
+        val scrollWrap = ScrollView(this).apply { addView(container) }
+
         MaterialAlertDialogBuilder(this)
             .setTitle("Log Verified Post-Op Outcome")
-            .setView(container)
+            .setView(scrollWrap)
             .setPositiveButton("Save Outcome") { _, _ ->
                 val patient = patientsList[spPatient.selectedItemPosition]
                 val body = JSONObject().apply {

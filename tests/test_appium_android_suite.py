@@ -389,15 +389,15 @@ def run_appium_android_suite() -> str:
 
         # 5. Profile Tab, Verified Outcome Logging & Settings Controls (42 checks)
         _find_by_id(driver, "nav_profile").click()
-        time.sleep(0.6)
+        time.sleep(0.9)
 
         for i in range(4):
             t0 = time.perf_counter()
             with app.app_context():
                 before_cnt = PostOpOutcome.query.count()
-            _scroll_and_find(driver, "btn_log_outcome_dialog").click()
-            note_input = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
+            _find_by_id(driver, "btn_log_outcome_dialog", timeout=12).click()
+            note_input = WebDriverWait(driver, 12).until(
+                EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
             )
             note_input.send_keys(f"Mobile verified postoperative check #{i+1}")
             _safe_hide_keyboard(driver)
@@ -445,7 +445,14 @@ def run_appium_android_suite() -> str:
             record("Mobile Navigation", f"Switch to {tab_id} (#{i+1})", f"Tap {tab_id}", f"{sec_id} visible", f"visible={sec_vis}", t0, sec_vis)
 
         t0 = time.perf_counter()
-        _scroll_and_find(driver, "btn_logout").click()
+        try:
+            driver.find_element(
+                AppiumBy.ANDROID_UIAUTOMATOR,
+                'new UiScrollable(new UiSelector().scrollable(true)).scrollToEnd(4)',
+            )
+        except Exception:
+            pass
+        _find_by_id(driver, "btn_logout", timeout=12).click()
         back_to_login = _find_by_id(driver, "btn_auth_submit", timeout=12).is_displayed()
         record("Mobile Logout", "Sign Out returns to MainActivity login", "Tap btn_logout", "Login screen visible", f"visible={back_to_login}", t0, back_to_login)
 
