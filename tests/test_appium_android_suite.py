@@ -40,14 +40,58 @@ def _find_by_id(driver, view_id: str, timeout: int = 12):
 
 
 def _scroll_and_find(driver, view_id: str):
+    rid = _rid(view_id)
+    existing = driver.find_elements(AppiumBy.ID, rid)
+    if existing:
+        try:
+            if existing[0].is_displayed():
+                return existing[0]
+        except Exception:
+            pass
+
     locator = (
         f'new UiScrollable(new UiSelector().scrollable(true))'
-        f'.scrollIntoView(new UiSelector().resourceId("{_rid(view_id)}"))'
+        f'.scrollIntoView(new UiSelector().resourceId("{rid}"))'
     )
     try:
         return driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, locator)
     except Exception:
+        pass
+
+    # Reset to top when already scrolled to the bottom of a ScrollView, then retry
+    try:
+        driver.find_element(
+            AppiumBy.ANDROID_UIAUTOMATOR,
+            'new UiScrollable(new UiSelector().scrollable(true)).scrollToBeginning(6)',
+        )
+    except Exception:
+        pass
+
+    existing = driver.find_elements(AppiumBy.ID, rid)
+    if existing:
+        try:
+            if existing[0].is_displayed():
+                return existing[0]
+        except Exception:
+            pass
+
+    try:
+        return driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, locator)
+    except Exception:
         return _find_by_id(driver, view_id, timeout=10)
+
+
+def _switch_tab(driver, tab_id: str, expected_section_id: str) -> None:
+    for _ in range(2):
+        _find_by_id(driver, tab_id, timeout=12).click()
+        try:
+            WebDriverWait(driver, 6).until(
+                EC.visibility_of_element_located((AppiumBy.ID, _rid(expected_section_id)))
+            )
+            return
+        except Exception:
+            time.sleep(0.4)
+    _find_by_id(driver, expected_section_id, timeout=10)
 
 
 def _safe_hide_keyboard(driver) -> None:
@@ -265,8 +309,8 @@ def run_appium_android_suite() -> str:
             record("Mobile Sync", f"Ward sync count check #{i+1}", "Single-slot refresh check", "Numeric count >= 3", f"total={cnt}", t0, cnt.isdigit() and int(cnt) >= 3)
 
         # 3. Assess Tab (Borderless Vitals + AI Fusion + Simulator Bottom Sheet) (95 checks)
-        _find_by_id(driver, "nav_assess").click()
-        time.sleep(0.6)
+        _switch_tab(driver, "nav_assess", "section_assess")
+        time.sleep(0.4)
 
         assess_views = [
             "card_select_patient",
@@ -354,8 +398,8 @@ def run_appium_android_suite() -> str:
                 record("Mobile Simulator Verify", f"Check alert text formatted for {tag} #{i+1}", tag, "Contains URGENT", f"present={'URGENT' in sample_txt}", t0, "URGENT" in sample_txt)
 
         # 4. Alerts Tab & Mark Reviewed Flow (45 checks)
-        _find_by_id(driver, "nav_alerts").click()
-        time.sleep(0.8)
+        _switch_tab(driver, "nav_alerts", "section_alerts")
+        time.sleep(0.5)
 
         for i in range(4):
             t0 = time.perf_counter()
@@ -375,8 +419,8 @@ def run_appium_android_suite() -> str:
             record("Mobile Alerts UI", f"Alerts RecyclerView integrity #{i+1}", "rv_alerts", "Displayed=True", f"displayed={rv_el.is_displayed()}", t0, rv_el.is_displayed())
 
         # 5. Profile Tab, Log Outcome Bottom Sheet & Settings Rows (42 checks)
-        _find_by_id(driver, "nav_profile").click()
-        time.sleep(0.9)
+        _switch_tab(driver, "nav_profile", "section_profile")
+        time.sleep(0.5)
 
         for i in range(4):
             t0 = time.perf_counter()
