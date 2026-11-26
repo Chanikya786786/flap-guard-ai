@@ -12,14 +12,14 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:paddingStart="24dp"
-        android:paddingTop="36dp"
+        android:paddingTop="44dp"
         android:paddingEnd="24dp"
-        android:paddingBottom="24dp">
+        android:paddingBottom="28dp">
 
         <ImageView
             android:id="@+id/iv_brand_logo"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
             android:contentDescription="FlapGuard AI Logo"
             android:src="@drawable/ic_brand_logo" />
 
@@ -27,30 +27,28 @@
             android:id="@+id/tv_brand_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="16dp"
+            android:fontFamily="sans-serif-medium"
             android:text="FlapGuard AI"
             android:textColor="@color/fg_text_primary"
-            android:textSize="26sp"
-            android:textStyle="bold" />
+            android:textSize="26sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:layout_marginBottom="24dp"
-            android:gravity="center"
-            android:text="OMFS &amp; Microsurgical Free-Flap Monitoring"
-            android:textColor="@color/fg_text_secondary"
-            android:textSize="13sp" />
+            android:layout_marginBottom="28dp"
+            android:text="Free-Flap Perfusion Monitoring"
+            android:textColor="@color/fg_text_muted"
+            android:textSize="14sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="@color/fg_surface"
-            app:cardCornerRadius="20dp"
-            app:cardElevation="2dp"
-            app:strokeColor="@color/fg_border"
-            app:strokeWidth="1dp">
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -61,8 +59,8 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="18dp"
-                    android:background="@drawable/bg_metric_tile"
+                    android:layout_marginBottom="20dp"
+                    android:background="@drawable/bg_segment_track"
                     android:orientation="horizontal"
                     android:padding="4dp">
 
@@ -78,7 +76,8 @@
                         android:textSize="13sp"
                         android:textStyle="bold"
                         app:backgroundTint="@color/fg_primary"
-                        app:cornerRadius="10dp" />
+                        app:cornerRadius="11dp"
+                        app:elevation="0dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_mode_register"
@@ -92,23 +91,18 @@
                         android:textColor="@color/fg_text_secondary"
                         android:textSize="13sp"
                         app:backgroundTint="@android:color/transparent"
-                        app:cornerRadius="10dp"
+                        app:cornerRadius="11dp"
                         app:elevation="0dp" />
                 </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_full_name"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.FlapGuard.InputFilled"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:hint="Clinician Full Name"
-                    android:visibility="gone"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:placeholderText="Dr. Full Name">
+                    android:hint="Full Name"
+                    android:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_full_name"
@@ -129,10 +123,9 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="6dp"
-                        android:text="Clinical Role"
-                        android:textColor="@color/fg_text_secondary"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
+                        android:text="Role"
+                        android:textColor="@color/fg_text_muted"
+                        android:textSize="12sp" />
 
                     <com.google.android.material.chip.ChipGroup
                         android:id="@+id/chip_group_role"
@@ -151,7 +144,7 @@
                             android:textColor="@color/selector_chip_text"
                             app:checkedIconVisible="false"
                             app:chipBackgroundColor="@color/selector_chip_bg"
-                            app:chipStrokeColor="@color/fg_border_strong" />
+                            app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_role_nurse"
@@ -162,7 +155,7 @@
                             android:textColor="@color/selector_chip_text"
                             app:checkedIconVisible="false"
                             app:chipBackgroundColor="@color/selector_chip_bg"
-                            app:chipStrokeColor="@color/fg_border_strong" />
+                            app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_role_resident"
@@ -173,7 +166,7 @@
                             android:textColor="@color/selector_chip_text"
                             app:checkedIconVisible="false"
                             app:chipBackgroundColor="@color/selector_chip_bg"
-                            app:chipStrokeColor="@color/fg_border_strong" />
+                            app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_role_admin"
@@ -184,22 +177,17 @@
                             android:textColor="@color/selector_chip_text"
                             app:checkedIconVisible="false"
                             app:chipBackgroundColor="@color/selector_chip_bg"
-                            app:chipStrokeColor="@color/fg_border_strong" />
+                            app:chipStrokeWidth="0dp" />
                     </com.google.android.material.chip.ChipGroup>
                 </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_email"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.FlapGuard.InputFilled"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:hint="Hospital Email"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:placeholderText="clinician@hospital.org">
+                    android:hint="Email">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_email"
@@ -210,17 +198,12 @@
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/til_password"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    style="@style/Widget.FlapGuard.InputFilled"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="18dp"
+                    android:layout_marginBottom="20dp"
                     android:hint="Password"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:endIconMode="password_toggle"
-                    app:placeholderText="Minimum 8 characters">
+                    app:endIconMode="password_toggle">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_password"
@@ -232,18 +215,19 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_auth_submit"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="54dp"
                     android:text="Sign In"
                     android:textAllCaps="false"
                     android:textSize="15sp"
                     android:textStyle="bold"
                     app:backgroundTint="@color/fg_primary"
-                    app:cornerRadius="12dp" />
+                    app:cornerRadius="14dp"
+                    app:elevation="0dp" />
 
                 <ProgressBar
                     android:id="@+id/progress_auth"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center_horizontal"
                     android:layout_marginTop="12dp"
                     android:indeterminateTint="@color/fg_primary"
@@ -261,12 +245,11 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Quiet, subtle Connection Mode link (Cloud default, Local USB viva available on tap) -->
         <LinearLayout
             android:id="@+id/btn_connection_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="24dp"
             android:background="?attr/selectableItemBackground"
             android:clickable="true"
             android:focusable="true"
@@ -278,8 +261,8 @@
             android:paddingBottom="8dp">
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="15dp"
+                android:layout_height="15dp"
                 android:contentDescription="Connection"
                 android:src="@drawable/ic_cloud"
                 app:tint="@color/fg_text_muted" />
@@ -293,14 +276,5 @@
                 android:textColor="@color/fg_text_muted"
                 android:textSize="12sp" />
         </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="Clinical decision support only — always confirm findings clinically."
-            android:textColor="@color/fg_text_muted"
-            android:textSize="11sp" />
     </LinearLayout>
 </ScrollView>

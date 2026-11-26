@@ -7,53 +7,56 @@
     android:background="@color/fg_bg"
     android:orientation="vertical">
 
-    <!-- Clean Crisp White Top App Bar with Brand Logo & Single-Slot Refresh/Spinner -->
+    <!-- Clean Minimalist Canvas Header (No heavy box bar, no cluttered subtitle) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/fg_surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="12dp">
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp">
 
         <ImageView
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:contentDescription="FlapGuard AI"
             android:src="@drawable/ic_brand_logo" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/tv_toolbar_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="11dp"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:fontFamily="sans-serif-medium"
+            android:text="Ward"
+            android:textColor="@color/fg_text_primary"
+            android:textSize="22sp" />
 
-            <TextView
-                android:id="@+id/tv_toolbar_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="FlapGuard Ward"
-                android:textColor="@color/fg_text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ack_all"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginEnd="4dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="Review All"
+            android:textAllCaps="false"
+            android:textColor="@color/fg_primary"
+            android:textSize="13sp"
+            android:visibility="gone" />
 
-            <TextView
-                android:id="@+id/tv_toolbar_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Post-Op Free-Flap Monitoring"
-                android:textColor="@color/fg_text_muted"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <!-- Single-slot refresh / progress indicator (fixes double reload icon bug) -->
+        <!-- Single-slot circular refresh / loading indicator -->
         <FrameLayout
-            android:layout_width="40dp"
-            android:layout_height="40dp">
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="@drawable/bg_circle_white">
 
             <ImageButton
                 android:id="@+id/btn_refresh_all"
@@ -61,39 +64,20 @@
                 android:layout_height="match_parent"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Refresh"
+                android:padding="9dp"
+                android:scaleType="fitCenter"
                 android:src="@drawable/ic_refresh"
-                app:tint="@color/fg_primary" />
+                app:tint="@color/fg_text_secondary" />
 
             <ProgressBar
                 android:id="@+id/progress_sync"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:indeterminateTint="@color/fg_primary"
                 android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/fg_border" />
-
-    <!-- Urgent Live Alert Banner -->
-    <TextView
-        android:id="@+id/tv_live_alert_banner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/fg_danger"
-        android:paddingStart="16dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="10dp"
-        android:text=""
-        android:textColor="@color/white"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:visibility="gone" />
 
     <!-- Main 4-Tab Content Container -->
     <FrameLayout
@@ -101,7 +85,7 @@
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <!-- TAB 1: WARD -->
+        <!-- TAB 1: WARD (Clean, Spacious, Zero Clutter) -->
         <FrameLayout
             android:id="@+id/section_ward"
             android:layout_width="match_parent"
@@ -111,41 +95,93 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:paddingStart="16dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="16dp">
 
-                <!-- KPI Strip -->
-                <LinearLayout
+                <!-- Soft, sleek Alert Pill — ONLY visible on Ward when critical alerts exist -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_ward_alert_pill"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/fg_danger_bg"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="14dp"
+                        android:paddingTop="11dp"
+                        android:paddingEnd="12dp"
+                        android:paddingBottom="11dp">
+
+                        <View
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@drawable/bg_status_bar"
+                            android:backgroundTint="@color/fg_danger" />
+
+                        <TextView
+                            android:id="@+id/tv_ward_alert_text"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:text=""
+                            android:textColor="@color/fg_danger"
+                            android:textSize="13sp" />
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="Inspect alerts"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/fg_danger" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Unified Borderless 3-Column Ward Summary -->
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="14dp"
-                    android:orientation="horizontal">
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        app:cardBackgroundColor="@color/fg_surface"
-                        app:cardCornerRadius="14dp"
-                        app:cardElevation="1dp"
-                        app:strokeColor="#FECACA"
-                        app:strokeWidth="1dp">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:gravity="center"
-                            android:orientation="vertical"
-                            android:padding="12dp">
+                            android:orientation="vertical">
 
                             <TextView
                                 android:id="@+id/tv_kpi_critical"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
                                 android:text="0"
                                 android:textColor="@color/fg_danger"
-                                android:textSize="22sp"
-                                android:textStyle="bold" />
+                                android:textSize="22sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -154,101 +190,85 @@
                                 android:textColor="@color/fg_text_muted"
                                 android:textSize="11sp" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="3dp"
-                        android:layout_marginEnd="3dp"
-                        android:layout_weight="1"
-                        app:cardBackgroundColor="@color/fg_surface"
-                        app:cardCornerRadius="14dp"
-                        app:cardElevation="1dp"
-                        app:strokeColor="#FDE68A"
-                        app:strokeWidth="1dp">
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="28dp"
+                            android:background="@color/fg_divider" />
 
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:gravity="center"
-                            android:orientation="vertical"
-                            android:padding="12dp">
+                            android:orientation="vertical">
 
                             <TextView
                                 android:id="@+id/tv_kpi_high"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
                                 android:text="0"
                                 android:textColor="@color/fg_warning"
-                                android:textSize="22sp"
-                                android:textStyle="bold" />
+                                android:textSize="22sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="High / Mod"
+                                android:text="Watch"
                                 android:textColor="@color/fg_text_muted"
                                 android:textSize="11sp" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
 
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        app:cardBackgroundColor="@color/fg_surface"
-                        app:cardCornerRadius="14dp"
-                        app:cardElevation="1dp"
-                        app:strokeColor="@color/fg_border"
-                        app:strokeWidth="1dp">
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="28dp"
+                            android:background="@color/fg_divider" />
 
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_weight="1"
                             android:gravity="center"
-                            android:orientation="vertical"
-                            android:padding="12dp">
+                            android:orientation="vertical">
 
                             <TextView
                                 android:id="@+id/tv_kpi_total"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
                                 android:text="0"
-                                android:textColor="@color/fg_primary"
-                                android:textSize="22sp"
-                                android:textStyle="bold" />
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="22sp" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Total Ward"
+                                android:text="Total"
                                 android:textColor="@color/fg_text_muted"
                                 android:textSize="11sp" />
                         </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Clean Empty State -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_empty_ward"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="8dp"
                     android:visibility="gone"
                     app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
+                    app:cardCornerRadius="22dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center"
                         android:orientation="vertical"
-                        android:padding="28dp">
+                        android:padding="32dp">
 
                         <ImageView
                             android:layout_width="44dp"
@@ -260,19 +280,19 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:text="Ward Is Empty"
+                            android:layout_marginTop="14dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="No Patients Yet"
                             android:textColor="@color/fg_text_primary"
-                            android:textSize="17sp"
-                            android:textStyle="bold" />
+                            android:textSize="17sp" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
                             android:gravity="center"
-                            android:text="Tap + Add Patient to enroll a postoperative flap case, or load 3 sample OMFS cases from the Profile tab."
-                            android:textColor="@color/fg_text_secondary"
+                            android:text="Tap Enroll to add a postoperative patient, or load sample cases from Profile."
+                            android:textColor="@color/fg_text_muted"
                             android:textSize="13sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -283,7 +303,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1"
                     android:clipToPadding="false"
-                    android:paddingBottom="80dp" />
+                    android:paddingBottom="84dp" />
             </LinearLayout>
 
             <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
@@ -291,16 +311,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end"
-                android:layout_margin="16dp"
-                android:text="Add Patient"
+                android:layout_margin="18dp"
+                android:text="Enroll"
                 android:textAllCaps="false"
                 android:textColor="@color/white"
                 app:backgroundTint="@color/fg_primary"
+                app:elevation="3dp"
                 app:icon="@drawable/ic_add"
                 app:iconTint="@color/white" />
         </FrameLayout>
 
-        <!-- TAB 2: ASSESS (GUIDED ROI CAMERA + EMPTY HINTED VITALS + AI RESULT) -->
+        <!-- TAB 2: ASSESS (Focused, Zero Truncation, Compact Photo Strip, Quiet Simulator Link) -->
         <ScrollView
             android:id="@+id/section_assess"
             android:layout_width="match_parent"
@@ -311,9 +332,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:paddingStart="16dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="24dp">
 
-                <!-- Step 1: Patient Selector Card -->
+                <!-- Patient Picker Row -->
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/card_select_patient"
                     android:layout_width="match_parent"
@@ -323,61 +347,72 @@
                     android:focusable="true"
                     app:cardBackgroundColor="@color/fg_surface"
                     app:cardCornerRadius="18dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="16dp">
+                        android:padding="14dp">
+
+                        <TextView
+                            android:id="@+id/tv_selected_avatar"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
+                            android:background="@drawable/bg_circle_soft"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:text="PT"
+                            android:textColor="@color/fg_primary"
+                            android:textSize="13sp" />
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
                             android:layout_weight="1"
                             android:orientation="vertical">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="PATIENT UNDER ASSESSMENT"
+                                android:text="Patient"
                                 android:textColor="@color/fg_text_muted"
-                                android:textSize="10sp"
-                                android:textStyle="bold" />
+                                android:textSize="11sp" />
 
                             <TextView
                                 android:id="@+id/tv_selected_patient"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="No patients in ward yet"
+                                android:ellipsize="end"
+                                android:fontFamily="sans-serif-medium"
+                                android:maxLines="1"
+                                android:text="No patients yet"
                                 android:textColor="@color/fg_text_primary"
-                                android:textSize="15sp"
-                                android:textStyle="bold" />
+                                android:textSize="15sp" />
                         </LinearLayout>
 
-                        <ImageView
-                            android:layout_width="22dp"
-                            android:layout_height="22dp"
-                            android:contentDescription="Switch patient"
-                            android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/fg_text_muted" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Switch"
+                            android:textColor="@color/fg_primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Step 2: Guided CIE-LAB ROI Camera Scan -->
+                <!-- Compact Flap Photo Scan Card (Expands preview only after capture/upload) -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -385,63 +420,78 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Flap Color Scan (CIE-LAB ROI)"
-                            android:textColor="@color/fg_text_primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Center flap tissue inside the guide frame under even lighting."
-                            android:textColor="@color/fg_text_muted"
-                            android:textSize="12sp" />
-
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
+                            android:gravity="center_vertical"
                             android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Flap Photo"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="15sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Optional color scan"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btn_open_camera"
-                                android:layout_width="0dp"
-                                android:layout_height="44dp"
-                                android:layout_marginEnd="6dp"
-                                android:layout_weight="1"
-                                android:text="Take Photo"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="38dp"
+                                android:layout_marginEnd="8dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:text="Camera"
                                 android:textAllCaps="false"
-                                app:backgroundTint="@color/fg_accent"
-                                app:cornerRadius="12dp"
+                                android:textColor="@color/fg_accent"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/fg_accent_soft"
+                                app:cornerRadius="10dp"
                                 app:icon="@drawable/ic_camera"
-                                app:iconGravity="textStart" />
+                                app:iconSize="16dp"
+                                app:iconTint="@color/fg_accent" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btn_pick_gallery"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="44dp"
-                                android:layout_marginStart="6dp"
-                                android:layout_weight="1"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="38dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
                                 android:text="Gallery"
                                 android:textAllCaps="false"
                                 android:textColor="@color/fg_primary"
-                                app:cornerRadius="12dp"
-                                app:icon="@drawable/ic_gallery"
-                                app:iconGravity="textStart"
-                                app:iconTint="@color/fg_primary"
-                                app:strokeColor="@color/fg_border_strong" />
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/fg_primary_soft"
+                                app:cornerRadius="10dp" />
                         </LinearLayout>
 
                         <FrameLayout
                             android:id="@+id/layout_preview_frame"
                             android:layout_width="match_parent"
-                            android:layout_height="196dp"
-                            android:layout_marginTop="12dp"
+                            android:layout_height="184dp"
+                            android:layout_marginTop="14dp"
                             android:visibility="gone">
 
                             <ImageView
@@ -453,8 +503,8 @@
                                 android:scaleType="centerCrop" />
 
                             <View
-                                android:layout_width="140dp"
-                                android:layout_height="98dp"
+                                android:layout_width="136dp"
+                                android:layout_height="92dp"
                                 android:layout_gravity="center"
                                 android:background="@drawable/bg_roi_box" />
 
@@ -468,7 +518,7 @@
                                 android:paddingTop="2dp"
                                 android:paddingEnd="9dp"
                                 android:paddingBottom="2dp"
-                                android:text="Analyzed Center 50% ROI"
+                                android:text="Center 50% Flap ROI"
                                 android:textColor="@color/white"
                                 android:textSize="10sp" />
                         </FrameLayout>
@@ -478,37 +528,37 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="10dp"
-                            android:text="Optional: scan a flap photo to measure redness, cyanosis, and pallor."
+                            android:text=""
                             android:textColor="@color/fg_text_secondary"
-                            android:textSize="12sp" />
+                            android:textSize="12sp"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Step 3: Empty Hinted Bedside Vitals -->
+                <!-- Clean Borderless Vitals Input Card (Short crisp labels — zero truncation) -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="18dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="10dp"
-                            android:text="Bedside Sensor Vitals"
+                            android:layout_marginBottom="14dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Bedside Vitals"
                             android:textColor="@color/fg_text_primary"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
+                            android:textSize="15sp" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -517,17 +567,12 @@
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:id="@+id/til_ir_temp"
-                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                style="@style/Widget.FlapGuard.InputFilled"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginEnd="6dp"
                                 android:layout_weight="1"
-                                android:hint="Flap Temp (°C)"
-                                app:boxCornerRadiusBottomEnd="12dp"
-                                app:boxCornerRadiusBottomStart="12dp"
-                                app:boxCornerRadiusTopEnd="12dp"
-                                app:boxCornerRadiusTopStart="12dp"
-                                app:placeholderText="e.g., 36.2">
+                                android:hint="Flap °C">
 
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_ir_temp"
@@ -538,17 +583,12 @@
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:id="@+id/til_ctrl_temp"
-                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                style="@style/Widget.FlapGuard.InputFilled"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
                                 android:layout_weight="1"
-                                android:hint="Control Temp (°C)"
-                                app:boxCornerRadiusBottomEnd="12dp"
-                                app:boxCornerRadiusBottomStart="12dp"
-                                app:boxCornerRadiusTopEnd="12dp"
-                                app:boxCornerRadiusTopStart="12dp"
-                                app:placeholderText="e.g., 36.6">
+                                android:hint="Skin °C">
 
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_ctrl_temp"
@@ -566,17 +606,12 @@
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:id="@+id/til_spo2"
-                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                style="@style/Widget.FlapGuard.InputFilled"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginEnd="6dp"
                                 android:layout_weight="1"
-                                android:hint="Tissue SpO₂ (%)"
-                                app:boxCornerRadiusBottomEnd="12dp"
-                                app:boxCornerRadiusBottomStart="12dp"
-                                app:boxCornerRadiusTopEnd="12dp"
-                                app:boxCornerRadiusTopStart="12dp"
-                                app:placeholderText="e.g., 96.5">
+                                android:hint="SpO₂ %">
 
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_spo2"
@@ -587,17 +622,12 @@
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:id="@+id/til_doppler"
-                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                style="@style/Widget.FlapGuard.InputFilled"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_marginStart="6dp"
                                 android:layout_weight="1"
-                                android:hint="Doppler (cm/s)"
-                                app:boxCornerRadiusBottomEnd="12dp"
-                                app:boxCornerRadiusBottomStart="12dp"
-                                app:boxCornerRadiusTopEnd="12dp"
-                                app:boxCornerRadiusTopStart="12dp"
-                                app:placeholderText="e.g., 20.5">
+                                android:hint="Doppler cm/s">
 
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_doppler"
@@ -609,16 +639,11 @@
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:id="@+id/til_hours"
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            style="@style/Widget.FlapGuard.InputFilled"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="10dp"
-                            android:hint="Hours Post-Op (Optional)"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:placeholderText="Leave blank to use patient post-op hour">
+                            android:hint="Hours Post-Op (Optional)">
 
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_hours"
@@ -630,14 +655,15 @@
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btn_submit_reading"
                             android:layout_width="match_parent"
-                            android:layout_height="52dp"
-                            android:layout_marginTop="14dp"
-                            android:text="Run AI Risk Assessment"
+                            android:layout_height="54dp"
+                            android:layout_marginTop="16dp"
+                            android:text="Assess Flap Risk"
                             android:textAllCaps="false"
                             android:textSize="15sp"
                             android:textStyle="bold"
                             app:backgroundTint="@color/fg_primary"
-                            app:cornerRadius="12dp" />
+                            app:cornerRadius="14dp"
+                            app:elevation="0dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -649,25 +675,24 @@
                     android:layout_marginBottom="12dp"
                     android:visibility="gone"
                     app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="16dp">
+                        android:padding="18dp">
 
                         <TextView
                             android:id="@+id/tv_prediction_title"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="AI Assessment Result"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="AI Assessment"
                             android:textColor="@color/fg_text_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
+                            android:textSize="16sp" />
 
                         <TextView
                             android:id="@+id/tv_prediction_result"
@@ -680,88 +705,86 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Understated Deterioration Simulator Card -->
+                <!-- Quiet Single-Row Simulator Launcher (Keeps clinical form spotless) -->
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/row_open_simulator"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="20dp"
+                    android:clickable="true"
+                    android:focusable="true"
                     app:cardBackgroundColor="@color/fg_surface"
                     app:cardCornerRadius="18dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
                         android:padding="16dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Clinical Deterioration Simulator"
-                            android:textColor="@color/fg_text_secondary"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="Simulator"
+                            android:src="@drawable/ic_science"
+                            app:tint="@color/fg_text_muted" />
 
                         <LinearLayout
-                            android:layout_width="match_parent"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:orientation="horizontal">
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_sim_venous"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="40dp"
-                                android:layout_marginEnd="6dp"
-                                android:layout_weight="1"
-                                android:text="Venous Crisis"
-                                android:textAllCaps="false"
-                                android:textColor="@color/fg_warning"
-                                android:textSize="12sp"
-                                app:cornerRadius="10dp"
-                                app:strokeColor="@color/fg_warning" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Crisis Simulator"
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="14sp" />
 
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_sim_arterial"
-                                style="@style/Widget.Material3.Button.OutlinedButton"
-                                android:layout_width="0dp"
-                                android:layout_height="40dp"
-                                android:layout_marginStart="6dp"
-                                android:layout_weight="1"
-                                android:text="Arterial Crisis"
-                                android:textAllCaps="false"
-                                android:textColor="@color/fg_danger"
-                                android:textSize="12sp"
-                                app:cornerRadius="10dp"
-                                app:strokeColor="@color/fg_danger" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Test venous or arterial alerts"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="12sp" />
                         </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:contentDescription="Open"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/fg_border_strong" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
 
-        <!-- TAB 3: ALERTS -->
+        <!-- TAB 3: ALERTS (Calm, Zero Red Banner) -->
         <LinearLayout
             android:id="@+id/section_alerts"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:paddingStart="16dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="16dp"
             android:visibility="gone">
 
             <TextView
                 android:id="@+id/tv_alerts_summary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:layout_marginBottom="10dp"
-                android:text="Surgeon Escalation Feed"
-                android:textColor="@color/fg_text_secondary"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:text="No active alerts"
+                android:textColor="@color/fg_text_muted"
+                android:textSize="13sp" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_empty_alerts"
@@ -769,18 +792,17 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone"
                 app:cardBackgroundColor="@color/fg_surface"
-                app:cardCornerRadius="18dp"
+                app:cardCornerRadius="22dp"
                 app:cardElevation="0dp"
-                app:strokeColor="@color/fg_border"
-                app:strokeWidth="1dp">
+                app:strokeWidth="0dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:padding="28dp"
+                    android:padding="32dp"
                     android:text="All clear — no active flap compromise alerts."
-                    android:textColor="@color/fg_text_secondary"
+                    android:textColor="@color/fg_text_muted"
                     android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
 
@@ -788,10 +810,12 @@
                 android:id="@+id/rv_alerts"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
         </LinearLayout>
 
-        <!-- TAB 4: PROFILE & SETTINGS (TAPPABLE AVATAR + CLEAN GROUPED ROWS) -->
+        <!-- TAB 4: PROFILE (Centered Minimal Hero + Clean Settings List Rows) -->
         <ScrollView
             android:id="@+id/section_profile"
             android:layout_width="match_parent"
@@ -801,316 +825,353 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="24dp">
 
-                <!-- Clinician Identity Card with Tappable Profile Photo -->
+                <!-- Centered Clean Avatar & Identity (No heavy box!) -->
+                <FrameLayout
+                    android:id="@+id/btn_edit_profile_photo"
+                    android:layout_width="86dp"
+                    android:layout_height="86dp"
+                    android:clickable="true"
+                    android:contentDescription="Change profile photo"
+                    android:focusable="true">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="82dp"
+                        android:layout_height="82dp"
+                        android:layout_gravity="center"
+                        app:cardBackgroundColor="@color/fg_primary"
+                        app:cardCornerRadius="41dp"
+                        app:cardElevation="0dp"
+                        app:strokeColor="@color/white"
+                        app:strokeWidth="3dp">
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent">
+
+                            <TextView
+                                android:id="@+id/tv_profile_initials"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:text="DR"
+                                android:textColor="@color/white"
+                                android:textSize="26sp" />
+
+                            <ImageView
+                                android:id="@+id/iv_profile_photo"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:contentDescription="Clinician photo"
+                                android:scaleType="centerCrop"
+                                android:visibility="gone" />
+                        </FrameLayout>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:layout_gravity="bottom|end"
+                        app:cardBackgroundColor="@color/fg_accent"
+                        app:cardCornerRadius="13dp"
+                        app:cardElevation="1dp"
+                        app:strokeColor="@color/fg_bg"
+                        app:strokeWidth="2dp">
+
+                        <ImageView
+                            android:layout_width="13dp"
+                            android:layout_height="13dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="Edit photo"
+                            android:src="@drawable/ic_edit_camera"
+                            app:tint="@color/white" />
+                    </com.google.android.material.card.MaterialCardView>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/tv_profile_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Clinician"
+                    android:textColor="@color/fg_text_primary"
+                    android:textSize="19sp" />
+
+                <TextView
+                    android:id="@+id/tv_profile_email"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="clinician@hospital.org"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tv_profile_role"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="18dp"
+                    android:background="@drawable/bg_badge"
+                    android:backgroundTint="@color/fg_primary_soft"
+                    android:paddingStart="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="4dp"
+                    android:text="Surgeon"
+                    android:textColor="@color/fg_primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- Unified Borderless 3-Column Stats Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="14dp"
                     app:cardBackgroundColor="@color/fg_surface"
                     app:cardCornerRadius="20dp"
-                    app:cardElevation="1dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:padding="18dp">
-
-                        <FrameLayout
-                            android:id="@+id/btn_edit_profile_photo"
-                            android:layout_width="72dp"
-                            android:layout_height="72dp"
-                            android:clickable="true"
-                            android:contentDescription="Change profile photo"
-                            android:focusable="true">
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="68dp"
-                                android:layout_height="68dp"
-                                app:cardBackgroundColor="@color/fg_primary"
-                                app:cardCornerRadius="34dp"
-                                app:cardElevation="0dp"
-                                app:strokeColor="@color/fg_primary_soft"
-                                app:strokeWidth="2dp">
-
-                                <FrameLayout
-                                    android:layout_width="match_parent"
-                                    android:layout_height="match_parent">
-
-                                    <TextView
-                                        android:id="@+id/tv_profile_initials"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="match_parent"
-                                        android:gravity="center"
-                                        android:text="DR"
-                                        android:textColor="@color/white"
-                                        android:textSize="22sp"
-                                        android:textStyle="bold" />
-
-                                    <ImageView
-                                        android:id="@+id/iv_profile_photo"
-                                        android:layout_width="match_parent"
-                                        android:layout_height="match_parent"
-                                        android:contentDescription="Clinician photo"
-                                        android:scaleType="centerCrop"
-                                        android:visibility="gone" />
-                                </FrameLayout>
-                            </com.google.android.material.card.MaterialCardView>
-
-                            <com.google.android.material.card.MaterialCardView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_gravity="bottom|end"
-                                app:cardBackgroundColor="@color/fg_accent"
-                                app:cardCornerRadius="12dp"
-                                app:cardElevation="2dp"
-                                app:strokeColor="@color/white"
-                                app:strokeWidth="1.5dp">
-
-                                <ImageView
-                                    android:layout_width="13dp"
-                                    android:layout_height="13dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="Edit photo"
-                                    android:src="@drawable/ic_edit_camera"
-                                    app:tint="@color/white" />
-                            </com.google.android.material.card.MaterialCardView>
-                        </FrameLayout>
+                        android:paddingTop="14dp"
+                        android:paddingBottom="14dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="14dp"
                             android:layout_weight="1"
+                            android:gravity="center"
                             android:orientation="vertical">
 
                             <TextView
-                                android:id="@+id/tv_profile_name"
+                                android:id="@+id/tv_stat_model"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Clinician"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="17sp"
-                                android:textStyle="bold" />
+                                android:fontFamily="sans-serif-medium"
+                                android:text="v1.0"
+                                android:textColor="@color/fg_primary"
+                                android:textSize="17sp" />
 
                             <TextView
-                                android:id="@+id/tv_profile_email"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="clinician@hospital.org"
-                                android:textColor="@color/fg_text_secondary"
-                                android:textSize="12sp" />
+                                android:text="AI Model"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="11sp" />
+                        </LinearLayout>
 
-                            <LinearLayout
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="26dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_stat_patients"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="6dp"
-                                android:gravity="center_vertical"
-                                android:orientation="horizontal">
+                                android:fontFamily="sans-serif-medium"
+                                android:text="0"
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="17sp" />
 
-                                <TextView
-                                    android:id="@+id/tv_profile_role"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:background="@drawable/bg_badge"
-                                    android:backgroundTint="@color/fg_primary_soft"
-                                    android:paddingStart="10dp"
-                                    android:paddingTop="3dp"
-                                    android:paddingEnd="10dp"
-                                    android:paddingBottom="3dp"
-                                    android:text="Surgeon"
-                                    android:textColor="@color/fg_primary"
-                                    android:textSize="11sp"
-                                    android:textStyle="bold" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Patients"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="11sp" />
+                        </LinearLayout>
 
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:layout_marginStart="8dp"
-                                    android:text="Tap photo to edit"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="11sp" />
-                            </LinearLayout>
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="26dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_stat_alerts"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="0"
+                                android:textColor="@color/fg_danger"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Alerts"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Clean 3-Tile Clinical Engine Status -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    android:orientation="horizontal">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_metric_tile"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:id="@+id/tv_stat_model"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="v1.0"
-                            android:textColor="@color/fg_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="AI Engine"
-                            android:textColor="@color/fg_text_muted"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="3dp"
-                        android:layout_marginEnd="3dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_metric_tile"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:id="@+id/tv_stat_patients"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="@color/fg_text_primary"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Ward Cases"
-                            android:textColor="@color/fg_text_muted"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_metric_tile"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-
-                        <TextView
-                            android:id="@+id/tv_stat_alerts"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="@color/fg_danger"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Active Alerts"
-                            android:textColor="@color/fg_text_muted"
-                            android:textSize="11sp" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <!-- Clinical Tools Card -->
+                <!-- Clean iOS/Google-Style Grouped Settings List (Zero Bulky Buttons!) -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="14dp"
                     app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
+                    app:cardCornerRadius="20dp"
                     app:cardElevation="0dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="10dp"
-                            android:text="Clinical &amp; Ward Controls"
-                            android:textColor="@color/fg_text_secondary"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_log_outcome_dialog"
-                            style="@style/Widget.Material3.Button.TonalButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:text="Log Verified Post-Op Outcome"
-                            android:textAllCaps="false"
-                            android:textColor="@color/fg_primary"
-                            app:backgroundTint="@color/fg_primary_soft"
-                            app:cornerRadius="12dp"
-                            app:icon="@drawable/ic_science"
-                            app:iconGravity="textStart"
-                            app:iconTint="@color/fg_primary" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_load_samples"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:layout_marginTop="8dp"
-                            android:text="Load Sample OMFS Cases (3)"
-                            android:textAllCaps="false"
-                            app:backgroundTint="@color/fg_accent"
-                            app:cornerRadius="12dp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_clear_ward"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="44dp"
-                            android:layout_marginTop="8dp"
-                            android:text="Clear All Ward Patients"
-                            android:textAllCaps="false"
-                            android:textColor="@color/fg_danger"
-                            app:cornerRadius="12dp"
-                            app:strokeColor="#FCA5A5" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <!-- Clean Account & Quiet Connection Settings Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="@color/fg_border"
-                    app:strokeWidth="1dp">
+                    app:strokeWidth="0dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/row_log_outcome"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="16dp">
+
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_soft">
+
+                                <ImageView
+                                    android:layout_width="18dp"
+                                    android:layout_height="18dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Outcome"
+                                    android:src="@drawable/ic_science"
+                                    app:tint="@color/fg_primary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="14dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Log Post-Op Outcome"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Continuous AI learning feedback"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_border_strong" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="66dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_demo_data"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="16dp">
+
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_accent_soft">
+
+                                <ImageView
+                                    android:layout_width="18dp"
+                                    android:layout_height="18dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Ward data"
+                                    android:src="@drawable/ic_ward"
+                                    app:tint="@color/fg_accent" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="14dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Demo Ward Data"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Load sample cases or clear ward"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_border_strong" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="66dp"
+                            android:background="@color/fg_divider" />
 
                         <LinearLayout
                             android:id="@+id/btn_change_password"
@@ -1123,36 +1184,44 @@
                             android:orientation="horizontal"
                             android:padding="16dp">
 
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Password"
-                                android:src="@drawable/ic_lock"
-                                app:tint="@color/fg_primary" />
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="18dp"
+                                    android:layout_height="18dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Password"
+                                    android:src="@drawable/ic_lock"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
 
                             <TextView
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
+                                android:layout_marginStart="14dp"
                                 android:layout_weight="1"
+                                android:fontFamily="sans-serif-medium"
                                 android:text="Change Password"
                                 android:textColor="@color/fg_text_primary"
-                                android:textSize="14sp"
-                                android:textStyle="bold" />
+                                android:textSize="14sp" />
 
                             <ImageView
                                 android:layout_width="20dp"
                                 android:layout_height="20dp"
                                 android:contentDescription="Open"
                                 android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_text_muted" />
+                                app:tint="@color/fg_border_strong" />
                         </LinearLayout>
 
                         <View
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
-                            android:layout_marginStart="48dp"
-                            android:background="@color/fg_border" />
+                            android:layout_marginStart="66dp"
+                            android:background="@color/fg_divider" />
 
                         <LinearLayout
                             android:id="@+id/row_connection_mode"
@@ -1165,27 +1234,35 @@
                             android:orientation="horizontal"
                             android:padding="16dp">
 
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Connection"
-                                android:src="@drawable/ic_cloud"
-                                app:tint="@color/fg_accent" />
+                            <FrameLayout
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="18dp"
+                                    android:layout_height="18dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Connection"
+                                    android:src="@drawable/ic_cloud"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
 
                             <LinearLayout
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
-                                android:layout_marginStart="12dp"
+                                android:layout_marginStart="14dp"
                                 android:layout_weight="1"
                                 android:orientation="vertical">
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
                                     android:text="Connection Mode"
                                     android:textColor="@color/fg_text_primary"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold" />
+                                    android:textSize="14sp" />
 
                                 <TextView
                                     android:id="@+id/tv_active_server_label"
@@ -1201,23 +1278,33 @@
                                 android:layout_height="20dp"
                                 android:contentDescription="Open"
                                 android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_text_muted" />
+                                app:tint="@color/fg_border_strong" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.button.MaterialButton
+                <!-- Clean Borderless Sign Out Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/btn_logout"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginBottom="16dp"
-                    android:text="Sign Out"
-                    android:textAllCaps="false"
-                    android:textColor="@color/fg_danger"
-                    android:textStyle="bold"
-                    app:cornerRadius="12dp"
-                    app:strokeColor="@color/fg_danger" />
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:padding="15dp"
+                        android:text="Sign Out"
+                        android:textColor="@color/fg_danger"
+                        android:textSize="15sp" />
+                </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
@@ -1225,9 +1312,8 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/fg_border" />
+        android:background="@color/fg_divider" />
 
-    <!-- Clean 4-Tab Bottom Navigation Bar (Zero Default Purple Pill) -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"

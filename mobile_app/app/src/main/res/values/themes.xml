@@ -10,9 +10,9 @@
         <item name="colorOnSecondaryContainer">@color/fg_primary</item>
         <item name="colorSurface">@color/fg_surface</item>
         <item name="colorSurfaceVariant">@color/fg_surface_soft</item>
-        <item name="colorOutline">@color/fg_border_strong</item>
+        <item name="colorOutline">@color/fg_border</item>
         <item name="android:windowBackground">@color/fg_bg</item>
-        <item name="android:statusBarColor">@color/fg_surface</item>
+        <item name="android:statusBarColor">@color/fg_bg</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
@@ -20,5 +20,17 @@
 
     <style name="Widget.FlapGuard.BottomNav.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@color/fg_primary_soft</item>
+    </style>
+
+    <style name="Widget.FlapGuard.InputFilled" parent="Widget.Material3.TextInputLayout.FilledBox">
+        <item name="boxBackgroundColor">@color/fg_input_bg</item>
+        <item name="boxStrokeWidth">0dp</item>
+        <item name="boxStrokeWidthFocused">1.5dp</item>
+        <item name="boxStrokeColor">@color/fg_primary</item>
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+        <item name="hintTextColor">@color/fg_text_muted</item>
     </style>
 </resources>

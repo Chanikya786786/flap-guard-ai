@@ -8,8 +8,6 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
-import java.util.Locale
 
 class AlertAdapter(
     private val onAcknowledge: (AlertItem) -> Unit
@@ -31,23 +29,27 @@ class AlertAdapter(
 
     override fun onBindViewHolder(holder: AlertViewHolder, position: Int) {
         val item = items[position]
-        holder.tvPatient.text = "${item.patientName}  (#${item.id})"
-        holder.tvMessage.text = item.message
-        holder.tvTier.text = item.riskTier.uppercase(Locale.US)
+        holder.tvPatient.text = item.patientName
+        val cleanMsg = item.message
+            .replace(Regex("^URGENT\\s*\\[[^]]+]:\\s*"), "")
+            .trim()
+        holder.tvMessage.text = cleanMsg.ifBlank { item.message }
 
         if (item.acknowledged) {
-            holder.card.setCardBackgroundColor(Color.WHITE)
-            holder.card.strokeColor = Color.parseColor("#E2E8F0")
-            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#DCFCE7"))
-            holder.tvTier.setTextColor(Color.parseColor("#15803D"))
+            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#059669"))
+            holder.tvTier.text = "Reviewed"
+            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#ECFDF5"))
+            holder.tvTier.setTextColor(Color.parseColor("#059669"))
             holder.btnAck.visibility = View.GONE
             holder.tvAckedBy.visibility = View.VISIBLE
-            holder.tvAckedBy.text = "Acknowledged by ${item.acknowledgedBy}"
+            holder.tvAckedBy.text = "Reviewed by ${item.acknowledgedBy}"
         } else {
-            holder.card.setCardBackgroundColor(Color.parseColor("#FEF2F2"))
-            holder.card.strokeColor = Color.parseColor("#FCA5A5")
-            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#FEE2E2"))
-            holder.tvTier.setTextColor(Color.parseColor("#B91C1C"))
+            val accent = if (item.riskTier == "Critical") "#E11D48" else "#D97706"
+            val bg = if (item.riskTier == "Critical") "#FFF1F2" else "#FFFBEB"
+            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(Color.parseColor(accent))
+            holder.tvTier.text = item.riskTier
+            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
+            holder.tvTier.setTextColor(Color.parseColor(accent))
             holder.btnAck.visibility = View.VISIBLE
             holder.tvAckedBy.visibility = View.GONE
             holder.btnAck.setOnClickListener { onAcknowledge(item) }
@@ -57,7 +59,7 @@ class AlertAdapter(
     override fun getItemCount(): Int = items.size
 
     class AlertViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val card: MaterialCardView = view.findViewById(R.id.card_alert)
+        val viewAccent: View = view.findViewById(R.id.view_alert_accent)
         val tvPatient: TextView = view.findViewById(R.id.tv_alert_patient)
         val tvTier: TextView = view.findViewById(R.id.tv_alert_tier)
         val tvMessage: TextView = view.findViewById(R.id.tv_alert_message)

@@ -65,7 +65,9 @@ class DashboardActivity : AppCompatActivity() {
     private var userPhotoDataUri: String = ""
 
     private val patientsList = mutableListOf<PatientItem>()
+    private val currentAlerts = mutableListOf<AlertItem>()
     private var selectedPatientIndex: Int = 0
+    private var unackCount: Int = 0
     private val notifiedAlertIds = mutableSetOf<Int>()
     private var lastAlertsSignature = ""
     private var pendingFlapCameraUri: Uri? = null
@@ -77,10 +79,9 @@ class DashboardActivity : AppCompatActivity() {
 
     private lateinit var rootView: View
     private lateinit var tvToolbarTitle: TextView
-    private lateinit var tvToolbarSubtitle: TextView
+    private lateinit var btnAckAll: MaterialButton
     private lateinit var btnRefreshAll: ImageButton
     private lateinit var progressSync: ProgressBar
-    private lateinit var tvLiveBanner: TextView
     private lateinit var bottomNav: BottomNavigationView
 
     // Tab containers
@@ -90,6 +91,8 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var sectionProfile: ScrollView
 
     // Ward views
+    private lateinit var cardWardAlertPill: MaterialCardView
+    private lateinit var tvWardAlertText: TextView
     private lateinit var tvKpiCritical: TextView
     private lateinit var tvKpiHigh: TextView
     private lateinit var tvKpiTotal: TextView
@@ -99,6 +102,7 @@ class DashboardActivity : AppCompatActivity() {
 
     // Assess views
     private lateinit var cardSelectPatient: MaterialCardView
+    private lateinit var tvSelectedAvatar: TextView
     private lateinit var tvSelectedPatient: TextView
     private lateinit var layoutPreviewFrame: FrameLayout
     private lateinit var ivFlapPreview: ImageView
@@ -144,34 +148,26 @@ class DashboardActivity : AppCompatActivity() {
         ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
         val uri = pendingFlapCameraUri
-        if (success && uri != null) {
-            analyzeFlapImageUri(uri)
-        }
+        if (success && uri != null) analyzeFlapImageUri(uri)
     }
 
     private val flapGalleryLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) {
-            analyzeFlapImageUri(uri)
-        }
+        if (uri != null) analyzeFlapImageUri(uri)
     }
 
     private val profileCameraLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
         val uri = pendingProfileCameraUri
-        if (success && uri != null) {
-            uploadProfilePhotoUri(uri)
-        }
+        if (success && uri != null) uploadProfilePhotoUri(uri)
     }
 
     private val profileGalleryLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        if (uri != null) {
-            uploadProfilePhotoUri(uri)
-        }
+        if (uri != null) uploadProfilePhotoUri(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -242,10 +238,9 @@ class DashboardActivity : AppCompatActivity() {
     private fun bindViews() {
         rootView = findViewById(R.id.dashboard_root)
         tvToolbarTitle = findViewById(R.id.tv_toolbar_title)
-        tvToolbarSubtitle = findViewById(R.id.tv_toolbar_subtitle)
+        btnAckAll = findViewById(R.id.btn_ack_all)
         btnRefreshAll = findViewById(R.id.btn_refresh_all)
         progressSync = findViewById(R.id.progress_sync)
-        tvLiveBanner = findViewById(R.id.tv_live_alert_banner)
         bottomNav = findViewById(R.id.bottom_nav)
 
         sectionWard = findViewById(R.id.section_ward)
@@ -253,6 +248,8 @@ class DashboardActivity : AppCompatActivity() {
         sectionAlerts = findViewById(R.id.section_alerts)
         sectionProfile = findViewById(R.id.section_profile)
 
+        cardWardAlertPill = findViewById(R.id.card_ward_alert_pill)
+        tvWardAlertText = findViewById(R.id.tv_ward_alert_text)
         tvKpiCritical = findViewById(R.id.tv_kpi_critical)
         tvKpiHigh = findViewById(R.id.tv_kpi_high)
         tvKpiTotal = findViewById(R.id.tv_kpi_total)
@@ -260,6 +257,7 @@ class DashboardActivity : AppCompatActivity() {
         rvPatients = findViewById(R.id.rv_patients)
 
         cardSelectPatient = findViewById(R.id.card_select_patient)
+        tvSelectedAvatar = findViewById(R.id.tv_selected_avatar)
         tvSelectedPatient = findViewById(R.id.tv_selected_patient)
         layoutPreviewFrame = findViewById(R.id.layout_preview_frame)
         ivFlapPreview = findViewById(R.id.iv_flap_preview)
@@ -294,9 +292,7 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun setupAdapters() {
         patientAdapter = PatientAdapter(
-            onCardClick = { patient -> showPatientDetailSheet(patient) },
-            onAssessClick = { patient -> openAssessForPatient(patient) },
-            onDeleteClick = { patient -> confirmDeletePatient(patient) }
+            onCardClick = { patient -> showPatientDetailSheet(patient) }
         )
         rvPatients.layoutManager = LinearLayoutManager(this)
         rvPatients.adapter = patientAdapter
@@ -308,6 +304,11 @@ class DashboardActivity : AppCompatActivity() {
         rvAlerts.adapter = alertAdapter
     }
 
+    private fun updateAckAllVisibility() {
+        val onAlerts = bottomNav.selectedItemId == R.id.nav_alerts
+        btnAckAll.visibility = if (onAlerts && unackCount > 0) View.VISIBLE else View.GONE
+    }
+
     private fun setupNavigation() {
         bottomNav.setOnItemSelectedListener { item ->
             sectionWard.visibility = if (item.itemId == R.id.nav_ward) View.VISIBLE else View.GONE
@@ -317,35 +318,33 @@ class DashboardActivity : AppCompatActivity() {
 
             when (item.itemId) {
                 R.id.nav_ward -> {
-                    tvToolbarTitle.text = "FlapGuard Ward"
-                    tvToolbarSubtitle.text = "Post-Op Free-Flap Monitoring"
+                    tvToolbarTitle.text = "Ward"
                     fetchPatients()
                 }
                 R.id.nav_assess -> {
-                    tvToolbarTitle.text = "Flap Assessment"
-                    tvToolbarSubtitle.text = "CIE-LAB Colorimetry + Sensor Fusion"
+                    tvToolbarTitle.text = "Assess"
                     sectionAssess.post { sectionAssess.scrollTo(0, 0) }
                 }
                 R.id.nav_alerts -> {
-                    tvToolbarTitle.text = "Surgeon Alerts"
-                    tvToolbarSubtitle.text = "Real-Time Compromise Escalations"
+                    tvToolbarTitle.text = "Alerts"
                     fetchAlerts(silent = false)
                 }
                 R.id.nav_profile -> {
-                    tvToolbarTitle.text = "Clinician Profile"
-                    tvToolbarSubtitle.text = "$userName • $userRole"
+                    tvToolbarTitle.text = "Profile"
                     sectionProfile.post { sectionProfile.scrollTo(0, 0) }
                     fetchProfileStats()
                 }
             }
+            mainHandler.post { updateAckAllVisibility() }
             true
         }
     }
 
     private fun setupActions() {
         btnRefreshAll.setOnClickListener { syncAll() }
+        btnAckAll.setOnClickListener { acknowledgeAllAlerts() }
 
-        tvLiveBanner.setOnClickListener {
+        cardWardAlertPill.setOnClickListener {
             bottomNav.selectedItemId = R.id.nav_alerts
         }
 
@@ -359,24 +358,18 @@ class DashboardActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { flapGalleryLauncher.launch("image/*") }
         findViewById<MaterialButton>(R.id.btn_submit_reading).setOnClickListener { submitSensorReading() }
 
-        findViewById<MaterialButton>(R.id.btn_sim_venous).setOnClickListener {
-            triggerSimulation("venous_deteriorating", 7)
-        }
-        findViewById<MaterialButton>(R.id.btn_sim_arterial).setOnClickListener {
-            triggerSimulation("arterial_deteriorating", 7)
+        findViewById<MaterialCardView>(R.id.row_open_simulator).setOnClickListener {
+            showSimulatorSheet()
         }
 
         findViewById<FrameLayout>(R.id.btn_edit_profile_photo).setOnClickListener {
             showProfilePhotoOptions()
         }
-        findViewById<MaterialButton>(R.id.btn_log_outcome_dialog).setOnClickListener {
+        findViewById<LinearLayout>(R.id.row_log_outcome).setOnClickListener {
             showLogOutcomeSheet()
         }
-        findViewById<MaterialButton>(R.id.btn_load_samples).setOnClickListener {
-            loadSampleCases()
-        }
-        findViewById<MaterialButton>(R.id.btn_clear_ward).setOnClickListener {
-            confirmClearWard()
+        findViewById<LinearLayout>(R.id.row_demo_data).setOnClickListener {
+            showWardDataSheet()
         }
         findViewById<LinearLayout>(R.id.btn_change_password).setOnClickListener {
             showChangePasswordSheet()
@@ -384,23 +377,25 @@ class DashboardActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.row_connection_mode).setOnClickListener {
             showConnectionModeSheet()
         }
-        findViewById<MaterialButton>(R.id.btn_logout).setOnClickListener {
+        findViewById<MaterialCardView>(R.id.btn_logout).setOnClickListener {
             logoutToLogin()
         }
+    }
+
+    private fun initialsOf(name: String): String {
+        val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        return when {
+            parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}"
+            parts.size == 1 -> parts[0].take(2)
+            else -> "FG"
+        }.uppercase(Locale.US)
     }
 
     private fun populateProfileHeader() {
         tvProfileName.text = userName
         tvProfileRole.text = userRole
         tvProfileEmail.text = userEmail.ifBlank { "Signed-in clinician" }
-
-        val parts = userName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
-        val initials = when {
-            parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}"
-            parts.size == 1 -> parts[0].take(2)
-            else -> "FG"
-        }.uppercase(Locale.US)
-        tvProfileInitials.text = initials
+        tvProfileInitials.text = initialsOf(userName)
 
         val bmp = ImageUtils.decodeDataUriBitmap(userPhotoDataUri)
         if (bmp != null) {
@@ -416,9 +411,9 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun updateServerModeLabel() {
         tvActiveServerLabel.text = if (ApiClient.isLocalUsbMode(this)) {
-            "Local USB Viva Mode (127.0.0.1:5000)"
+            "Local USB Viva Mode"
         } else {
-            "Live Cloud (flap-guard-ai.onrender.com)"
+            "Live Cloud"
         }
     }
 
@@ -523,16 +518,18 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun refreshSelectedPatientLabel() {
         val p = selectedPatient()
-        tvSelectedPatient.text = if (p != null) {
-            "${p.fullName} (${p.mrn})  •  ${p.riskTier}"
+        if (p != null) {
+            tvSelectedAvatar.text = initialsOf(p.fullName)
+            tvSelectedPatient.text = "${p.fullName}  •  ${p.mrn}"
         } else {
-            "No patients in ward yet"
+            tvSelectedAvatar.text = "--"
+            tvSelectedPatient.text = "No patients yet"
         }
     }
 
     private fun showPatientPickerDialog() {
         if (patientsList.isEmpty()) {
-            showNotice("Add a patient in the Ward tab first.")
+            showNotice("Enroll a patient in the Ward tab first.")
             return
         }
         val labels = patientsList.map { "${it.fullName} (${it.mrn}) — ${it.riskTier}" }.toTypedArray()
@@ -572,13 +569,13 @@ class DashboardActivity : AppCompatActivity() {
             "${patient.flapType}  —  ${patient.surgerySite}"
 
         val badge = view.findViewById<TextView>(R.id.tv_sheet_risk_badge)
-        badge.text = patient.riskTier.uppercase(Locale.US)
+        badge.text = if (patient.riskTier == "Low") "Healthy" else patient.riskTier
         val (bg, fg) = when (patient.riskTier) {
-            "Critical" -> "#FEE2E2" to "#B91C1C"
-            "High" -> "#FEF3C7" to "#B45309"
-            "Moderate" -> "#DBEAFE" to "#1D4ED8"
-            "Low" -> "#DCFCE7" to "#15803D"
-            else -> "#F1F5F9" to "#475569"
+            "Critical" -> "#FFF1F2" to "#E11D48"
+            "High" -> "#FFFBEB" to "#D97706"
+            "Moderate" -> "#EFF6FF" to "#2563EB"
+            "Low" -> "#ECFDF5" to "#059669"
+            else -> "#F1F5F9" to "#64748B"
         }
         badge.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
         badge.setTextColor(Color.parseColor(fg))
@@ -639,11 +636,11 @@ class DashboardActivity : AppCompatActivity() {
 
             var valid = true
             if (mrn.isBlank()) {
-                tilMrn.error = "MRN is required"
+                tilMrn.error = "Required"
                 valid = false
             }
             if (name.length < 2) {
-                tilName.error = "Enter patient full name"
+                tilName.error = "Enter full name"
                 valid = false
             }
             if (age == null || age !in 1..120) {
@@ -655,7 +652,7 @@ class DashboardActivity : AppCompatActivity() {
                 valid = false
             }
             if (site.length < 2) {
-                tilSite.error = "Enter surgical site"
+                tilSite.error = "Required"
                 valid = false
             }
             if (!valid) return@setOnClickListener
@@ -678,7 +675,7 @@ class DashboardActivity : AppCompatActivity() {
                     btnSave.isEnabled = true
                     if (res.ok) {
                         sheet.dismiss()
-                        showNotice("Enrolled $name ($mrn).")
+                        showNotice("Enrolled $name.")
                         fetchPatients()
                     } else {
                         tilMrn.error = res.errorMessage
@@ -689,10 +686,50 @@ class DashboardActivity : AppCompatActivity() {
         sheet.show()
     }
 
+    private fun showSimulatorSheet() {
+        if (selectedPatient() == null) {
+            showNotice("Enroll a patient in the Ward tab first.")
+            return
+        }
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_simulator, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        view.findViewById<MaterialButton>(R.id.btn_sim_venous).setOnClickListener {
+            sheet.dismiss()
+            triggerSimulation("venous_deteriorating", 7)
+        }
+        view.findViewById<MaterialButton>(R.id.btn_sim_arterial).setOnClickListener {
+            sheet.dismiss()
+            triggerSimulation("arterial_deteriorating", 7)
+        }
+        sheet.show()
+    }
+
+    private fun showWardDataSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_ward_data, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        view.findViewById<MaterialButton>(R.id.btn_load_samples).setOnClickListener {
+            sheet.dismiss()
+            loadSampleCases()
+        }
+        view.findViewById<MaterialButton>(R.id.btn_clear_ward).setOnClickListener {
+            sheet.dismiss()
+            confirmClearWard()
+        }
+        sheet.show()
+    }
+
     private fun confirmDeletePatient(patient: PatientItem) {
         MaterialAlertDialogBuilder(this)
             .setTitle("Remove Patient?")
-            .setMessage("Remove ${patient.fullName} (${patient.mrn}) and all associated readings from ward monitoring?")
+            .setMessage("Remove ${patient.fullName} (${patient.mrn}) and all associated readings?")
             .setPositiveButton("Remove") { _, _ ->
                 beginSync()
                 executor.execute {
@@ -735,14 +772,15 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun analyzeFlapImageUri(uri: Uri) {
-        tvVisionResult.text = "Analyzing centered 50% flap ROI via CIE-LAB OpenCV..."
+        tvVisionResult.visibility = View.VISIBLE
+        tvVisionResult.text = "Analyzing flap color..."
         beginSync()
         executor.execute {
             try {
                 val scaled = ImageUtils.decodeScaledRotatedBitmap(this, uri, 640)
                 if (scaled == null) {
                     endSync()
-                    mainHandler.post { tvVisionResult.text = "Could not decode selected image." }
+                    mainHandler.post { tvVisionResult.text = "Could not load selected image." }
                     return@execute
                 }
                 val encoded = ImageUtils.toBase64Jpeg(scaled, 88)
@@ -764,18 +802,18 @@ class DashboardActivity : AppCompatActivity() {
                         val qStatus = res.json.optString("quality_status", "Good")
                         val warnings = res.json.optJSONArray("quality_warnings")
                         val warnText = if (warnings != null && warnings.length() > 0) {
-                            "\nCapture Note: ${warnings.optString(0)}"
+                            "\nNote: ${warnings.optString(0)}"
                         } else {
                             ""
                         }
 
                         tvVisionResult.text = String.format(
                             Locale.US,
-                            "Triage: %s\nVisual Perfusion: %.1f / 100  •  Quality: %s\nRedness %.3f  •  Cyanosis %.3f  •  Pallor %.3f%s",
-                            triage, score, qStatus, scannedRedness, scannedCyanosis, scannedPallor, warnText
+                            "%s  •  Score %.0f/100 (%s)%s",
+                            triage, score, qStatus, warnText
                         )
                     } else {
-                        tvVisionResult.text = "Image analysis failed: ${res.errorMessage}"
+                        tvVisionResult.text = "Scan failed: ${res.errorMessage}"
                     }
                 }
             } catch (e: Exception) {
@@ -788,7 +826,7 @@ class DashboardActivity : AppCompatActivity() {
     private fun submitSensorReading() {
         val patient = selectedPatient()
         if (patient == null) {
-            showNotice("Add a patient in the Ward tab first.")
+            showNotice("Enroll a patient in the Ward tab first.")
             return
         }
 
@@ -801,22 +839,10 @@ class DashboardActivity : AppCompatActivity() {
         val hours = etHours.text?.toString()?.trim()?.toDoubleOrNull() ?: patient.hoursPostOp
 
         var ok = true
-        if (irTemp == null) {
-            tilIrTemp.error = "Required"
-            ok = false
-        }
-        if (ctrlTemp == null) {
-            tilCtrlTemp.error = "Required"
-            ok = false
-        }
-        if (spo2 == null) {
-            tilSpo2.error = "Required"
-            ok = false
-        }
-        if (doppler == null) {
-            tilDoppler.error = "Required"
-            ok = false
-        }
+        if (irTemp == null) { tilIrTemp.error = "Required"; ok = false }
+        if (ctrlTemp == null) { tilCtrlTemp.error = "Required"; ok = false }
+        if (spo2 == null) { tilSpo2.error = "Required"; ok = false }
+        if (doppler == null) { tilDoppler.error = "Required"; ok = false }
         if (!ok) return
 
         beginSync()
@@ -852,11 +878,7 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun triggerSimulation(scenario: String, step: Int) {
-        val patient = selectedPatient()
-        if (patient == null) {
-            showNotice("Add a patient in the Ward tab first.")
-            return
-        }
+        val patient = selectedPatient() ?: return
         beginSync()
         executor.execute {
             val payload = JSONObject().put("scenario", scenario).put("step", step)
@@ -887,14 +909,13 @@ class DashboardActivity : AppCompatActivity() {
         val msg = r.optString("alert_message")
 
         cardPredictionResult.visibility = View.VISIBLE
-        val (bg, stroke, titleColor) = when (tier) {
-            "Critical" -> Triple("#FEF2F2", "#FCA5A5", "#B91C1C")
-            "High" -> Triple("#FFFBEB", "#FCD34D", "#B45309")
-            "Moderate" -> Triple("#EFF6FF", "#93C5FD", "#1D4ED8")
-            else -> Triple("#F0FDF4", "#86EFAC", "#15803D")
+        val (bg, titleColor) = when (tier) {
+            "Critical" -> "#FFF1F2" to "#E11D48"
+            "High" -> "#FFFBEB" to "#D97706"
+            "Moderate" -> "#EFF6FF" to "#2563EB"
+            else -> "#ECFDF5" to "#059669"
         }
         cardPredictionResult.setCardBackgroundColor(Color.parseColor(bg))
-        cardPredictionResult.strokeColor = Color.parseColor(stroke)
         tvPredictionTitle.setTextColor(Color.parseColor(titleColor))
         tvPredictionTitle.text = "$predClass  •  $tier Risk (${String.format(Locale.US, "%.0f%%", riskPct)})"
         tvPredictionResult.text = msg
@@ -916,14 +937,32 @@ class DashboardActivity : AppCompatActivity() {
                 }
                 val unack = res.json.optInt("unacknowledged_count", 0)
                 val alertsArr = res.json.optJSONArray("alerts") ?: JSONArray()
+                unackCount = unack
                 tvStatAlerts.text = unack.toString()
 
+                // Native red badge on Alerts bottom nav icon
+                val badge = bottomNav.getOrCreateBadge(R.id.nav_alerts)
                 if (unack > 0) {
-                    tvLiveBanner.visibility = View.VISIBLE
-                    tvLiveBanner.text = "URGENT: $unack Unacknowledged Flap Alert(s) — Tap to Inspect"
+                    badge.isVisible = true
+                    badge.number = unack
+                    badge.backgroundColor = Color.parseColor("#E11D48")
+                    badge.badgeTextColor = Color.WHITE
                 } else {
-                    tvLiveBanner.visibility = View.GONE
+                    badge.isVisible = false
                 }
+
+                // Soft alert pill ONLY on Ward tab
+                if (unack > 0) {
+                    cardWardAlertPill.visibility = View.VISIBLE
+                    tvWardAlertText.text = if (unack == 1) {
+                        "1 active flap alert needs review"
+                    } else {
+                        "$unack active flap alerts need review"
+                    }
+                } else {
+                    cardWardAlertPill.visibility = View.GONE
+                }
+                updateAckAllVisibility()
 
                 val sig = "$unack:${alertsArr.toString().hashCode()}"
                 if (sig == lastAlertsSignature && silent) return@post
@@ -945,7 +984,9 @@ class DashboardActivity : AppCompatActivity() {
                     list.add(AlertItem(id, pName, tier, msg, acked, ackBy))
                 }
 
-                tvAlertsSummary.text = "Surgeon Escalations  •  $unack Active"
+                currentAlerts.clear()
+                currentAlerts.addAll(list)
+                tvAlertsSummary.text = if (unack > 0) "$unack pending review" else "All alerts reviewed"
                 cardEmptyAlerts.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
                 rvAlerts.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
                 alertAdapter.submitList(list)
@@ -966,12 +1007,29 @@ class DashboardActivity : AppCompatActivity() {
             endSync()
             mainHandler.post {
                 if (res.ok) {
-                    showNotice("Alert #$readingId acknowledged.")
+                    showNotice("Alert marked reviewed.")
                     lastAlertsSignature = ""
                     fetchAlerts(silent = false)
                 } else {
-                    showNotice("Acknowledge failed: ${res.errorMessage}")
+                    showNotice("Failed: ${res.errorMessage}")
                 }
+            }
+        }
+    }
+
+    private fun acknowledgeAllAlerts() {
+        val pendingIds = currentAlerts.filter { !it.acknowledged }.map { it.id }
+        if (pendingIds.isEmpty()) return
+        beginSync()
+        executor.execute {
+            for (id in pendingIds) {
+                ApiClient.request(serverUrl(), "/mobile/alerts/$id/acknowledge", "POST", JSONObject(), authToken)
+            }
+            endSync()
+            mainHandler.post {
+                showNotice("Marked ${pendingIds.size} alert(s) reviewed.")
+                lastAlertsSignature = ""
+                fetchAlerts(silent = false)
             }
         }
     }
@@ -1057,7 +1115,7 @@ class DashboardActivity : AppCompatActivity() {
                         populateProfileHeader()
                         showNotice("Profile photo updated.")
                     } else {
-                        showNotice("Photo upload failed: ${res.errorMessage}")
+                        showNotice("Upload failed: ${res.errorMessage}")
                     }
                 }
             } catch (e: Exception) {
@@ -1096,7 +1154,7 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun showLogOutcomeSheet() {
         if (patientsList.isEmpty()) {
-            showNotice("Add a patient in the Ward tab first.")
+            showNotice("Enroll a patient in the Ward tab first.")
             return
         }
         val sheet = BottomSheetDialog(this)
@@ -1134,7 +1192,7 @@ class DashboardActivity : AppCompatActivity() {
                     btnSave.isEnabled = true
                     if (res.ok) {
                         sheet.dismiss()
-                        showNotice("Verified outcome saved for continuous learning.")
+                        showNotice("Outcome saved for continuous learning.")
                     } else {
                         showNotice("Failed: ${res.errorMessage}")
                     }
@@ -1162,21 +1220,13 @@ class DashboardActivity : AppCompatActivity() {
             tilNew.error = null
             val curr = etCurr.text?.toString().orEmpty()
             val next = etNew.text?.toString().orEmpty()
-            if (curr.isBlank()) {
-                tilCurr.error = "Enter current password"
-                return@setOnClickListener
-            }
-            if (next.length < 8) {
-                tilNew.error = "Minimum 8 characters"
-                return@setOnClickListener
-            }
+            if (curr.isBlank()) { tilCurr.error = "Required"; return@setOnClickListener }
+            if (next.length < 8) { tilNew.error = "8+ characters"; return@setOnClickListener }
 
             btnUpdate.isEnabled = false
             beginSync()
             executor.execute {
-                val body = JSONObject()
-                    .put("current_password", curr)
-                    .put("new_password", next)
+                val body = JSONObject().put("current_password", curr).put("new_password", next)
                 val res = ApiClient.request(serverUrl(), "/mobile/profile/password", "POST", body, authToken)
                 endSync()
                 mainHandler.post {
@@ -1204,7 +1254,7 @@ class DashboardActivity : AppCompatActivity() {
         val usbCard = view.findViewById<MaterialCardView>(R.id.option_local_usb)
 
         val usb = ApiClient.isLocalUsbMode(this)
-        val activeColor = Color.parseColor("#0F4C81")
+        val activeColor = Color.parseColor("#0B3B66")
         val idleColor = Color.parseColor("#E2E8F0")
         cloudCard.strokeColor = if (!usb) activeColor else idleColor
         usbCard.strokeColor = if (usb) activeColor else idleColor
@@ -1234,7 +1284,7 @@ class DashboardActivity : AppCompatActivity() {
             mainHandler.post {
                 if (res.ok) {
                     val created = res.json.optInt("created_count", 0)
-                    showNotice(if (created > 0) "Loaded $created sample OMFS cases." else "Sample cases already in ward.")
+                    showNotice(if (created > 0) "Loaded $created sample cases." else "Sample cases already loaded.")
                     syncAll()
                     bottomNav.selectedItemId = R.id.nav_ward
                 } else {
@@ -1247,7 +1297,7 @@ class DashboardActivity : AppCompatActivity() {
     private fun confirmClearWard() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Clear Entire Ward?")
-            .setMessage("This removes all patient records, readings, and alerts from the active database.")
+            .setMessage("This removes all patients, readings, and alerts from the active database.")
             .setPositiveButton("Clear Ward") { _, _ ->
                 beginSync()
                 executor.execute {
