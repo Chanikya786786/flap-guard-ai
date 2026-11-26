@@ -3,6 +3,13 @@ package com.flapguard.ai
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.graphics.Typeface
+import android.graphics.Paint
+import android.graphics.Canvas
+import android.graphics.Bitmap
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -137,6 +144,15 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var tvStatAlerts: TextView
     private lateinit var tvActiveServerLabel: TextView
 
+    private var receiverRegistered = false
+    private val alertsUpdatedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            lastAlertsSignature = ""
+            fetchAlerts(silent = false)
+            fetchPatients()
+        }
+    }
+
     private val pollRunnable = object : Runnable {
         override fun run() {
             fetchAlerts(silent = true)
@@ -195,7 +211,31 @@ class DashboardActivity : AppCompatActivity() {
         populateProfileHeader()
         updateServerModeLabel()
 
+        ContextCompat.registerReceiver(
+            this,
+            alertsUpdatedReceiver,
+            IntentFilter(AlertActionReceiver.ACTION_ALERTS_UPDATED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        receiverRegistered = true
+
         syncAll()
+        handleNotificationIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent?.getStringExtra("open_tab") == "alerts") {
+            intent.removeExtra("open_tab")
+            bottomNav.selectedItemId = R.id.nav_alerts
+            lastAlertsSignature = ""
+            fetchAlerts(silent = false)
+        }
     }
 
     override fun onResume() {
@@ -211,6 +251,13 @@ class DashboardActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         mainHandler.removeCallbacks(pollRunnable)
+        if (receiverRegistered) {
+            try {
+                unregisterReceiver(alertsUpdatedReceiver)
+            } catch (_: Exception) {
+            }
+            receiverRegistered = false
+        }
         executor.shutdownNow()
     }
 
@@ -978,8 +1025,10 @@ class DashboardActivity : AppCompatActivity() {
                     val acked = a.optBoolean("alert_acknowledged", false)
                     val ackBy = a.optString("acknowledged_by", "Surgeon")
 
+                    val predClass = a.optString("predicted_class", "")
+                    val riskPct = a.optDouble("risk_score_pct", -1.0)
                     if (!acked && notifiedAlertIds.add(id)) {
-                        pushSurgeonNotification(id, "$tier Flap Alert: $pName", msg)
+                        pushSurgeonNotification(id, pName, tier, predClass, riskPct, msg)
                     }
                     list.add(AlertItem(id, pName, tier, msg, acked, ackBy))
                 }
@@ -1007,6 +1056,7 @@ class DashboardActivity : AppCompatActivity() {
             endSync()
             mainHandler.post {
                 if (res.ok) {
+                    (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(readingId)
                     showNotice("Alert marked reviewed.")
                     lastAlertsSignature = ""
                     fetchAlerts(silent = false)
@@ -1023,7 +1073,10 @@ class DashboardActivity : AppCompatActivity() {
         beginSync()
         executor.execute {
             for (id in pendingIds) {
-                ApiClient.request(serverUrl(), "/mobile/alerts/$id/acknowledge", "POST", JSONObject(), authToken)
+                val ackRes = ApiClient.request(serverUrl(), "/mobile/alerts/$id/acknowledge", "POST", JSONObject(), authToken)
+                if (ackRes.ok) {
+                    (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(id)
+                }
             }
             endSync()
             mainHandler.post {
@@ -1346,21 +1399,126 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    private fun pushSurgeonNotification(id: Int, title: String, message: String) {
+    private fun buildInitialsBadgeBitmap(name: String, isCritical: Boolean): Bitmap {
+        val size = 128
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = size / 2f
+        val cy = size / 2f
+
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor(if (isCritical) "#FFF1F2" else "#FFFBEB")
+            style = Paint.Style.FILL
+        }
+        canvas.drawCircle(cx, cy, cx - 2f, bgPaint)
+
+        val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor(if (isCritical) "#FECDD3" else "#FDE68A")
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+        }
+        canvas.drawCircle(cx, cy, cx - 4f, ringPaint)
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor(if (isCritical) "#E11D48" else "#D97706")
+            textSize = 44f
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        val textY = cy - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(initialsOf(name), cx, textY, textPaint)
+        return bmp
+    }
+
+    private fun pushSurgeonNotification(
+        id: Int,
+        patientName: String,
+        riskTier: String,
+        predictedClass: String,
+        riskScorePct: Double,
+        rawMessage: String
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) {
             return
         }
+
+        val isCritical = riskTier.equals("Critical", ignoreCase = true)
+        val accentColor = Color.parseColor(if (isCritical) "#E11D48" else "#D97706")
+
+        val cleanTitle = if (predictedClass.isNotBlank()) {
+            "$patientName  ·  $predictedClass"
+        } else {
+            "$patientName  ·  $riskTier Flap Alert"
+        }
+
+        val cleanedRaw = rawMessage
+            .replace(Regex("^URGENT\\s*\\[[^]]+]:\\s*"), "")
+            .trim()
+        val adviceLine = if (cleanedRaw.contains("Immediate", ignoreCase = true)) {
+            "Immediate bedside flap inspection advised."
+        } else {
+            cleanedRaw.ifBlank { "Tap to inspect bedside vitals and review." }
+        }
+
+        val riskPrefix = if (riskScorePct >= 0.0) {
+            String.format(Locale.US, "%.0f%% risk", riskScorePct)
+        } else {
+            "$riskTier risk"
+        }
+
+        val collapsedText = "$riskPrefix — $adviceLine"
+        val expandedText = "$riskPrefix ($riskTier)\n$adviceLine"
+
+        // Tap notification -> open FlapGuard AI straight to the Alerts tab
+        val openIntent = Intent(this, DashboardActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("open_tab", "alerts")
+            putExtra(AlertActionReceiver.EXTRA_ALERT_ID, id)
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            id * 10 + 1,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Inline "Mark Reviewed" action directly from notification shade / lock screen
+        val reviewIntent = Intent(this, AlertActionReceiver::class.java).apply {
+            action = AlertActionReceiver.ACTION_MARK_REVIEWED
+            putExtra(AlertActionReceiver.EXTRA_ALERT_ID, id)
+        }
+        val reviewPendingIntent = PendingIntent.getBroadcast(
+            this,
+            id * 10 + 2,
+            reviewIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(this, "flap_alerts_channel")
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setSmallIcon(R.drawable.ic_stat_flapguard)
+            .setLargeIcon(buildInitialsBadgeBitmap(patientName, isCritical))
+            .setColor(accentColor)
+            .setSubText(if (isCritical) "Critical Alert" else "$riskTier Priority")
+            .setContentTitle(cleanTitle)
+            .setContentText(collapsedText)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .setBigContentTitle(cleanTitle)
+                    .bigText(expandedText)
+            )
+            .setContentIntent(openPendingIntent)
+            .addAction(0, "Inspect", openPendingIntent)
+            .addAction(0, "Mark Reviewed", reviewPendingIntent)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setGroup("flapguard_urgent_alerts")
             .setAutoCancel(true)
             .build()
+
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(id, notification)
     }
