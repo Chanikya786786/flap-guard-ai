@@ -39,47 +39,66 @@ def _find_by_id(driver, view_id: str, timeout: int = 12):
     )
 
 
-def _scroll_and_find(driver, view_id: str):
-    rid = _rid(view_id)
-    existing = driver.find_elements(AppiumBy.ID, rid)
-    if existing:
-        try:
-            if existing[0].is_displayed():
-                return existing[0]
-        except Exception:
-            pass
-
-    locator = (
-        f'new UiScrollable(new UiSelector().scrollable(true))'
-        f'.scrollIntoView(new UiSelector().resourceId("{rid}"))'
-    )
+def _scroll_gesture(driver, direction: str, percent: float = 0.72) -> bool:
     try:
-        return driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, locator)
-    except Exception:
-        pass
-
-    # Reset to top when already scrolled to the bottom of a ScrollView, then retry
-    try:
-        driver.find_element(
-            AppiumBy.ANDROID_UIAUTOMATOR,
-            'new UiScrollable(new UiSelector().scrollable(true)).scrollToBeginning(6)',
+        size = driver.get_window_size()
+        return bool(
+            driver.execute_script(
+                "mobile: scrollGesture",
+                {
+                    "left": int(size["width"] * 0.1),
+                    "top": int(size["height"] * 0.18),
+                    "width": int(size["width"] * 0.8),
+                    "height": int(size["height"] * 0.62),
+                    "direction": direction,
+                    "percent": percent,
+                },
+            )
         )
     except Exception:
-        pass
+        return False
 
-    existing = driver.find_elements(AppiumBy.ID, rid)
-    if existing:
-        try:
-            if existing[0].is_displayed():
-                return existing[0]
-        except Exception:
-            pass
+
+def _scroll_and_find(driver, view_id: str):
+    rid = _rid(view_id)
+
+    def _visible_match():
+        found = driver.find_elements(AppiumBy.ID, rid)
+        for el in found:
+            try:
+                if el.is_displayed():
+                    return el
+            except Exception:
+                pass
+        return found[0] if found else None
+
+    el = _visible_match()
+    if el is not None:
+        return el
+
+    for direction in ("down", "up"):
+        for _ in range(4):
+            can_more = _scroll_gesture(driver, direction, 0.72)
+            time.sleep(0.2)
+            el = _visible_match()
+            if el is not None:
+                return el
+            if not can_more:
+                break
 
     try:
-        return driver.find_element(AppiumBy.ANDROID_UIAUTOMATOR, locator)
-    except Exception:
-        return _find_by_id(driver, view_id, timeout=10)
-
+        return _find_by_id(driver, view_id, timeout=8)
+    except Exception as exc:
+        visible_ids = sorted(
+            {
+                e.get_attribute("resource-id")
+                for e in driver.find_elements(AppiumBy.XPATH, "//*[@resource-id]")
+                if e.get_attribute("resource-id")
+            }
+        )
+        raise AssertionError(
+            f"Could not locate '{rid}' after bidirectional scroll. Visible IDs: {visible_ids}"
+        ) from exc
 
 def _switch_tab(driver, tab_id: str, expected_section_id: str) -> None:
     for _ in range(2):
@@ -146,6 +165,7 @@ def run_appium_android_suite() -> str:
         )
 
     subprocess.run(["adb", "reverse", "tcp:5000", "tcp:5000"], check=False)
+    subprocess.run(["adb", "shell", "settings", "put", "global", "heads_up_notifications_enabled", "0"], check=False)
     subprocess.run(["adb", "shell", "pm", "clear", PKG], check=False)
 
     tmp_dir = tempfile.mkdtemp(prefix="flapguard_app_")
@@ -473,14 +493,7 @@ def run_appium_android_suite() -> str:
             record("Mobile Navigation", f"Switch to {tab_id} (#{i+1})", f"Tap {tab_id}", f"{sec_id} visible", f"visible={sec_vis}", t0, sec_vis)
 
         t0 = time.perf_counter()
-        try:
-            driver.find_element(
-                AppiumBy.ANDROID_UIAUTOMATOR,
-                'new UiScrollable(new UiSelector().scrollable(true)).scrollToEnd(4)',
-            )
-        except Exception:
-            pass
-        _find_by_id(driver, "btn_logout", timeout=12).click()
+        _scroll_and_find(driver, "btn_logout").click()
         back_to_login = _find_by_id(driver, "btn_auth_submit", timeout=12).is_displayed()
         record("Mobile Sign Out", "Sign Out returns to MainActivity login", "Tap btn_logout", "Login screen visible", f"visible={back_to_login}", t0, back_to_login)
 
@@ -490,6 +503,7 @@ def run_appium_android_suite() -> str:
 
     finally:
         driver.quit()
+        subprocess.run(["adb", "shell", "settings", "put", "global", "heads_up_notifications_enabled", "1"], check=False)
         server.shutdown()
         server_thread.join(timeout=3)
         if appium_proc is not None:
