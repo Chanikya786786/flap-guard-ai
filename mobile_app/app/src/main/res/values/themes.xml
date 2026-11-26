@@ -2,11 +2,23 @@
     <style name="Base.Theme.FlapGuardAI" parent="Theme.Material3.Light.NoActionBar">
         <item name="colorPrimary">@color/fg_primary</item>
         <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/fg_primary_soft</item>
+        <item name="colorOnPrimaryContainer">@color/fg_primary</item>
         <item name="colorSecondary">@color/fg_accent</item>
         <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/fg_primary_soft</item>
+        <item name="colorOnSecondaryContainer">@color/fg_primary</item>
+        <item name="colorSurface">@color/fg_surface</item>
+        <item name="colorSurfaceVariant">@color/fg_surface_soft</item>
+        <item name="colorOutline">@color/fg_border_strong</item>
         <item name="android:windowBackground">@color/fg_bg</item>
-        <item name="android:statusBarColor">@color/fg_primary_dark</item>
+        <item name="android:statusBarColor">@color/fg_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
     <style name="Theme.FlapGuardAI" parent="Base.Theme.FlapGuardAI" />
+
+    <style name="Widget.FlapGuard.BottomNav.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/fg_primary_soft</item>
+    </style>
 </resources>

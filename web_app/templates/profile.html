@@ -9,14 +9,32 @@
   <div>
     <div class="card">
       <div class="profile-header">
-        <div class="avatar-circle">{{ current_user.full_name[:2]|upper }}</div>
+        <div class="avatar-circle">
+          {% if current_user.profile_photo %}
+            <img src="{{ current_user.profile_photo }}" alt="{{ current_user.full_name }}">
+          {% else %}
+            {{ current_user.full_name[:2]|upper }}
+          {% endif %}
+        </div>
         <div>
           <h2 style="margin-bottom:2px;">{{ current_user.full_name }}</h2>
           <div class="muted">{{ current_user.email }}</div>
           <span class="badge badge-moderate" style="margin-top:6px;">{{ current_user.role }}</span>
         </div>
       </div>
-      <div class="muted" style="padding-top:10px;border-top:1px solid var(--border);">
+
+      <form method="POST" action="{{ url_for('main.profile_update_photo') }}" enctype="multipart/form-data" style="padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:12px;">
+        <label for="profile-photo-input" class="muted" style="display:block;font-weight:600;margin-bottom:6px;">Profile Photo (Syncs with Android App)</label>
+        <div class="btn-row">
+          <input id="profile-photo-input" name="photo" type="file" accept="image/*" style="flex:1;font-size:0.84rem;">
+          <button id="upload-photo-btn" type="submit" class="btn btn-sm">Upload Photo</button>
+          {% if current_user.profile_photo %}
+          <button id="remove-photo-btn" type="submit" name="action" value="remove" class="btn btn-sm btn-outline-danger" formnovalidate>Remove</button>
+          {% endif %}
+        </div>
+      </form>
+
+      <div class="muted">
         <strong>Active Ward Patients:</strong> {{ patients_count if patients_count is defined else 0 }} &nbsp;&middot;&nbsp;
         <strong>Logged Sensor Readings:</strong> {{ readings_count if readings_count is defined else 0 }}
       </div>
@@ -25,7 +43,7 @@
     <div class="card">
       <h3>Ward Demo Data Controls</h3>
       <p class="muted" style="margin-bottom:14px;">
-        The ward starts empty by default so no dummy patients clutter your workspace. Use these controls during demonstrations to populate or reset sample OMFS microsurgical cases.
+        The ward starts cleanly empty by default. Load or clear 3 realistic OMFS microsurgical cases whenever needed for demonstrations.
       </p>
       <div class="btn-row">
         <form method="POST" action="{{ url_for('main.profile_load_samples') }}" style="margin:0;">
@@ -43,15 +61,15 @@
     <form method="POST" action="{{ url_for('main.profile') }}" id="password-form">
       <div class="form-group">
         <label for="current-pw">Current Password</label>
-        <input id="current-pw" name="current_password" type="password" required>
+        <input id="current-pw" name="current_password" type="password" required placeholder="Enter current password">
       </div>
       <div class="form-group">
         <label for="new-pw">New Password (min 8 chars)</label>
-        <input id="new-pw" name="new_password" type="password" minlength="8" required>
+        <input id="new-pw" name="new_password" type="password" minlength="8" required placeholder="Enter new password">
       </div>
       <div class="form-group">
         <label for="confirm-pw">Confirm New Password</label>
-        <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required>
+        <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required placeholder="Confirm new password">
       </div>
       <button id="change-pw-submit" type="submit" class="btn">Update Password</button>
     </form>

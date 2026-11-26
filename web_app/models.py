@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(150), unique=True, nullable=False, index=True)
     role = db.Column(db.String(40), nullable=False, default="Surgeon")
     password_hash = db.Column(db.String(256), nullable=False)
+    profile_photo = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     def set_password(self, raw_password: str) -> None:
@@ -40,6 +41,7 @@ class User(UserMixin, db.Model):
             "full_name": self.full_name,
             "email": self.email,
             "role": self.role,
+            "profile_photo": self.profile_photo,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -126,7 +128,7 @@ class SensorReading(db.Model):
     acknowledged_by = db.Column(db.String(120), nullable=True)
 
     clinical_notes_json = db.Column(db.Text, nullable=False, default="[]")
-    source_mode = db.Column(db.String(40), nullable=False, default="Manual + Camera")
+    source_mode = db.Column(db.String(80), nullable=False, default="Manual + Camera")
     model_version = db.Column(db.String(20), nullable=False, default="v1.0")
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
 

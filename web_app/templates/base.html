@@ -4,22 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}FlapGuard AI{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
   <nav class="navbar">
-    <div class="brand-wrap">
-      <a class="brand" href="{{ url_for('main.dashboard') }}">FlapGuard AI</a>
-      <span class="brand-sub">OMFS &amp; Microsurgical Post-Op Free-Flap Monitoring</span>
-    </div>
+    <a class="brand-link" href="{{ url_for('main.dashboard') }}">
+      <img class="brand-logo" src="{{ url_for('static', filename='img/logo.svg') }}" alt="FlapGuard AI Logo">
+      <div class="brand-wrap">
+        <span class="brand">FlapGuard AI</span>
+        <span class="brand-sub">OMFS &amp; Microsurgical Flap Monitoring</span>
+      </div>
+    </a>
     {% if current_user.is_authenticated %}
     <div class="nav-links">
       <a id="nav-dashboard" class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}">Ward</a>
       <a id="nav-alerts" class="{{ 'active' if request.endpoint == 'main.alerts_center' else '' }}" href="{{ url_for('main.alerts_center') }}">Alerts</a>
       <a id="nav-learning" class="{{ 'active' if request.endpoint == 'main.learning_center' else '' }}" href="{{ url_for('main.learning_center') }}">Learning</a>
       <a id="nav-profile" class="{{ 'active' if request.endpoint == 'main.profile' else '' }}" href="{{ url_for('main.profile') }}">Profile</a>
-      <span class="nav-user">{{ current_user.full_name }} &middot; {{ current_user.role }}</span>
-      <a id="nav-logout" href="{{ url_for('main.logout') }}">Sign Out</a>
+      <span class="nav-user-pill">
+        {% if current_user.profile_photo %}
+          <img class="nav-avatar" src="{{ current_user.profile_photo }}" alt="{{ current_user.full_name }}">
+        {% else %}
+          <span class="nav-avatar">{{ current_user.full_name[:2]|upper }}</span>
+        {% endif %}
+        <span>{{ current_user.full_name }} ({{ current_user.role }})</span>
+      </span>
+      <a id="nav-logout" class="nav-signout" href="{{ url_for('main.logout') }}">Sign Out</a>
     </div>
     {% else %}
     <div class="nav-links">
@@ -42,7 +53,7 @@
   </main>
 
   <footer class="footer-note">
-    FlapGuard AI &mdash; Clinical Decision Support for Oral &amp; Maxillofacial Surgeons and Post-Op ICU Nurses. Always confirm findings clinically.
+    FlapGuard AI &mdash; Clinical Decision Support for Oral &amp; Maxillofacial Surgeons and Post-Op ICU Teams. Always confirm findings clinically.
   </footer>
 
   {% block scripts %}{% endblock %}

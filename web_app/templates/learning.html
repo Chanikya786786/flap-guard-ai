@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Continuous Learning | FlapGuard AI{% endblock %}
 {% block content %}
+<div class="page-header">
+  <div>
+    <h1>Continuous Learning Engine</h1>
+    <span class="muted">Record confirmed postoperative outcomes to retrain and version the multisensor AI model.</span>
+  </div>
+</div>
+
 <div class="grid-2">
   <div class="card">
     <h2>Active Local AI Model ({{ model_meta.version }})</h2>
-    <p class="muted">Algorithm: {{ model_meta.algorithm }}</p>
+    <p class="muted" style="margin-bottom:14px;">Algorithm: {{ model_meta.algorithm }}</p>
     <table>
       <tbody>
         <tr><th>Test Accuracy</th><td id="model-accuracy-val"><strong>{{ (model_meta.accuracy * 100)|round(2) }}%</strong></td></tr>
@@ -14,13 +21,13 @@
       </tbody>
     </table>
     <form method="POST" action="{{ url_for('main.retrain_model') }}" style="margin-top:16px;">
-      <button id="retrain-btn" type="submit" class="btn btn-success">Retrain Local Model With Verified Outcomes</button>
+      <button id="retrain-btn" type="submit" class="btn btn-accent" style="width:100%;">Retrain Local Model With Verified Outcomes</button>
     </form>
   </div>
 
   <div class="card">
     <h2>Log Verified Postoperative Outcome</h2>
-    <p class="muted">Record ground-truth clinical findings after exploration or follow-up so the model learns continuously.</p>
+    <p class="muted" style="margin-bottom:14px;">Record ground-truth clinical findings after follow-up or salvage exploration.</p>
     <form method="POST" action="{{ url_for('main.log_outcome') }}" id="outcome-form">
       <div class="form-group">
         <label for="outcome-patient">Patient</label>
@@ -40,15 +47,15 @@
       </div>
       <div class="form-group">
         <label for="outcome-notes">Surgeon Notes</label>
-        <textarea id="outcome-notes" name="surgeon_notes" rows="3" placeholder="e.g., Confirmed venous thrombosis on salvage re-exploration."></textarea>
+        <textarea id="outcome-notes" name="surgeon_notes" rows="3" placeholder="e.g., Confirmed venous congestion on salvage re-exploration."></textarea>
       </div>
-      <button id="save-outcome-btn" type="submit" class="btn">Save Verified Outcome</button>
+      <button id="save-outcome-btn" type="submit" class="btn" style="width:100%;">Save Verified Outcome</button>
     </form>
   </div>
 </div>
 
 <div class="card">
-  <h3>Continuous Learning Model Version History</h3>
+  <h3>Model Version History</h3>
   <div class="table-wrap">
     <table id="model-versions-table">
       <thead>

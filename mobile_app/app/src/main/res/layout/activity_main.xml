@@ -1,54 +1,99 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView android:background="@color/fg_bg" android:fillViewport="true" android:layout_height="match_parent" android:layout_width="match_parent" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fg_bg"
+    android:fillViewport="true">
 
-    <LinearLayout android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="vertical" android:padding="24dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="36dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="24dp">
 
-        <RelativeLayout android:layout_height="wrap_content" android:layout_marginBottom="16dp" android:layout_marginTop="8dp" android:layout_width="match_parent">
+        <ImageView
+            android:id="@+id/iv_brand_logo"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="FlapGuard AI Logo"
+            android:src="@drawable/ic_brand_logo" />
 
-            <TextView android:background="@drawable/bg_badge" android:backgroundTint="@color/fg_primary_soft" android:id="@+id/tv_connection_pill" android:layout_alignParentStart="true" android:layout_centerVertical="true" android:layout_height="wrap_content" android:layout_width="wrap_content" android:paddingBottom="5dp" android:paddingEnd="12dp" android:paddingStart="12dp" android:paddingTop="5dp" android:text="Cloud Connected" android:textColor="@color/fg_primary" android:textSize="11sp" android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tv_brand_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="FlapGuard AI"
+            android:textColor="@color/fg_text_primary"
+            android:textSize="26sp"
+            android:textStyle="bold" />
 
-            <ImageButton android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Connection settings" android:id="@+id/btn_connection_settings" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_height="36dp" android:layout_width="36dp" android:src="@drawable/ic_settings" app:tint="@color/fg_text_muted"/>
-        </RelativeLayout>
-
-        <TextView android:layout_height="wrap_content" android:layout_width="wrap_content" android:text="FlapGuard AI" android:textColor="@color/fg_primary" android:textSize="30sp" android:textStyle="bold"/>
-
-        <TextView android:layout_height="wrap_content" android:layout_marginBottom="24dp" android:layout_marginTop="4dp" android:layout_width="wrap_content" android:text="OMFS &amp; Microsurgical Post-Op Free-Flap Monitoring" android:textColor="@color/fg_text_secondary" android:textSize="14sp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="24dp"
+            android:gravity="center"
+            android:text="OMFS &amp; Microsurgical Free-Flap Monitoring"
+            android:textColor="@color/fg_text_secondary"
+            android:textSize="13sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="@color/fg_surface"
-            app:cardCornerRadius="18dp"
+            app:cardCornerRadius="20dp"
             app:cardElevation="2dp"
             app:strokeColor="@color/fg_border"
             app:strokeWidth="1dp">
 
-            <LinearLayout android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="vertical" android:padding="20dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="22dp">
 
-                <LinearLayout android:layout_height="wrap_content" android:layout_marginBottom="18dp" android:layout_width="match_parent" android:orientation="horizontal">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="18dp"
+                    android:background="@drawable/bg_metric_tile"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_mode_login"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="6dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="Sign In"
                         android:textAllCaps="false"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
                         app:backgroundTint="@color/fg_primary"
                         app:cornerRadius="10dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_mode_register"
                         android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="6dp"
+                        android:layout_height="40dp"
                         android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
                         android:text="Create Account"
                         android:textAllCaps="false"
                         android:textColor="@color/fg_text_secondary"
-                        app:backgroundTint="@color/fg_bg"
-                        app:cornerRadius="10dp" />
+                        android:textSize="13sp"
+                        app:backgroundTint="@android:color/transparent"
+                        app:cornerRadius="10dp"
+                        app:elevation="0dp" />
                 </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -58,7 +103,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:hint="Clinician Full Name"
-                    android:visibility="gone">
+                    android:visibility="gone"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:placeholderText="Dr. Full Name">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_full_name"
@@ -67,19 +117,89 @@
                         android:inputType="textPersonName" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <LinearLayout android:id="@+id/layout_role_container" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:layout_width="match_parent" android:orientation="vertical" android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/layout_role_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
-                    <TextView android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:layout_width="wrap_content" android:text="Clinical Role" android:textColor="@color/fg_text_secondary" android:textSize="12sp" android:textStyle="bold"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:text="Clinical Role"
+                        android:textColor="@color/fg_text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
 
-                    <Spinner android:id="@+id/spinner_role" android:layout_height="46dp" android:layout_width="match_parent"/>
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chip_group_role"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_role_surgeon"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="Surgeon"
+                            android:textColor="@color/selector_chip_text"
+                            app:checkedIconVisible="false"
+                            app:chipBackgroundColor="@color/selector_chip_bg"
+                            app:chipStrokeColor="@color/fg_border_strong" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_role_nurse"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Nurse"
+                            android:textColor="@color/selector_chip_text"
+                            app:checkedIconVisible="false"
+                            app:chipBackgroundColor="@color/selector_chip_bg"
+                            app:chipStrokeColor="@color/fg_border_strong" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_role_resident"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Resident"
+                            android:textColor="@color/selector_chip_text"
+                            app:checkedIconVisible="false"
+                            app:chipBackgroundColor="@color/selector_chip_bg"
+                            app:chipStrokeColor="@color/fg_border_strong" />
+
+                        <com.google.android.material.chip.Chip
+                            android:id="@+id/chip_role_admin"
+                            style="@style/Widget.Material3.Chip.Filter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Admin"
+                            android:textColor="@color/selector_chip_text"
+                            app:checkedIconVisible="false"
+                            app:chipBackgroundColor="@color/selector_chip_bg"
+                            app:chipStrokeColor="@color/fg_border_strong" />
+                    </com.google.android.material.chip.ChipGroup>
                 </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_email"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
-                    android:hint="Hospital Email">
+                    android:hint="Hospital Email"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:placeholderText="clinician@hospital.org">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_email"
@@ -89,12 +209,18 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/til_password"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="18dp"
                     android:hint="Password"
-                    app:endIconMode="password_toggle">
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    app:endIconMode="password_toggle"
+                    app:placeholderText="Minimum 8 characters">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_password"
@@ -114,12 +240,67 @@
                     app:backgroundTint="@color/fg_primary"
                     app:cornerRadius="12dp" />
 
-                <ProgressBar android:id="@+id/progress_auth" android:layout_gravity="center_horizontal" android:layout_height="28dp" android:layout_marginTop="12dp" android:layout_width="28dp" android:visibility="gone"/>
+                <ProgressBar
+                    android:id="@+id/progress_auth"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="12dp"
+                    android:indeterminateTint="@color/fg_primary"
+                    android:visibility="gone" />
 
-                <TextView android:gravity="center" android:id="@+id/tv_auth_status" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:layout_width="match_parent" android:text="" android:textColor="@color/fg_text_secondary" android:textSize="13sp"/>
+                <TextView
+                    android:id="@+id/tv_auth_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center"
+                    android:text=""
+                    android:textColor="@color/fg_text_secondary"
+                    android:textSize="13sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <TextView android:gravity="center" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:layout_width="match_parent" android:text="For Oral &amp; Maxillofacial Surgeons and Post-Op ICU Nurses.\nDecision support only — always confirm clinically." android:textColor="@color/fg_text_muted" android:textSize="12sp"/>
+        <!-- Quiet, subtle Connection Mode link (Cloud default, Local USB viva available on tap) -->
+        <LinearLayout
+            android:id="@+id/btn_connection_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:contentDescription="Connection"
+                android:src="@drawable/ic_cloud"
+                app:tint="@color/fg_text_muted" />
+
+            <TextView
+                android:id="@+id/tv_connection_pill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Live Cloud  •  Switch"
+                android:textColor="@color/fg_text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="Clinical decision support only — always confirm findings clinically."
+            android:textColor="@color/fg_text_muted"
+            android:textSize="11sp" />
     </LinearLayout>
 </ScrollView>

@@ -8,15 +8,16 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
-import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONObject
@@ -41,14 +42,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val tvConnectionPill = findViewById<TextView>(R.id.tv_connection_pill)
-        val btnConnectionSettings = findViewById<ImageButton>(R.id.btn_connection_settings)
+        val btnConnectionSettings = findViewById<LinearLayout>(R.id.btn_connection_settings)
         val btnModeLogin = findViewById<MaterialButton>(R.id.btn_mode_login)
         val btnModeRegister = findViewById<MaterialButton>(R.id.btn_mode_register)
         val tilFullName = findViewById<TextInputLayout>(R.id.til_full_name)
         val etFullName = findViewById<TextInputEditText>(R.id.et_full_name)
         val layoutRole = findViewById<LinearLayout>(R.id.layout_role_container)
-        val spinnerRole = findViewById<Spinner>(R.id.spinner_role)
+        val chipGroupRole = findViewById<ChipGroup>(R.id.chip_group_role)
+        val tilEmail = findViewById<TextInputLayout>(R.id.til_email)
         val etEmail = findViewById<TextInputEditText>(R.id.et_email)
+        val tilPassword = findViewById<TextInputLayout>(R.id.til_password)
         val etPassword = findViewById<TextInputEditText>(R.id.et_password)
         val btnSubmit = findViewById<MaterialButton>(R.id.btn_auth_submit)
         val progressAuth = findViewById<ProgressBar>(R.id.progress_auth)
@@ -56,34 +59,20 @@ class MainActivity : AppCompatActivity() {
 
         fun refreshConnectionBadge() {
             val usb = ApiClient.isLocalUsbMode(this)
-            tvConnectionPill.text = if (usb) "Offline USB Mode" else "Live Cloud"
-            val bg = if (usb) "#FEF3C7" else "#E8F1FA"
-            val fg = if (usb) "#B45309" else "#0F4C81"
-            tvConnectionPill.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
-            tvConnectionPill.setTextColor(Color.parseColor(fg))
+            tvConnectionPill.text = if (usb) {
+                "Local USB Mode  •  Switch"
+            } else {
+                "Live Cloud  •  Switch"
+            }
         }
         refreshConnectionBadge()
 
         btnConnectionSettings.setOnClickListener {
-            val options = arrayOf(
-                "Live Cloud (flap-guard-ai.onrender.com)",
-                "Offline USB Viva Mode (127.0.0.1:5000)"
-            )
-            val checked = if (ApiClient.isLocalUsbMode(this)) 1 else 0
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Server Connection")
-                .setSingleChoiceItems(options, checked) { dialog, which ->
-                    ApiClient.setLocalUsbMode(this, which == 1)
-                    refreshConnectionBadge()
-                    tvStatus.text = ""
-                    dialog.dismiss()
-                }
-                .setNegativeButton("Close", null)
-                .show()
+            showConnectionSheet {
+                refreshConnectionBadge()
+                tvStatus.text = ""
+            }
         }
-
-        val roles = listOf("Surgeon", "Nurse", "Resident", "Admin")
-        spinnerRole.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, roles)
 
         fun updateMode(register: Boolean) {
             isRegisterMode = register
@@ -92,11 +81,15 @@ class MainActivity : AppCompatActivity() {
             btnSubmit.text = if (register) "Create Clinician Account" else "Sign In"
 
             val activeBg = ColorStateList.valueOf(Color.parseColor("#0F4C81"))
-            val idleBg = ColorStateList.valueOf(Color.parseColor("#F1F5F9"))
+            val idleBg = ColorStateList.valueOf(Color.TRANSPARENT)
             btnModeLogin.backgroundTintList = if (!register) activeBg else idleBg
             btnModeLogin.setTextColor(Color.parseColor(if (!register) "#FFFFFF" else "#475569"))
             btnModeRegister.backgroundTintList = if (register) activeBg else idleBg
             btnModeRegister.setTextColor(Color.parseColor(if (register) "#FFFFFF" else "#475569"))
+
+            tilFullName.error = null
+            tilEmail.error = null
+            tilPassword.error = null
             tvStatus.text = ""
         }
 
@@ -104,20 +97,29 @@ class MainActivity : AppCompatActivity() {
         btnModeRegister.setOnClickListener { updateMode(true) }
 
         btnSubmit.setOnClickListener {
+            tilFullName.error = null
+            tilEmail.error = null
+            tilPassword.error = null
+
             val serverUrl = ApiClient.getServerUrl(this)
             val email = etEmail.text?.toString()?.trim().orEmpty()
             val password = etPassword.text?.toString().orEmpty()
             val fullName = etFullName.text?.toString()?.trim().orEmpty()
-            val role = spinnerRole.selectedItem.toString()
+            val checkedRoleId = chipGroupRole.checkedChipId
+            val role = findViewById<Chip>(checkedRoleId)?.text?.toString() ?: "Surgeon"
 
-            if (email.isBlank() || !email.contains("@") || password.length < 8) {
-                tvStatus.setTextColor(Color.parseColor("#DC2626"))
-                tvStatus.text = "Enter a valid email and password (8+ characters)."
+            if (isRegisterMode && fullName.length < 2) {
+                tilFullName.error = "Enter your full name"
                 return@setOnClickListener
             }
-            if (isRegisterMode && fullName.length < 2) {
+            if (email.isBlank() || !email.contains("@")) {
+                tilEmail.error = "Enter a valid hospital email"
+                return@setOnClickListener
+            }
+            if (password.length < 8) {
+                tilPassword.error = "Password must be 8+ characters"
                 tvStatus.setTextColor(Color.parseColor("#DC2626"))
-                tvStatus.text = "Enter your full name to create an account."
+                tvStatus.text = "Enter a valid email and password (8+ characters)."
                 return@setOnClickListener
             }
 
@@ -148,11 +150,13 @@ class MainActivity : AppCompatActivity() {
                     if (result.ok) {
                         val token = result.json.optString("token")
                         val userObj = result.json.optJSONObject("user")
+                        val photo = userObj?.optString("profile_photo", "").orEmpty()
                         prefs.edit()
                             .putString("auth_token", token)
                             .putString("user_name", userObj?.optString("full_name") ?: email)
                             .putString("user_role", userObj?.optString("role") ?: "Surgeon")
                             .putString("user_email", userObj?.optString("email") ?: email)
+                            .putString("user_photo", if (photo == "null") "" else photo)
                             .apply()
 
                         startActivity(Intent(this, DashboardActivity::class.java))
@@ -164,6 +168,35 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun showConnectionSheet(onChanged: () -> Unit) {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_connection_mode, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val cloudCard = view.findViewById<MaterialCardView>(R.id.option_live_cloud)
+        val usbCard = view.findViewById<MaterialCardView>(R.id.option_local_usb)
+
+        val usb = ApiClient.isLocalUsbMode(this)
+        val activeColor = Color.parseColor("#0F4C81")
+        val idleColor = Color.parseColor("#E2E8F0")
+        cloudCard.strokeColor = if (!usb) activeColor else idleColor
+        usbCard.strokeColor = if (usb) activeColor else idleColor
+
+        cloudCard.setOnClickListener {
+            ApiClient.setLocalUsbMode(this, false)
+            onChanged()
+            sheet.dismiss()
+        }
+        usbCard.setOnClickListener {
+            ApiClient.setLocalUsbMode(this, true)
+            onChanged()
+            sheet.dismiss()
+        }
+        sheet.show()
     }
 
     override fun onDestroy() {

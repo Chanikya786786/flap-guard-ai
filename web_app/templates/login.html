@@ -2,10 +2,11 @@
 {% block title %}Sign In | FlapGuard AI{% endblock %}
 {% block content %}
 <div class="card auth-box">
-  <h2>Clinician Sign In</h2>
-  <p class="muted" style="margin-bottom:18px;">
-    Postoperative Free-Flap Perfusion &amp; Early Vascular Compromise Monitoring
-  </p>
+  <div class="auth-brand">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="FlapGuard AI">
+    <h2>Clinician Sign In</h2>
+    <p class="muted" style="margin:0;">Postoperative Free-Flap Perfusion &amp; Early Vascular Compromise Monitoring</p>
+  </div>
   <form method="POST" action="{{ url_for('main.login') }}" id="login-form">
     <div class="form-group">
       <label for="login-email">Hospital Email</label>
@@ -17,7 +18,7 @@
     </div>
     <button id="login-submit" type="submit" class="btn" style="width:100%;margin-top:4px;">Sign In</button>
   </form>
-  <p class="muted" style="margin-top:16px;text-align:center;">
+  <p class="muted" style="margin-top:18px;text-align:center;">
     New clinician? <a id="goto-register" href="{{ url_for('main.register') }}">Create an account</a>
   </p>
 </div>

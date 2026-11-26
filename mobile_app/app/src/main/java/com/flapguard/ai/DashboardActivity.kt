@@ -6,19 +6,15 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
-import android.util.Base64
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -27,7 +23,6 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -37,42 +32,53 @@ import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class DashboardActivity : AppCompatActivity() {
 
     private val executor = Executors.newFixedThreadPool(4)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val alertPollInFlight = AtomicBoolean(false)
+    private val syncCounter = AtomicInteger(0)
 
     private lateinit var authToken: String
     private var userName: String = "Clinician"
     private var userRole: String = "Surgeon"
     private var userEmail: String = ""
+    private var userPhotoDataUri: String = ""
 
     private val patientsList = mutableListOf<PatientItem>()
+    private var selectedPatientIndex: Int = 0
     private val notifiedAlertIds = mutableSetOf<Int>()
     private var lastAlertsSignature = ""
-    private var pendingCameraUri: Uri? = null
+    private var pendingFlapCameraUri: Uri? = null
+    private var pendingProfileCameraUri: Uri? = null
 
     private var scannedRedness = 0.14
     private var scannedCyanosis = 0.03
     private var scannedPallor = 0.42
 
+    private lateinit var rootView: View
     private lateinit var tvToolbarTitle: TextView
     private lateinit var tvToolbarSubtitle: TextView
+    private lateinit var btnRefreshAll: ImageButton
     private lateinit var progressSync: ProgressBar
     private lateinit var tvLiveBanner: TextView
     private lateinit var bottomNav: BottomNavigationView
@@ -92,10 +98,20 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var patientAdapter: PatientAdapter
 
     // Assess views
-    private lateinit var spinnerPatient: Spinner
+    private lateinit var cardSelectPatient: MaterialCardView
+    private lateinit var tvSelectedPatient: TextView
     private lateinit var layoutPreviewFrame: FrameLayout
     private lateinit var ivFlapPreview: ImageView
     private lateinit var tvVisionResult: TextView
+    private lateinit var tilIrTemp: TextInputLayout
+    private lateinit var tilCtrlTemp: TextInputLayout
+    private lateinit var tilSpo2: TextInputLayout
+    private lateinit var tilDoppler: TextInputLayout
+    private lateinit var etIrTemp: TextInputEditText
+    private lateinit var etCtrlTemp: TextInputEditText
+    private lateinit var etSpo2: TextInputEditText
+    private lateinit var etDoppler: TextInputEditText
+    private lateinit var etHours: TextInputEditText
     private lateinit var cardPredictionResult: MaterialCardView
     private lateinit var tvPredictionTitle: TextView
     private lateinit var tvPredictionResult: TextView
@@ -108,11 +124,13 @@ class DashboardActivity : AppCompatActivity() {
 
     // Profile views
     private lateinit var tvProfileInitials: TextView
+    private lateinit var ivProfilePhoto: ImageView
     private lateinit var tvProfileName: TextView
     private lateinit var tvProfileEmail: TextView
     private lateinit var tvProfileRole: TextView
-    private lateinit var tvProfileSystemStats: TextView
-    private lateinit var switchUsbMode: SwitchMaterial
+    private lateinit var tvStatModel: TextView
+    private lateinit var tvStatPatients: TextView
+    private lateinit var tvStatAlerts: TextView
     private lateinit var tvActiveServerLabel: TextView
 
     private val pollRunnable = object : Runnable {
@@ -122,20 +140,37 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    private val takeFullPhotoLauncher = registerForActivityResult(
+    private val flapCameraLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success: Boolean ->
-        val uri = pendingCameraUri
+        val uri = pendingFlapCameraUri
         if (success && uri != null) {
-            decodeAndAnalyzeUri(uri)
+            analyzeFlapImageUri(uri)
         }
     }
 
-    private val galleryLauncher = registerForActivityResult(
+    private val flapGalleryLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            decodeAndAnalyzeUri(uri)
+            analyzeFlapImageUri(uri)
+        }
+    }
+
+    private val profileCameraLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        val uri = pendingProfileCameraUri
+        if (success && uri != null) {
+            uploadProfilePhotoUri(uri)
+        }
+    }
+
+    private val profileGalleryLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            uploadProfilePhotoUri(uri)
         }
     }
 
@@ -148,6 +183,7 @@ class DashboardActivity : AppCompatActivity() {
         userName = prefs.getString("user_name", "Clinician") ?: "Clinician"
         userRole = prefs.getString("user_role", "Surgeon") ?: "Surgeon"
         userEmail = prefs.getString("user_email", "") ?: ""
+        userPhotoDataUri = prefs.getString("user_photo", "") ?: ""
 
         if (authToken.isBlank()) {
             logoutToLogin()
@@ -160,7 +196,8 @@ class DashboardActivity : AppCompatActivity() {
         setupAdapters()
         setupNavigation()
         setupActions()
-        populateStaticProfile()
+        populateProfileHeader()
+        updateServerModeLabel()
 
         syncAll()
     }
@@ -183,9 +220,30 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun serverUrl(): String = ApiClient.getServerUrl(this)
 
+    private fun beginSync() {
+        if (syncCounter.incrementAndGet() > 0) {
+            mainHandler.post {
+                btnRefreshAll.visibility = View.GONE
+                progressSync.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun endSync() {
+        if (syncCounter.decrementAndGet() <= 0) {
+            syncCounter.set(0)
+            mainHandler.post {
+                progressSync.visibility = View.GONE
+                btnRefreshAll.visibility = View.VISIBLE
+            }
+        }
+    }
+
     private fun bindViews() {
+        rootView = findViewById(R.id.dashboard_root)
         tvToolbarTitle = findViewById(R.id.tv_toolbar_title)
         tvToolbarSubtitle = findViewById(R.id.tv_toolbar_subtitle)
+        btnRefreshAll = findViewById(R.id.btn_refresh_all)
         progressSync = findViewById(R.id.progress_sync)
         tvLiveBanner = findViewById(R.id.tv_live_alert_banner)
         bottomNav = findViewById(R.id.bottom_nav)
@@ -201,10 +259,20 @@ class DashboardActivity : AppCompatActivity() {
         cardEmptyWard = findViewById(R.id.card_empty_ward)
         rvPatients = findViewById(R.id.rv_patients)
 
-        spinnerPatient = findViewById(R.id.spinner_patient)
+        cardSelectPatient = findViewById(R.id.card_select_patient)
+        tvSelectedPatient = findViewById(R.id.tv_selected_patient)
         layoutPreviewFrame = findViewById(R.id.layout_preview_frame)
         ivFlapPreview = findViewById(R.id.iv_flap_preview)
         tvVisionResult = findViewById(R.id.tv_vision_result)
+        tilIrTemp = findViewById(R.id.til_ir_temp)
+        tilCtrlTemp = findViewById(R.id.til_ctrl_temp)
+        tilSpo2 = findViewById(R.id.til_spo2)
+        tilDoppler = findViewById(R.id.til_doppler)
+        etIrTemp = findViewById(R.id.et_ir_temp)
+        etCtrlTemp = findViewById(R.id.et_ctrl_temp)
+        etSpo2 = findViewById(R.id.et_spo2)
+        etDoppler = findViewById(R.id.et_doppler)
+        etHours = findViewById(R.id.et_hours)
         cardPredictionResult = findViewById(R.id.card_prediction_result)
         tvPredictionTitle = findViewById(R.id.tv_prediction_title)
         tvPredictionResult = findViewById(R.id.tv_prediction_result)
@@ -214,17 +282,19 @@ class DashboardActivity : AppCompatActivity() {
         rvAlerts = findViewById(R.id.rv_alerts)
 
         tvProfileInitials = findViewById(R.id.tv_profile_initials)
+        ivProfilePhoto = findViewById(R.id.iv_profile_photo)
         tvProfileName = findViewById(R.id.tv_profile_name)
         tvProfileEmail = findViewById(R.id.tv_profile_email)
         tvProfileRole = findViewById(R.id.tv_profile_role)
-        tvProfileSystemStats = findViewById(R.id.tv_profile_system_stats)
-        switchUsbMode = findViewById(R.id.switch_usb_mode)
+        tvStatModel = findViewById(R.id.tv_stat_model)
+        tvStatPatients = findViewById(R.id.tv_stat_patients)
+        tvStatAlerts = findViewById(R.id.tv_stat_alerts)
         tvActiveServerLabel = findViewById(R.id.tv_active_server_label)
     }
 
     private fun setupAdapters() {
         patientAdapter = PatientAdapter(
-            onCardClick = { patient -> showPatientDetailDialog(patient) },
+            onCardClick = { patient -> showPatientDetailSheet(patient) },
             onAssessClick = { patient -> openAssessForPatient(patient) },
             onDeleteClick = { patient -> confirmDeletePatient(patient) }
         )
@@ -248,12 +318,12 @@ class DashboardActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.nav_ward -> {
                     tvToolbarTitle.text = "FlapGuard Ward"
-                    tvToolbarSubtitle.text = "Post-Op Free-Flap Risk Stratification"
+                    tvToolbarSubtitle.text = "Post-Op Free-Flap Monitoring"
                     fetchPatients()
                 }
                 R.id.nav_assess -> {
                     tvToolbarTitle.text = "Flap Assessment"
-                    tvToolbarSubtitle.text = "CIE-LAB Colorimetry + Multisensor Fusion"
+                    tvToolbarSubtitle.text = "CIE-LAB Colorimetry + Sensor Fusion"
                     sectionAssess.post { sectionAssess.scrollTo(0, 0) }
                 }
                 R.id.nav_alerts -> {
@@ -273,18 +343,20 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun setupActions() {
-        findViewById<ImageButton>(R.id.btn_refresh_all).setOnClickListener { syncAll() }
+        btnRefreshAll.setOnClickListener { syncAll() }
 
         tvLiveBanner.setOnClickListener {
             bottomNav.selectedItemId = R.id.nav_alerts
         }
 
         findViewById<ExtendedFloatingActionButton>(R.id.fab_add_patient).setOnClickListener {
-            showAddPatientDialog()
+            showAddPatientSheet()
         }
 
-        findViewById<MaterialButton>(R.id.btn_open_camera).setOnClickListener { launchFullResCamera() }
-        findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { galleryLauncher.launch("image/*") }
+        cardSelectPatient.setOnClickListener { showPatientPickerDialog() }
+
+        findViewById<MaterialButton>(R.id.btn_open_camera).setOnClickListener { launchFlapCamera() }
+        findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { flapGalleryLauncher.launch("image/*") }
         findViewById<MaterialButton>(R.id.btn_submit_reading).setOnClickListener { submitSensorReading() }
 
         findViewById<MaterialButton>(R.id.btn_sim_venous).setOnClickListener {
@@ -294,40 +366,34 @@ class DashboardActivity : AppCompatActivity() {
             triggerSimulation("arterial_deteriorating", 7)
         }
 
-        findViewById<MaterialButton>(R.id.btn_log_outcome_dialog).setOnClickListener {
-            showLogOutcomeDialog()
+        findViewById<FrameLayout>(R.id.btn_edit_profile_photo).setOnClickListener {
+            showProfilePhotoOptions()
         }
-
+        findViewById<MaterialButton>(R.id.btn_log_outcome_dialog).setOnClickListener {
+            showLogOutcomeSheet()
+        }
         findViewById<MaterialButton>(R.id.btn_load_samples).setOnClickListener {
             loadSampleCases()
         }
-
         findViewById<MaterialButton>(R.id.btn_clear_ward).setOnClickListener {
             confirmClearWard()
         }
-
-        switchUsbMode.isChecked = ApiClient.isLocalUsbMode(this)
-        updateServerModeLabel()
-        switchUsbMode.setOnCheckedChangeListener { _, isChecked ->
-            ApiClient.setLocalUsbMode(this, isChecked)
-            updateServerModeLabel()
-            toast(if (isChecked) "Switched to Offline USB Mode" else "Switched to Live Cloud")
-            syncAll()
+        findViewById<LinearLayout>(R.id.btn_change_password).setOnClickListener {
+            showChangePasswordSheet()
         }
-
-        findViewById<MaterialButton>(R.id.btn_change_password).setOnClickListener {
-            showChangePasswordDialog()
+        findViewById<LinearLayout>(R.id.row_connection_mode).setOnClickListener {
+            showConnectionModeSheet()
         }
-
         findViewById<MaterialButton>(R.id.btn_logout).setOnClickListener {
             logoutToLogin()
         }
     }
 
-    private fun populateStaticProfile() {
+    private fun populateProfileHeader() {
         tvProfileName.text = userName
         tvProfileRole.text = userRole
-        tvProfileEmail.text = userEmail.ifBlank { "Signed in clinician" }
+        tvProfileEmail.text = userEmail.ifBlank { "Signed-in clinician" }
+
         val parts = userName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
         val initials = when {
             parts.size >= 2 -> "${parts[0].first()}${parts[1].first()}"
@@ -335,14 +401,31 @@ class DashboardActivity : AppCompatActivity() {
             else -> "FG"
         }.uppercase(Locale.US)
         tvProfileInitials.text = initials
+
+        val bmp = ImageUtils.decodeDataUriBitmap(userPhotoDataUri)
+        if (bmp != null) {
+            ivProfilePhoto.setImageBitmap(bmp)
+            ivProfilePhoto.visibility = View.VISIBLE
+            tvProfileInitials.visibility = View.GONE
+        } else {
+            ivProfilePhoto.setImageDrawable(null)
+            ivProfilePhoto.visibility = View.GONE
+            tvProfileInitials.visibility = View.VISIBLE
+        }
     }
 
     private fun updateServerModeLabel() {
         tvActiveServerLabel.text = if (ApiClient.isLocalUsbMode(this)) {
-            "Active: Offline USB (http://127.0.0.1:5000)"
+            "Local USB Viva Mode (127.0.0.1:5000)"
         } else {
-            "Active: Live Cloud (flap-guard-ai.onrender.com)"
+            "Live Cloud (flap-guard-ai.onrender.com)"
         }
+    }
+
+    private fun showNotice(msg: String) {
+        Snackbar.make(rootView, msg, Snackbar.LENGTH_SHORT)
+            .setAnchorView(bottomNav)
+            .show()
     }
 
     private fun syncAll() {
@@ -353,7 +436,6 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun handleUnauthorized(statusCode: Int): Boolean {
         if (statusCode == 401) {
-            toast("Session expired. Please sign in again.")
             logoutToLogin()
             return true
         }
@@ -363,20 +445,21 @@ class DashboardActivity : AppCompatActivity() {
     private fun logoutToLogin() {
         getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE).edit()
             .remove("auth_token")
+            .remove("user_photo")
             .apply()
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 
     private fun fetchPatients() {
-        progressSync.visibility = View.VISIBLE
+        beginSync()
         executor.execute {
             val res = ApiClient.request(serverUrl(), "/mobile/patients", "GET", null, authToken)
+            endSync()
             mainHandler.post {
-                progressSync.visibility = View.GONE
                 if (!res.ok) {
                     if (!handleUnauthorized(res.statusCode)) {
-                        toast("Ward sync: ${res.errorMessage}")
+                        showNotice("Ward sync: ${res.errorMessage}")
                     }
                     return@post
                 }
@@ -387,6 +470,7 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun parseAndRenderPatients(arr: JSONArray) {
+        val prevId = selectedPatient()?.id
         patientsList.clear()
         var critical = 0
         var highMod = 0
@@ -422,121 +506,187 @@ class DashboardActivity : AppCompatActivity() {
         tvKpiCritical.text = critical.toString()
         tvKpiHigh.text = highMod.toString()
         tvKpiTotal.text = patientsList.size.toString()
+        tvStatPatients.text = patientsList.size.toString()
 
         cardEmptyWard.visibility = if (patientsList.isEmpty()) View.VISIBLE else View.GONE
         rvPatients.visibility = if (patientsList.isEmpty()) View.GONE else View.VISIBLE
         patientAdapter.submitList(patientsList)
 
-        val labels = if (patientsList.isEmpty()) {
-            listOf("No patients in ward yet")
+        val restoredIdx = if (prevId != null) patientsList.indexOfFirst { it.id == prevId } else -1
+        selectedPatientIndex = if (restoredIdx >= 0) restoredIdx else 0
+        refreshSelectedPatientLabel()
+    }
+
+    private fun selectedPatient(): PatientItem? {
+        return if (selectedPatientIndex in patientsList.indices) patientsList[selectedPatientIndex] else null
+    }
+
+    private fun refreshSelectedPatientLabel() {
+        val p = selectedPatient()
+        tvSelectedPatient.text = if (p != null) {
+            "${p.fullName} (${p.mrn})  •  ${p.riskTier}"
         } else {
-            patientsList.map { "${it.fullName} (${it.mrn})" }
+            "No patients in ward yet"
         }
-        val prevIdx = spinnerPatient.selectedItemPosition
-        spinnerPatient.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
-        if (prevIdx in patientsList.indices) {
-            spinnerPatient.setSelection(prevIdx)
+    }
+
+    private fun showPatientPickerDialog() {
+        if (patientsList.isEmpty()) {
+            showNotice("Add a patient in the Ward tab first.")
+            return
         }
+        val labels = patientsList.map { "${it.fullName} (${it.mrn}) — ${it.riskTier}" }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Select Patient")
+            .setSingleChoiceItems(labels, selectedPatientIndex) { dialog, which ->
+                selectedPatientIndex = which
+                refreshSelectedPatientLabel()
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun openAssessForPatient(patient: PatientItem) {
         val idx = patientsList.indexOfFirst { it.id == patient.id }
         if (idx >= 0) {
-            spinnerPatient.setSelection(idx)
+            selectedPatientIndex = idx
+            refreshSelectedPatientLabel()
         }
         bottomNav.selectedItemId = R.id.nav_assess
     }
 
-    private fun showPatientDetailDialog(patient: PatientItem) {
-        val vitalsText = if (patient.tempDeltaC != null) {
-            String.format(
-                Locale.US,
-                "AI Prediction: %s (%.1f%% risk)\nRisk Tier: %s\n\nIR ΔT: %.2f °C\nTissue SpO₂: %.1f%%\nDoppler Flow: %.1f cm/s\nVisual Perfusion: %.1f / 100\n\n%s",
-                patient.predictedClass,
-                patient.riskScorePct,
-                patient.riskTier,
-                patient.tempDeltaC,
-                patient.spo2Pct ?: 0.0,
-                patient.dopplerCmS ?: 0.0,
-                patient.visualScore ?: 0.0,
-                patient.alertMessage
-            )
-        } else {
-            "No sensor assessments recorded yet."
-        }
+    private fun showPatientDetailSheet(patient: PatientItem) {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_patient_detail, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("${patient.fullName} (${patient.mrn})")
-            .setMessage(
-                "Age: ${patient.age}y  •  Post-Op: ${patient.hoursPostOp}h\n" +
-                    "Flap: ${patient.flapType}\nSite: ${patient.surgerySite}\n\n$vitalsText"
-            )
-            .setPositiveButton("Assess Flap") { _, _ -> openAssessForPatient(patient) }
-            .setNeutralButton("Close", null)
-            .setNegativeButton("Remove") { _, _ -> confirmDeletePatient(patient) }
-            .show()
+        view.findViewById<TextView>(R.id.tv_sheet_patient_name).text = patient.fullName
+        view.findViewById<TextView>(R.id.tv_sheet_patient_meta).text = String.format(
+            Locale.US,
+            "%s  •  %dy  •  %.1fh post-op",
+            patient.mrn, patient.age, patient.hoursPostOp
+        )
+        view.findViewById<TextView>(R.id.tv_sheet_flap_info).text =
+            "${patient.flapType}  —  ${patient.surgerySite}"
+
+        val badge = view.findViewById<TextView>(R.id.tv_sheet_risk_badge)
+        badge.text = patient.riskTier.uppercase(Locale.US)
+        val (bg, fg) = when (patient.riskTier) {
+            "Critical" -> "#FEE2E2" to "#B91C1C"
+            "High" -> "#FEF3C7" to "#B45309"
+            "Moderate" -> "#DBEAFE" to "#1D4ED8"
+            "Low" -> "#DCFCE7" to "#15803D"
+            else -> "#F1F5F9" to "#475569"
+        }
+        badge.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
+        badge.setTextColor(Color.parseColor(fg))
+
+        view.findViewById<TextView>(R.id.tv_detail_delta).text =
+            patient.tempDeltaC?.let { String.format(Locale.US, "%.2f °C", it) } ?: "--"
+        view.findViewById<TextView>(R.id.tv_detail_spo2).text =
+            patient.spo2Pct?.let { String.format(Locale.US, "%.1f%%", it) } ?: "--"
+        view.findViewById<TextView>(R.id.tv_detail_doppler).text =
+            patient.dopplerCmS?.let { String.format(Locale.US, "%.1f cm/s", it) } ?: "--"
+        view.findViewById<TextView>(R.id.tv_detail_visual).text =
+            patient.visualScore?.let { String.format(Locale.US, "%.0f / 100", it) } ?: "--"
+        view.findViewById<TextView>(R.id.tv_detail_summary).text =
+            patient.alertMessage.ifBlank { "No sensor assessments logged yet for this patient." }
+
+        view.findViewById<MaterialButton>(R.id.btn_sheet_assess).setOnClickListener {
+            sheet.dismiss()
+            openAssessForPatient(patient)
+        }
+        view.findViewById<MaterialButton>(R.id.btn_sheet_remove).setOnClickListener {
+            sheet.dismiss()
+            confirmDeletePatient(patient)
+        }
+        sheet.show()
     }
 
-    private fun showAddPatientDialog() {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(52, 24, 52, 8)
-        }
+    private fun showAddPatientSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_add_patient, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
 
-        fun makeField(hint: String, inputType: Int = InputType.TYPE_CLASS_TEXT, defaultVal: String = ""): EditText {
-            return EditText(this).apply {
-                this.hint = hint
-                this.inputType = inputType
-                setText(defaultVal)
+        val tilMrn = view.findViewById<TextInputLayout>(R.id.til_add_mrn)
+        val tilName = view.findViewById<TextInputLayout>(R.id.til_add_name)
+        val tilAge = view.findViewById<TextInputLayout>(R.id.til_add_age)
+        val tilHours = view.findViewById<TextInputLayout>(R.id.til_add_hours)
+        val tilSite = view.findViewById<TextInputLayout>(R.id.til_add_site)
+
+        val etMrn = view.findViewById<TextInputEditText>(R.id.et_add_mrn)
+        val etName = view.findViewById<TextInputEditText>(R.id.et_add_name)
+        val etAge = view.findViewById<TextInputEditText>(R.id.et_add_age)
+        val etHours = view.findViewById<TextInputEditText>(R.id.et_add_hours)
+        val etSite = view.findViewById<TextInputEditText>(R.id.et_add_site)
+        val chipGroup = view.findViewById<ChipGroup>(R.id.chip_group_flap_type)
+        val btnSave = view.findViewById<MaterialButton>(R.id.btn_confirm_add_patient)
+
+        btnSave.setOnClickListener {
+            listOf(tilMrn, tilName, tilAge, tilHours, tilSite).forEach { it.error = null }
+
+            val mrn = etMrn.text?.toString()?.trim()?.uppercase(Locale.US).orEmpty()
+            val name = etName.text?.toString()?.trim().orEmpty()
+            val age = etAge.text?.toString()?.trim()?.toIntOrNull()
+            val hours = etHours.text?.toString()?.trim()?.toDoubleOrNull()
+            val site = etSite.text?.toString()?.trim().orEmpty()
+            val flapType = view.findViewById<Chip>(chipGroup.checkedChipId)?.text?.toString()
+                ?: "Radial Forearm Free Flap"
+
+            var valid = true
+            if (mrn.isBlank()) {
+                tilMrn.error = "MRN is required"
+                valid = false
             }
-        }
+            if (name.length < 2) {
+                tilName.error = "Enter patient full name"
+                valid = false
+            }
+            if (age == null || age !in 1..120) {
+                tilAge.error = "1–120"
+                valid = false
+            }
+            if (hours == null || hours < 0.0 || hours > 720.0) {
+                tilHours.error = "0–720"
+                valid = false
+            }
+            if (site.length < 2) {
+                tilSite.error = "Enter surgical site"
+                valid = false
+            }
+            if (!valid) return@setOnClickListener
 
-        val etMrn = makeField("MRN (e.g., MRN-2026-201)")
-        val etName = makeField("Patient Full Name")
-        val etAge = makeField("Age (years)", InputType.TYPE_CLASS_NUMBER, "48")
-        val flapTypes = listOf(
-            "Radial Forearm Free Flap",
-            "Fibula Osteocutaneous Flap",
-            "Anterolateral Thigh (ALT) Flap",
-            "Deep Circumflex Iliac Artery (DCIA) Flap",
-            "Pectoralis Major Flap"
-        )
-        val spFlap = Spinner(this).apply {
-            adapter = ArrayAdapter(this@DashboardActivity, android.R.layout.simple_spinner_dropdown_item, flapTypes)
-        }
-        val etSite = makeField("Surgery Site (e.g., Right Mandible)")
-        val etHours = makeField("Hours Post-Op", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL, "4.0")
+            btnSave.isEnabled = false
+            val payload = JSONObject().apply {
+                put("mrn", mrn)
+                put("full_name", name)
+                put("age", age!!)
+                put("flap_type", flapType)
+                put("surgery_site", site)
+                put("hours_post_op", hours!!)
+            }
 
-        listOf(etMrn, etName, etAge, spFlap, etSite, etHours).forEach { container.addView(it) }
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Admit Post-Op Flap Patient")
-            .setView(container)
-            .setPositiveButton("Add Patient") { _, _ ->
-                val payload = JSONObject().apply {
-                    put("mrn", etMrn.text.toString().trim().uppercase(Locale.US))
-                    put("full_name", etName.text.toString().trim())
-                    put("age", etAge.text.toString().toIntOrNull() ?: 0)
-                    put("flap_type", spFlap.selectedItem.toString())
-                    put("surgery_site", etSite.text.toString().trim())
-                    put("hours_post_op", etHours.text.toString().toDoubleOrNull() ?: 1.0)
-                }
-                progressSync.visibility = View.VISIBLE
-                executor.execute {
-                    val res = ApiClient.request(serverUrl(), "/mobile/patients", "POST", payload, authToken)
-                    mainHandler.post {
-                        progressSync.visibility = View.GONE
-                        if (res.ok) {
-                            toast("Patient added to ward.")
-                            fetchPatients()
-                        } else {
-                            toast("Could not add patient: ${res.errorMessage}")
-                        }
+            beginSync()
+            executor.execute {
+                val res = ApiClient.request(serverUrl(), "/mobile/patients", "POST", payload, authToken)
+                endSync()
+                mainHandler.post {
+                    btnSave.isEnabled = true
+                    if (res.ok) {
+                        sheet.dismiss()
+                        showNotice("Enrolled $name ($mrn).")
+                        fetchPatients()
+                    } else {
+                        tilMrn.error = res.errorMessage
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+        sheet.show()
     }
 
     private fun confirmDeletePatient(patient: PatientItem) {
@@ -544,7 +694,7 @@ class DashboardActivity : AppCompatActivity() {
             .setTitle("Remove Patient?")
             .setMessage("Remove ${patient.fullName} (${patient.mrn}) and all associated readings from ward monitoring?")
             .setPositiveButton("Remove") { _, _ ->
-                progressSync.visibility = View.VISIBLE
+                beginSync()
                 executor.execute {
                     val res = ApiClient.request(
                         serverUrl(),
@@ -553,13 +703,13 @@ class DashboardActivity : AppCompatActivity() {
                         JSONObject(),
                         authToken
                     )
+                    endSync()
                     mainHandler.post {
-                        progressSync.visibility = View.GONE
                         if (res.ok) {
-                            toast("Removed ${patient.fullName}.")
+                            showNotice("Removed ${patient.fullName}.")
                             syncAll()
                         } else {
-                            toast("Delete failed: ${res.errorMessage}")
+                            showNotice("Remove failed: ${res.errorMessage}")
                         }
                     }
                 }
@@ -568,41 +718,34 @@ class DashboardActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun launchFullResCamera() {
+    private fun createTempCameraUri(prefix: String): Uri {
+        val dir = File(cacheDir, "camera").apply { mkdirs() }
+        val file = File(dir, "${prefix}_${System.currentTimeMillis()}.jpg")
+        return FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+    }
+
+    private fun launchFlapCamera() {
         try {
-            val dir = File(cacheDir, "camera").apply { mkdirs() }
-            val file = File(dir, "flap_${System.currentTimeMillis()}.jpg")
-            val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
-            pendingCameraUri = uri
-            takeFullPhotoLauncher.launch(uri)
+            val uri = createTempCameraUri("flap")
+            pendingFlapCameraUri = uri
+            flapCameraLauncher.launch(uri)
         } catch (e: Exception) {
-            toast("Camera unavailable: ${e.message}")
+            showNotice("Camera unavailable: ${e.message}")
         }
     }
 
-    private fun decodeAndAnalyzeUri(uri: Uri) {
+    private fun analyzeFlapImageUri(uri: Uri) {
         tvVisionResult.text = "Analyzing centered 50% flap ROI via CIE-LAB OpenCV..."
+        beginSync()
         executor.execute {
             try {
-                val rawBitmap = contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream)
-                }
-                if (rawBitmap == null) {
+                val scaled = ImageUtils.decodeScaledRotatedBitmap(this, uri, 640)
+                if (scaled == null) {
+                    endSync()
                     mainHandler.post { tvVisionResult.text = "Could not decode selected image." }
                     return@execute
                 }
-
-                // Preserve aspect ratio, cap max dimension at 640px for fast upload + crisp blur metrics
-                val maxDim = 640
-                val ratio = minOf(maxDim.toFloat() / rawBitmap.width, maxDim.toFloat() / rawBitmap.height, 1.0f)
-                val targetW = (rawBitmap.width * ratio).toInt().coerceAtLeast(64)
-                val targetH = (rawBitmap.height * ratio).toInt().coerceAtLeast(64)
-                val scaled = Bitmap.createScaledBitmap(rawBitmap, targetW, targetH, true)
-
-                val baos = ByteArrayOutputStream()
-                scaled.compress(Bitmap.CompressFormat.JPEG, 88, baos)
-                val encoded = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
-
+                val encoded = ImageUtils.toBase64Jpeg(scaled, 88)
                 mainHandler.post {
                     ivFlapPreview.setImageBitmap(scaled)
                     layoutPreviewFrame.visibility = View.VISIBLE
@@ -610,7 +753,7 @@ class DashboardActivity : AppCompatActivity() {
 
                 val body = JSONObject().put("image_base64", encoded)
                 val res = ApiClient.request(serverUrl(), "/mobile/analyze-image", "POST", body, authToken)
-
+                endSync()
                 mainHandler.post {
                     if (res.ok) {
                         scannedRedness = res.json.optDouble("visual_redness_index", 0.14)
@@ -621,14 +764,14 @@ class DashboardActivity : AppCompatActivity() {
                         val qStatus = res.json.optString("quality_status", "Good")
                         val warnings = res.json.optJSONArray("quality_warnings")
                         val warnText = if (warnings != null && warnings.length() > 0) {
-                            "\nQuality Note: ${warnings.optString(0)}"
+                            "\nCapture Note: ${warnings.optString(0)}"
                         } else {
                             ""
                         }
 
                         tvVisionResult.text = String.format(
                             Locale.US,
-                            "Triage: %s\nVisual Perfusion: %.1f / 100  •  Capture Quality: %s\nRedness %.3f  •  Cyanosis %.3f  •  Pallor %.3f%s",
+                            "Triage: %s\nVisual Perfusion: %.1f / 100  •  Quality: %s\nRedness %.3f  •  Cyanosis %.3f  •  Pallor %.3f%s",
                             triage, score, qStatus, scannedRedness, scannedCyanosis, scannedPallor, warnText
                         )
                     } else {
@@ -636,41 +779,53 @@ class DashboardActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
+                endSync()
                 mainHandler.post { tvVisionResult.text = "Image error: ${e.message}" }
             }
         }
     }
 
-    private fun selectedPatient(): PatientItem? {
-        val idx = spinnerPatient.selectedItemPosition
-        return if (idx in patientsList.indices) patientsList[idx] else null
-    }
-
     private fun submitSensorReading() {
         val patient = selectedPatient()
         if (patient == null) {
-            toast("Add a patient in the Ward tab first.")
+            showNotice("Add a patient in the Ward tab first.")
             return
         }
 
-        val irTemp = findViewById<TextInputEditText>(R.id.et_ir_temp).text?.toString()?.toDoubleOrNull()
-        val ctrlTemp = findViewById<TextInputEditText>(R.id.et_ctrl_temp).text?.toString()?.toDoubleOrNull()
-        val spo2 = findViewById<TextInputEditText>(R.id.et_spo2).text?.toString()?.toDoubleOrNull()
-        val doppler = findViewById<TextInputEditText>(R.id.et_doppler).text?.toString()?.toDoubleOrNull()
-        val hours = findViewById<TextInputEditText>(R.id.et_hours).text?.toString()?.toDoubleOrNull() ?: 12.0
+        listOf(tilIrTemp, tilCtrlTemp, tilSpo2, tilDoppler).forEach { it.error = null }
 
-        if (irTemp == null || ctrlTemp == null || spo2 == null || doppler == null) {
-            toast("Enter valid numeric sensor values.")
-            return
+        val irTemp = etIrTemp.text?.toString()?.trim()?.toDoubleOrNull()
+        val ctrlTemp = etCtrlTemp.text?.toString()?.trim()?.toDoubleOrNull()
+        val spo2 = etSpo2.text?.toString()?.trim()?.toDoubleOrNull()
+        val doppler = etDoppler.text?.toString()?.trim()?.toDoubleOrNull()
+        val hours = etHours.text?.toString()?.trim()?.toDoubleOrNull() ?: patient.hoursPostOp
+
+        var ok = true
+        if (irTemp == null) {
+            tilIrTemp.error = "Required"
+            ok = false
         }
+        if (ctrlTemp == null) {
+            tilCtrlTemp.error = "Required"
+            ok = false
+        }
+        if (spo2 == null) {
+            tilSpo2.error = "Required"
+            ok = false
+        }
+        if (doppler == null) {
+            tilDoppler.error = "Required"
+            ok = false
+        }
+        if (!ok) return
 
-        progressSync.visibility = View.VISIBLE
+        beginSync()
         executor.execute {
             val payload = JSONObject().apply {
-                put("ir_flap_temp_c", irTemp)
-                put("control_skin_temp_c", ctrlTemp)
-                put("spo2_pct", spo2)
-                put("doppler_flow_cm_s", doppler)
+                put("ir_flap_temp_c", irTemp!!)
+                put("control_skin_temp_c", ctrlTemp!!)
+                put("spo2_pct", spo2!!)
+                put("doppler_flow_cm_s", doppler!!)
                 put("hours_post_op", hours)
                 put("visual_redness_index", scannedRedness)
                 put("visual_cyanosis_index", scannedCyanosis)
@@ -683,14 +838,14 @@ class DashboardActivity : AppCompatActivity() {
                 payload,
                 authToken
             )
+            endSync()
             mainHandler.post {
-                progressSync.visibility = View.GONE
                 if (res.ok) {
                     showPredictionCard(res.json.getJSONObject("reading"))
                     fetchPatients()
                     fetchAlerts(silent = false)
                 } else {
-                    toast("Assessment failed: ${res.errorMessage}")
+                    showNotice("Assessment failed: ${res.errorMessage}")
                 }
             }
         }
@@ -699,10 +854,10 @@ class DashboardActivity : AppCompatActivity() {
     private fun triggerSimulation(scenario: String, step: Int) {
         val patient = selectedPatient()
         if (patient == null) {
-            toast("Add a patient in the Ward tab first.")
+            showNotice("Add a patient in the Ward tab first.")
             return
         }
-        progressSync.visibility = View.VISIBLE
+        beginSync()
         executor.execute {
             val payload = JSONObject().put("scenario", scenario).put("step", step)
             val res = ApiClient.request(
@@ -712,14 +867,14 @@ class DashboardActivity : AppCompatActivity() {
                 payload,
                 authToken
             )
+            endSync()
             mainHandler.post {
-                progressSync.visibility = View.GONE
                 if (res.ok) {
                     showPredictionCard(res.json.getJSONObject("reading"))
                     fetchPatients()
                     fetchAlerts(silent = false)
                 } else {
-                    toast("Simulation failed: ${res.errorMessage}")
+                    showNotice("Simulation failed: ${res.errorMessage}")
                 }
             }
         }
@@ -747,18 +902,21 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun fetchAlerts(silent: Boolean) {
         if (!alertPollInFlight.compareAndSet(false, true)) return
+        if (!silent) beginSync()
         executor.execute {
             val res = ApiClient.request(serverUrl(), "/mobile/alerts", "GET", null, authToken)
             alertPollInFlight.set(false)
+            if (!silent) endSync()
             mainHandler.post {
                 if (!res.ok) {
                     if (!silent && !handleUnauthorized(res.statusCode)) {
-                        toast("Alert sync: ${res.errorMessage}")
+                        showNotice("Alert sync: ${res.errorMessage}")
                     }
                     return@post
                 }
                 val unack = res.json.optInt("unacknowledged_count", 0)
                 val alertsArr = res.json.optJSONArray("alerts") ?: JSONArray()
+                tvStatAlerts.text = unack.toString()
 
                 if (unack > 0) {
                     tvLiveBanner.visibility = View.VISIBLE
@@ -796,7 +954,7 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun acknowledgeAlert(readingId: Int) {
-        progressSync.visibility = View.VISIBLE
+        beginSync()
         executor.execute {
             val res = ApiClient.request(
                 serverUrl(),
@@ -805,14 +963,14 @@ class DashboardActivity : AppCompatActivity() {
                 JSONObject(),
                 authToken
             )
+            endSync()
             mainHandler.post {
-                progressSync.visibility = View.GONE
                 if (res.ok) {
-                    toast("Alert #$readingId acknowledged.")
+                    showNotice("Alert #$readingId acknowledged.")
                     lastAlertsSignature = ""
                     fetchAlerts(silent = false)
                 } else {
-                    toast("Failed: ${res.errorMessage}")
+                    showNotice("Acknowledge failed: ${res.errorMessage}")
                 }
             }
         }
@@ -828,92 +986,259 @@ class DashboardActivity : AppCompatActivity() {
                     userName = userObj.optString("full_name", userName)
                     userRole = userObj.optString("role", userRole)
                     userEmail = userObj.optString("email", userEmail)
-                    populateStaticProfile()
+                    val rawPhoto = userObj.optString("profile_photo", "")
+                    userPhotoDataUri = if (rawPhoto == "null") "" else rawPhoto
+                    getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putString("user_photo", userPhotoDataUri)
+                        .apply()
+                    populateProfileHeader()
                 }
-                val ver = res.json.optString("model_version", "v1.0")
-                val acc = res.json.optDouble("model_accuracy", 0.0) * 100.0
-                val pCount = res.json.optInt("patients_count", 0)
-                val aCount = res.json.optInt("unacknowledged_alerts", 0)
-                tvProfileSystemStats.text = String.format(
-                    Locale.US,
-                    "AI Model: %s (%.1f%% validation accuracy)\nMonitored Ward Patients: %d\nUnacknowledged Alerts: %d",
-                    ver, acc, pCount, aCount
-                )
+                tvStatModel.text = res.json.optString("model_version", "v1.0")
+                tvStatPatients.text = res.json.optInt("patients_count", 0).toString()
+                tvStatAlerts.text = res.json.optInt("unacknowledged_alerts", 0).toString()
             }
         }
     }
 
-    private fun showLogOutcomeDialog() {
-        if (patientsList.isEmpty()) {
-            toast("Add a patient in the Ward tab first.")
-            return
+    private fun showProfilePhotoOptions() {
+        val items = if (userPhotoDataUri.isNotBlank()) {
+            arrayOf("Choose from Gallery", "Take Photo", "Remove Photo")
+        } else {
+            arrayOf("Choose from Gallery", "Take Photo")
         }
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(52, 24, 52, 8)
-        }
-        val spPatient = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@DashboardActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                patientsList.map { "${it.fullName} (${it.mrn})" }
-            )
-        }
-        val outcomes = listOf("Normal", "Venous Compromise", "Arterial Compromise")
-        val spOutcome = Spinner(this).apply {
-            adapter = ArrayAdapter(this@DashboardActivity, android.R.layout.simple_spinner_dropdown_item, outcomes)
-        }
-        val etNotes = EditText(this).apply {
-            hint = "Surgeon intraoperative / clinical notes"
-            contentDescription = "outcome_notes_input"
-        }
-
-        container.addView(spPatient)
-        container.addView(spOutcome)
-        container.addView(etNotes)
-
-        val scrollWrap = ScrollView(this).apply { addView(container) }
-
         MaterialAlertDialogBuilder(this)
-            .setTitle("Log Verified Post-Op Outcome")
-            .setView(scrollWrap)
-            .setPositiveButton("Save Outcome") { _, _ ->
-                val patient = patientsList[spPatient.selectedItemPosition]
-                val body = JSONObject().apply {
-                    put("patient_id", patient.id)
-                    put("verified_outcome", spOutcome.selectedItem.toString())
-                    put("surgeon_notes", etNotes.text.toString().trim())
-                }
-                progressSync.visibility = View.VISIBLE
-                executor.execute {
-                    val res = ApiClient.request(serverUrl(), "/mobile/outcomes", "POST", body, authToken)
-                    mainHandler.post {
-                        progressSync.visibility = View.GONE
-                        if (res.ok) {
-                            toast("Verified outcome saved for retraining.")
-                        } else {
-                            toast("Failed: ${res.errorMessage}")
+            .setTitle("Profile Photo")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> profileGalleryLauncher.launch("image/*")
+                    1 -> {
+                        try {
+                            val uri = createTempCameraUri("avatar")
+                            pendingProfileCameraUri = uri
+                            profileCameraLauncher.launch(uri)
+                        } catch (e: Exception) {
+                            showNotice("Camera unavailable: ${e.message}")
                         }
                     }
+                    2 -> removeProfilePhoto()
                 }
             }
-            .setNegativeButton("Cancel", null)
             .show()
     }
 
+    private fun uploadProfilePhotoUri(uri: Uri) {
+        beginSync()
+        executor.execute {
+            try {
+                val bmp = ImageUtils.decodeScaledRotatedBitmap(this, uri, 320)
+                if (bmp == null) {
+                    endSync()
+                    mainHandler.post { showNotice("Could not load selected photo.") }
+                    return@execute
+                }
+                val b64 = ImageUtils.toBase64Jpeg(bmp, 85)
+                val res = ApiClient.request(
+                    serverUrl(),
+                    "/mobile/profile/photo",
+                    "POST",
+                    JSONObject().put("image_base64", b64),
+                    authToken
+                )
+                endSync()
+                mainHandler.post {
+                    if (res.ok) {
+                        val photo = res.json.optJSONObject("user")?.optString("profile_photo", "").orEmpty()
+                        userPhotoDataUri = if (photo == "null") "" else photo
+                        getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+                            .edit()
+                            .putString("user_photo", userPhotoDataUri)
+                            .apply()
+                        populateProfileHeader()
+                        showNotice("Profile photo updated.")
+                    } else {
+                        showNotice("Photo upload failed: ${res.errorMessage}")
+                    }
+                }
+            } catch (e: Exception) {
+                endSync()
+                mainHandler.post { showNotice("Photo error: ${e.message}") }
+            }
+        }
+    }
+
+    private fun removeProfilePhoto() {
+        beginSync()
+        executor.execute {
+            val res = ApiClient.request(
+                serverUrl(),
+                "/mobile/profile/photo",
+                "POST",
+                JSONObject().put("remove", true),
+                authToken
+            )
+            endSync()
+            mainHandler.post {
+                if (res.ok) {
+                    userPhotoDataUri = ""
+                    getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .remove("user_photo")
+                        .apply()
+                    populateProfileHeader()
+                    showNotice("Profile photo removed.")
+                } else {
+                    showNotice("Failed: ${res.errorMessage}")
+                }
+            }
+        }
+    }
+
+    private fun showLogOutcomeSheet() {
+        if (patientsList.isEmpty()) {
+            showNotice("Add a patient in the Ward tab first.")
+            return
+        }
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_log_outcome, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val spPatient = view.findViewById<Spinner>(R.id.spinner_outcome_patient_sheet)
+        spPatient.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            patientsList.map { "${it.fullName} (${it.mrn})" }
+        )
+        val chipGroup = view.findViewById<ChipGroup>(R.id.chip_group_outcome)
+        val etNotes = view.findViewById<TextInputEditText>(R.id.et_outcome_notes_sheet)
+        val btnSave = view.findViewById<MaterialButton>(R.id.btn_save_outcome_sheet)
+
+        btnSave.setOnClickListener {
+            val patient = patientsList[spPatient.selectedItemPosition]
+            val outcome = view.findViewById<Chip>(chipGroup.checkedChipId)?.text?.toString() ?: "Normal"
+            val notes = etNotes.text?.toString()?.trim().orEmpty()
+
+            btnSave.isEnabled = false
+            beginSync()
+            executor.execute {
+                val body = JSONObject().apply {
+                    put("patient_id", patient.id)
+                    put("verified_outcome", outcome)
+                    put("surgeon_notes", notes)
+                }
+                val res = ApiClient.request(serverUrl(), "/mobile/outcomes", "POST", body, authToken)
+                endSync()
+                mainHandler.post {
+                    btnSave.isEnabled = true
+                    if (res.ok) {
+                        sheet.dismiss()
+                        showNotice("Verified outcome saved for continuous learning.")
+                    } else {
+                        showNotice("Failed: ${res.errorMessage}")
+                    }
+                }
+            }
+        }
+        sheet.show()
+    }
+
+    private fun showChangePasswordSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_change_password, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val tilCurr = view.findViewById<TextInputLayout>(R.id.til_curr_pw)
+        val tilNew = view.findViewById<TextInputLayout>(R.id.til_new_pw)
+        val etCurr = view.findViewById<TextInputEditText>(R.id.et_curr_pw)
+        val etNew = view.findViewById<TextInputEditText>(R.id.et_new_pw)
+        val btnUpdate = view.findViewById<MaterialButton>(R.id.btn_confirm_change_pw)
+
+        btnUpdate.setOnClickListener {
+            tilCurr.error = null
+            tilNew.error = null
+            val curr = etCurr.text?.toString().orEmpty()
+            val next = etNew.text?.toString().orEmpty()
+            if (curr.isBlank()) {
+                tilCurr.error = "Enter current password"
+                return@setOnClickListener
+            }
+            if (next.length < 8) {
+                tilNew.error = "Minimum 8 characters"
+                return@setOnClickListener
+            }
+
+            btnUpdate.isEnabled = false
+            beginSync()
+            executor.execute {
+                val body = JSONObject()
+                    .put("current_password", curr)
+                    .put("new_password", next)
+                val res = ApiClient.request(serverUrl(), "/mobile/profile/password", "POST", body, authToken)
+                endSync()
+                mainHandler.post {
+                    btnUpdate.isEnabled = true
+                    if (res.ok) {
+                        sheet.dismiss()
+                        showNotice("Password updated.")
+                    } else {
+                        tilCurr.error = res.errorMessage
+                    }
+                }
+            }
+        }
+        sheet.show()
+    }
+
+    private fun showConnectionModeSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_connection_mode, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val cloudCard = view.findViewById<MaterialCardView>(R.id.option_live_cloud)
+        val usbCard = view.findViewById<MaterialCardView>(R.id.option_local_usb)
+
+        val usb = ApiClient.isLocalUsbMode(this)
+        val activeColor = Color.parseColor("#0F4C81")
+        val idleColor = Color.parseColor("#E2E8F0")
+        cloudCard.strokeColor = if (!usb) activeColor else idleColor
+        usbCard.strokeColor = if (usb) activeColor else idleColor
+
+        cloudCard.setOnClickListener {
+            ApiClient.setLocalUsbMode(this, false)
+            updateServerModeLabel()
+            sheet.dismiss()
+            showNotice("Switched to Live Cloud")
+            syncAll()
+        }
+        usbCard.setOnClickListener {
+            ApiClient.setLocalUsbMode(this, true)
+            updateServerModeLabel()
+            sheet.dismiss()
+            showNotice("Switched to Local USB Viva Mode")
+            syncAll()
+        }
+        sheet.show()
+    }
+
     private fun loadSampleCases() {
-        progressSync.visibility = View.VISIBLE
+        beginSync()
         executor.execute {
             val res = ApiClient.request(serverUrl(), "/mobile/ward/load-samples", "POST", JSONObject(), authToken)
+            endSync()
             mainHandler.post {
-                progressSync.visibility = View.GONE
                 if (res.ok) {
                     val created = res.json.optInt("created_count", 0)
-                    toast(if (created > 0) "Loaded $created sample OMFS cases." else "Sample cases already in ward.")
+                    showNotice(if (created > 0) "Loaded $created sample OMFS cases." else "Sample cases already in ward.")
                     syncAll()
                     bottomNav.selectedItemId = R.id.nav_ward
                 } else {
-                    toast("Failed: ${res.errorMessage}")
+                    showNotice("Failed: ${res.errorMessage}")
                 }
             }
         }
@@ -922,64 +1247,26 @@ class DashboardActivity : AppCompatActivity() {
     private fun confirmClearWard() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Clear Entire Ward?")
-            .setMessage("This will permanently remove all patient records, readings, and alerts from the active database.")
+            .setMessage("This removes all patient records, readings, and alerts from the active database.")
             .setPositiveButton("Clear Ward") { _, _ ->
-                progressSync.visibility = View.VISIBLE
+                beginSync()
                 executor.execute {
                     val res = ApiClient.request(serverUrl(), "/mobile/ward/clear", "POST", JSONObject(), authToken)
+                    endSync()
                     mainHandler.post {
-                        progressSync.visibility = View.GONE
                         if (res.ok) {
-                            toast("Ward cleared.")
+                            showNotice("Ward cleared.")
                             lastAlertsSignature = ""
                             syncAll()
                             bottomNav.selectedItemId = R.id.nav_ward
                         } else {
-                            toast("Failed: ${res.errorMessage}")
+                            showNotice("Failed: ${res.errorMessage}")
                         }
                     }
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
-
-    private fun showChangePasswordDialog() {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(52, 24, 52, 8)
-        }
-        val etCurr = EditText(this).apply {
-            hint = "Current Password"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        val etNew = EditText(this).apply {
-            hint = "New Password (8+ chars)"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        container.addView(etCurr)
-        container.addView(etNew)
-
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Change Password")
-            .setView(container)
-            .setPositiveButton("Update") { _, _ ->
-                val body = JSONObject()
-                    .put("current_password", etCurr.text.toString())
-                    .put("new_password", etNew.text.toString())
-                executor.execute {
-                    val res = ApiClient.request(serverUrl(), "/mobile/profile/password", "POST", body, authToken)
-                    mainHandler.post {
-                        toast(if (res.ok) "Password updated." else res.errorMessage)
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun toast(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun createNotificationChannel() {

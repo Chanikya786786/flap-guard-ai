@@ -1,9 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Surgeon Alerts | FlapGuard AI{% endblock %}
 {% block content %}
+<div class="page-header">
+  <div>
+    <h1>Real-Time Surgeon Alert Log</h1>
+    <span class="muted">High and Critical venous/arterial compromise alerts sync live with Android notifications.</span>
+  </div>
+</div>
+
 <div class="card">
-  <h2>Real-Time Surgeon Alert Log</h2>
-  <p class="muted">Every High or Critical venous/arterial prediction automatically appears here and pushes to the surgeon's Android phone.</p>
   <div class="table-wrap">
     <table id="alerts-table">
       <thead>
@@ -27,7 +32,7 @@
             {% if a.alert_acknowledged %}
               <span class="badge badge-low">Acknowledged by {{ a.acknowledged_by }}</span>
             {% else %}
-              <span class="badge badge-critical">Pending Surgeon Review</span>
+              <span class="badge badge-critical">Pending Review</span>
             {% endif %}
           </td>
           <td>
@@ -41,7 +46,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="muted">No active compromise alerts recorded.</td></tr>
+        <tr><td colspan="6" class="muted" style="text-align:center;padding:28px;">All clear &mdash; no active flap compromise alerts recorded.</td></tr>
         {% endfor %}
       </tbody>
     </table>

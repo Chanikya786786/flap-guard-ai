@@ -70,19 +70,19 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="ir-temp-input">IR Flap Temp (&deg;C)</label>
-          <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required value="{{ latest.ir_flap_temp_c if latest else 36.2 }}">
+          <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required placeholder="e.g., 36.2" value="{{ latest.ir_flap_temp_c if latest else '' }}">
         </div>
         <div class="form-group">
           <label for="ctrl-temp-input">Control Skin Temp (&deg;C)</label>
-          <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required value="{{ latest.control_skin_temp_c if latest else 36.7 }}">
+          <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required placeholder="e.g., 36.7" value="{{ latest.control_skin_temp_c if latest else '' }}">
         </div>
         <div class="form-group">
           <label for="spo2-input">Tissue SpO<sub>2</sub> (%)</label>
-          <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required value="{{ latest.spo2_pct if latest else 96.5 }}">
+          <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required placeholder="e.g., 96.5" value="{{ latest.spo2_pct if latest else '' }}">
         </div>
         <div class="form-group">
           <label for="doppler-input">Doppler Flow (cm/s)</label>
-          <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required value="{{ latest.doppler_flow_cm_s if latest else 20.5 }}">
+          <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required placeholder="e.g., 20.5" value="{{ latest.doppler_flow_cm_s if latest else '' }}">
         </div>
         <div class="form-group">
           <label for="hours-input">Hours Post-Op</label>

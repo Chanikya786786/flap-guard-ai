@@ -8,37 +8,187 @@
     android:clickable="true"
     android:focusable="true"
     app:cardBackgroundColor="@color/fg_surface"
-    app:cardCornerRadius="16dp"
+    app:cardCornerRadius="18dp"
     app:cardElevation="1dp"
     app:strokeColor="@color/fg_border"
     app:strokeWidth="1dp">
 
-    <LinearLayout android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="vertical" android:padding="16dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <LinearLayout android:gravity="center_vertical" android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <LinearLayout android:layout_height="wrap_content" android:layout_weight="1" android:layout_width="0dp" android:orientation="vertical">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <TextView android:id="@+id/tv_patient_name" android:layout_height="wrap_content" android:layout_width="wrap_content" android:text="Patient Name" android:textColor="@color/fg_text_primary" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/tv_patient_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Patient Name"
+                    android:textColor="@color/fg_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
 
-                <TextView android:id="@+id/tv_patient_mrn" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:layout_width="wrap_content" android:text="MRN • Age • Post-Op" android:textColor="@color/fg_text_muted" android:textSize="12sp"/>
+                <TextView
+                    android:id="@+id/tv_patient_mrn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="MRN • Age • Post-Op"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="12sp" />
             </LinearLayout>
 
-            <TextView android:background="@drawable/bg_badge" android:id="@+id/tv_risk_badge" android:layout_height="wrap_content" android:layout_width="wrap_content" android:paddingBottom="4dp" android:paddingEnd="10dp" android:paddingStart="10dp" android:paddingTop="4dp" android:text="LOW" android:textColor="@color/fg_success" android:textSize="11sp" android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/tv_risk_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge"
+                android:paddingStart="10dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="4dp"
+                android:text="LOW"
+                android:textColor="@color/fg_success"
+                android:textSize="11sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <TextView android:id="@+id/tv_patient_flap" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:layout_width="match_parent" android:text="Flap Type • Surgery Site" android:textColor="@color/fg_text_secondary" android:textSize="13sp"/>
+        <TextView
+            android:id="@+id/tv_patient_flap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Flap Type — Surgery Site"
+            android:textColor="@color/fg_text_secondary"
+            android:textSize="13sp" />
 
-        <TextView android:id="@+id/tv_patient_vitals" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:layout_width="match_parent" android:text="No sensor reading logged yet" android:textColor="@color/fg_text_muted" android:textSize="12sp"/>
+        <!-- Clean 3-Tile Vitals Row -->
+        <LinearLayout
+            android:id="@+id/layout_vitals_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
 
-        <LinearLayout android:gravity="end|center_vertical" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:layout_width="match_parent" android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric_tile"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="7dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ΔT"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/tv_metric_delta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--"
+                    android:textColor="@color/fg_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric_tile"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="7dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SpO₂"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/tv_metric_spo2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--"
+                    android:textColor="@color/fg_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_metric_tile"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="7dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Doppler"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/tv_metric_doppler"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--"
+                    android:textColor="@color/fg_text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_patient_vitals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Awaiting first postoperative flap assessment"
+            android:textColor="@color/fg_text_muted"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_card_assess"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
-                android:layout_height="38dp"
-                android:layout_marginEnd="8dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
                 android:minHeight="0dp"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
@@ -46,10 +196,18 @@
                 android:textAllCaps="false"
                 android:textColor="@color/fg_primary"
                 android:textSize="12sp"
+                android:textStyle="bold"
                 app:backgroundTint="@color/fg_primary_soft"
                 app:cornerRadius="10dp" />
 
-            <ImageButton android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Remove patient" android:id="@+id/btn_card_delete" android:layout_height="36dp" android:layout_width="36dp" android:src="@drawable/ic_delete" app:tint="@color/fg_text_muted"/>
+            <ImageButton
+                android:id="@+id/btn_card_delete"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Remove patient"
+                android:src="@drawable/ic_delete"
+                app:tint="@color/fg_text_muted" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

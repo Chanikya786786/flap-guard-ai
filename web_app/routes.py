@@ -7,6 +7,9 @@ and database persistence execute strictly on this self-hosted server.
 import base64
 import json
 import re
+
+import cv2
+import numpy as np
 from functools import wraps
 from typing import Optional, Tuple
 
@@ -142,7 +145,7 @@ def _save_prediction_reading(
         alert_required=pred["alert_required"],
         alert_message=pred["alert_message"],
         clinical_notes_json=json.dumps(pred["clinical_notes"]),
-        source_mode=source_mode,
+        source_mode=str(source_mode or "Bedside + Camera")[:80],
         model_version=pred["model_version"],
     )
     patient.hours_post_op = feat["hours_post_op"]
@@ -288,6 +291,51 @@ def profile():
         patients_count=Patient.query.count(),
         readings_count=SensorReading.query.count(),
     )
+
+
+def _encode_profile_avatar(image_bytes: bytes) -> str:
+    """Validate, center-crop to 256x256 JPEG, and return a compact base64 data URI."""
+    if not image_bytes:
+        raise ValueError("Empty image uploaded.")
+    if len(image_bytes) > 6 * 1024 * 1024:
+        raise ValueError("Profile photo must be under 6 MB.")
+    arr = np.frombuffer(image_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None or img.size == 0:
+        raise ValueError("Unsupported or corrupted image file.")
+    h, w = img.shape[:2]
+    side = min(h, w)
+    y0 = (h - side) // 2
+    x0 = (w - side) // 2
+    cropped = img[y0 : y0 + side, x0 : x0 + side]
+    resized = cv2.resize(cropped, (256, 256), interpolation=cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 84])
+    if not ok:
+        raise ValueError("Could not encode profile photo.")
+    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
+
+
+@bp.route("/profile/photo", methods=["POST"])
+@login_required
+def profile_update_photo():
+    if request.form.get("action") == "remove":
+        current_user.profile_photo = None
+        db.session.commit()
+        flash("Profile photo removed.", "success")
+        return redirect(url_for("main.profile"))
+
+    photo_file = request.files.get("photo")
+    if not photo_file or not photo_file.filename:
+        flash("Choose an image file to upload.", "warning")
+        return redirect(url_for("main.profile"))
+    try:
+        current_user.profile_photo = _encode_profile_avatar(photo_file.read())
+        db.session.commit()
+        flash("Profile photo updated.", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    return redirect(url_for("main.profile"))
 
 
 @bp.route("/profile/load-samples", methods=["POST"])
@@ -461,10 +509,10 @@ def add_reading(patient_id: int):
         control_temp = float(request.form.get("control_skin_temp_c", ""))
         spo2 = float(request.form.get("spo2_pct", ""))
         doppler = float(request.form.get("doppler_flow_cm_s", ""))
-        hours_post_op = float(request.form.get("hours_post_op", patient.hours_post_op))
-        redness = float(request.form.get("visual_redness_index", "0.14"))
-        cyanosis = float(request.form.get("visual_cyanosis_index", "0.03"))
-        pallor = float(request.form.get("visual_pallor_index", "0.42"))
+        hours_post_op = float(request.form.get("hours_post_op") or patient.hours_post_op)
+        redness = float(request.form.get("visual_redness_index") or 0.14)
+        cyanosis = float(request.form.get("visual_cyanosis_index") or 0.03)
+        pallor = float(request.form.get("visual_pallor_index") or 0.42)
         source_mode = request.form.get("source_mode", "Bedside + Camera").strip() or "Bedside + Camera"
     except ValueError:
         flash("All sensor measurements must be valid numeric values.", "danger")
@@ -852,8 +900,13 @@ def mobile_simulate(patient_id: int):
     if scenario not in SCENARIOS:
         return jsonify({"error": "Invalid scenario."}), 400
     sim = generate_simulated_reading(scenario=scenario, step=step)
+    sim_label = {
+        "normal": "Normal",
+        "venous_deteriorating": "Venous",
+        "arterial_deteriorating": "Arterial",
+    }.get(scenario, scenario)
     reading = _save_prediction_reading(
-        patient, request.mobile_user.id, sim["prediction"], f"Mobile Simulator ({scenario})"
+        patient, request.mobile_user.id, sim["prediction"], f"Mobile Simulator ({sim_label})"
     )
     return jsonify({"reading": reading.to_dict()}), 201
 
@@ -972,3 +1025,34 @@ def mobile_load_samples():
 def mobile_clear_ward():
     removed = clear_all_ward_patients()
     return jsonify({"status": "cleared", "removed_count": removed})
+
+
+@bp.route("/mobile/profile/photo", methods=["POST"])
+@mobile_auth_required
+def mobile_update_profile_photo():
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        if data.get("remove") is True:
+            request.mobile_user.profile_photo = None
+            db.session.commit()
+            return jsonify({"status": "removed", "user": request.mobile_user.to_dict()})
+        raw_b64 = str(data.get("image_base64", ""))
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        if not raw_b64:
+            return jsonify({"error": "No profile image provided."}), 400
+        try:
+            image_bytes = base64.b64decode(raw_b64)
+        except Exception:
+            return jsonify({"error": "Invalid base64 image."}), 400
+    elif "photo" in request.files and request.files["photo"].filename:
+        image_bytes = request.files["photo"].read()
+    else:
+        return jsonify({"error": "No profile image provided."}), 400
+
+    try:
+        request.mobile_user.profile_photo = _encode_profile_avatar(image_bytes)
+        db.session.commit()
+        return jsonify({"status": "updated", "user": request.mobile_user.to_dict()})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400

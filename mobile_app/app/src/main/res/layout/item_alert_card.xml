@@ -6,33 +6,78 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     app:cardBackgroundColor="@color/fg_surface"
-    app:cardCornerRadius="14dp"
+    app:cardCornerRadius="16dp"
     app:cardElevation="1dp"
     app:strokeColor="@color/fg_border"
     app:strokeWidth="1dp">
 
-    <LinearLayout android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="vertical" android:padding="14dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <LinearLayout android:gravity="center_vertical" android:layout_height="wrap_content" android:layout_width="match_parent" android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView android:id="@+id/tv_alert_patient" android:layout_height="wrap_content" android:layout_weight="1" android:layout_width="0dp" android:text="Patient Name" android:textColor="@color/fg_text_primary" android:textSize="15sp" android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/tv_alert_patient"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Patient Name"
+                android:textColor="@color/fg_text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
-            <TextView android:background="@drawable/bg_badge" android:id="@+id/tv_alert_tier" android:layout_height="wrap_content" android:layout_width="wrap_content" android:paddingBottom="3dp" android:paddingEnd="10dp" android:paddingStart="10dp" android:paddingTop="3dp" android:text="CRITICAL" android:textSize="11sp" android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/tv_alert_tier"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge"
+                android:paddingStart="10dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="3dp"
+                android:text="CRITICAL"
+                android:textSize="11sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <TextView android:id="@+id/tv_alert_message" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:layout_width="match_parent" android:text="Alert message" android:textColor="@color/fg_text_secondary" android:textSize="13sp"/>
+        <TextView
+            android:id="@+id/tv_alert_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Alert message"
+            android:textColor="@color/fg_text_secondary"
+            android:textSize="13sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_ack_alert"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginTop="10dp"
+            android:layout_height="38dp"
+            android:layout_marginTop="12dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:text="Acknowledge Alert"
             android:textAllCaps="false"
             android:textSize="12sp"
             app:backgroundTint="@color/fg_danger"
             app:cornerRadius="10dp" />
 
-        <TextView android:id="@+id/tv_alert_acked_by" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:layout_width="wrap_content" android:text="Acknowledged" android:textColor="@color/fg_success" android:textSize="12sp" android:textStyle="bold" android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tv_alert_acked_by"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Acknowledged"
+            android:textColor="@color/fg_success"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

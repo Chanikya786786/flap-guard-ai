@@ -1,14 +1,16 @@
 """
 FlapGuard AI Flask Application Factory.
-Hardened for Neon Serverless PostgreSQL and local SQLite with empty-start ward support.
+Hardened for Neon Serverless PostgreSQL and local SQLite with safe schema migrations,
+empty-start ward support, and clean JSON error handling for mobile clients.
 """
 
 import os
 import secrets
 from typing import Optional
 
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_login import LoginManager
+from sqlalchemy import inspect, text
 
 from ml_engine.model_service import load_model_and_metadata
 from web_app.models import ModelVersionLog, User, db
@@ -57,6 +59,32 @@ def _resolve_database_uri(base_dir: str) -> str:
         return env_url
     db_path = os.path.join(base_dir, "flap_guard.db")
     return f"sqlite:///{db_path}"
+
+
+def _run_safe_schema_migrations() -> None:
+    """Safely upgrade existing Neon PostgreSQL / SQLite tables without data loss."""
+    try:
+        inspector = inspect(db.engine)
+        tables = set(inspector.get_table_names())
+        dialect = db.engine.dialect.name
+
+        if "users" in tables:
+            user_cols = {c["name"] for c in inspector.get_columns("users")}
+            if "profile_photo" not in user_cols:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN profile_photo TEXT"))
+                db.session.commit()
+
+        if "sensor_readings" in tables and dialect == "postgresql":
+            cols = {c["name"]: c for c in inspector.get_columns("sensor_readings")}
+            sm_col = cols.get("source_mode")
+            col_len = getattr(sm_col["type"], "length", None) if sm_col else None
+            if col_len is not None and col_len < 80:
+                db.session.execute(
+                    text("ALTER TABLE sensor_readings ALTER COLUMN source_mode TYPE VARCHAR(80)")
+                )
+                db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 def seed_initial_data(include_sample_patients: bool = False) -> None:
@@ -121,7 +149,6 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     if test_config:
         app.config.update(test_config)
 
-    # Apply resilient pooling for remote PostgreSQL (Neon / Render) without breaking SQLite tests
     active_uri = app.config["SQLALCHEMY_DATABASE_URI"]
     if active_uri.startswith("postgresql"):
         app.config.setdefault(
@@ -144,6 +171,13 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
 
     app.register_blueprint(main_bp)
 
+    @app.errorhandler(500)
+    def handle_internal_error(err):
+        db.session.rollback()
+        if request.path.startswith("/mobile/"):
+            return jsonify({"error": "Server encountered an internal error. Please retry."}), 500
+        return "Internal Server Error", 500
+
     @app.after_request
     def apply_security_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -159,6 +193,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
 
     with app.app_context():
         db.create_all()
+        _run_safe_schema_migrations()
         if not app.config.get("SKIP_SEED"):
             seed_patients = bool(
                 app.config.get("SEED_SAMPLE_PATIENTS")

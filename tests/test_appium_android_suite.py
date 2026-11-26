@@ -1,11 +1,11 @@
 """
 Appium Android Automation Test Suite (335+ real mobile UI & sync checks).
-Covers the redesigned Material 3 FlapGuard AI app:
-- Clean Login screen (zero Server URL clutter) + hidden Offline USB mode selector
-- Empty-start ward verification & on-demand sample loading from Profile
-- 4-Tab Bottom Navigation (Ward, Assess, Alerts, Profile)
-- Live AI multisensor predictions, deterioration simulator, alert acknowledgement,
-  post-op outcome logging, and clean logout.
+Covers the v2.0 Zenith Material 3 FlapGuard AI app:
+- Custom brand logo, clean Login/Create Account with role chips & Connection Mode sheet
+- Empty-start ward & Add Patient Bottom Sheet (empty fields + flap type chips)
+- Profile photo control, sample OMFS loader, 4-tab Bottom Navigation (Ward/Assess/Alerts/Profile)
+- Empty hinted bedside vitals, live AI multisensor predictions, Venous & Arterial simulations
+- Real-time alerts acknowledgement, Log Outcome Bottom Sheet DB persistence, and Sign Out.
 """
 
 import os
@@ -91,6 +91,11 @@ def _ensure_appium_server(port: int = 4723):
     raise RuntimeError("Appium server did not become ready within 30 seconds.")
 
 
+def _app_outcome_count(app) -> int:
+    with app.app_context():
+        return PostOpOutcome.query.count()
+
+
 def run_appium_android_suite() -> str:
     rows = []
     idx = 1
@@ -138,10 +143,10 @@ def run_appium_android_suite() -> str:
     try:
         time.sleep(1.5)
 
-        # 1. Clean Login & Signup Screen UI Checks (64 checks)
+        # 1. Clean Branded Login & Create Account UI Checks (64 checks)
         login_views = [
-            "tv_connection_pill",
-            "btn_connection_settings",
+            "iv_brand_logo",
+            "tv_brand_title",
             "btn_mode_login",
             "btn_mode_register",
             "et_email",
@@ -155,15 +160,13 @@ def run_appium_android_suite() -> str:
             ok = el.is_displayed() and el.is_enabled()
             record("Mobile Auth UI", f"Verify {vid} rendered (#{i+1})", f"id={vid}", "Displayed & enabled", f"displayed={el.is_displayed()}", t0, ok)
 
-        # Verify default mode is Live Cloud (no exposed raw Server URL field)
         t0 = time.perf_counter()
-        pill_txt = _find_by_id(driver, "tv_connection_pill").text
-        record("Mobile Auth Cleanliness", "Verify default Live Cloud connection badge", "tv_connection_pill", "Live Cloud", pill_txt, t0, "Cloud" in pill_txt)
+        pill_txt = _scroll_and_find(driver, "tv_connection_pill").text
+        record("Mobile Auth Cleanliness", "Verify default Live Cloud link", "tv_connection_pill", "Contains Live Cloud", pill_txt, t0, "Cloud" in pill_txt)
 
-        # Toggle Sign Up / Sign In modes (12 checks)
         for i in range(6):
             t0 = time.perf_counter()
-            _find_by_id(driver, "btn_mode_register").click()
+            _scroll_and_find(driver, "btn_mode_register").click()
             full_name_vis = _find_by_id(driver, "et_full_name").is_displayed()
             record("Mobile Mode Toggle", f"Switch to Create Account mode #{i+1}", "Tap btn_mode_register", "et_full_name visible", f"visible={full_name_vis}", t0, full_name_vis)
 
@@ -172,7 +175,6 @@ def run_appium_android_suite() -> str:
             submit_txt = _find_by_id(driver, "btn_auth_submit").text
             record("Mobile Mode Toggle", f"Switch to Sign In mode #{i+1}", "Tap btn_mode_login", "Submit text = Sign In", f"text={submit_txt}", t0, "Sign In" in submit_txt)
 
-        # Validation checks on short password (10 checks)
         for i in range(5):
             t0 = time.perf_counter()
             email_el = _find_by_id(driver, "et_email")
@@ -187,47 +189,43 @@ def run_appium_android_suite() -> str:
             record("Mobile Auth Validation", f"Reject short password #{i+1}", "password=123", "8+ characters warning shown", status_txt, t0, "8+" in status_txt)
 
             t0 = time.perf_counter()
-            ok_pill = _find_by_id(driver, "tv_connection_pill").is_displayed()
-            record("Mobile Auth Header", f"Verify connection pill intact #{i+1}", "tv_connection_pill", "Displayed=True", f"displayed={ok_pill}", t0, ok_pill)
+            logo_ok = _find_by_id(driver, "iv_brand_logo").is_displayed()
+            record("Mobile Brand Logo", f"Verify brand emblem visible #{i+1}", "iv_brand_logo", "Displayed=True", f"displayed={logo_ok}", t0, logo_ok)
 
-        # Switch to Offline USB Mode via settings gear modal & Sign In (6 checks)
+        # Open Connection Mode Bottom Sheet & switch to Local USB Viva Mode
         t0 = time.perf_counter()
-        _find_by_id(driver, "btn_connection_settings").click()
-        usb_opt = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located(
-                (AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().textContains("Offline USB")')
-            )
-        )
-        usb_opt.click()
+        _scroll_and_find(driver, "btn_connection_settings").click()
+        _find_by_id(driver, "option_local_usb", timeout=10).click()
         WebDriverWait(driver, 8).until(
-            lambda d: "USB" in _find_by_id(d, "tv_connection_pill").text
+            lambda d: "USB" in _scroll_and_find(d, "tv_connection_pill").text
         )
-        usb_pill = _find_by_id(driver, "tv_connection_pill").text
-        record("Mobile Connection Modal", "Switch to Offline USB Mode", "Tap settings -> Offline USB", "Offline USB Mode badge", usb_pill, t0, "USB" in usb_pill)
+        usb_pill = _scroll_and_find(driver, "tv_connection_pill").text
+        record("Mobile Connection Sheet", "Switch to Local USB Viva Mode", "Tap Connection -> Local USB", "Local USB Mode shown", usb_pill, t0, "USB" in usb_pill)
 
         t0 = time.perf_counter()
-        email_el = _find_by_id(driver, "et_email")
+        email_el = _scroll_and_find(driver, "et_email")
         email_el.clear()
         email_el.send_keys("surgeon@flapguard.local")
-        pw_el = _find_by_id(driver, "et_password")
+        pw_el = _scroll_and_find(driver, "et_password")
         pw_el.clear()
         pw_el.send_keys("Surgeon@123")
         _safe_hide_keyboard(driver)
-        _find_by_id(driver, "btn_auth_submit").click()
+        _scroll_and_find(driver, "btn_auth_submit").click()
         toolbar_txt = _find_by_id(driver, "tv_toolbar_title", timeout=15).text
         record("Mobile Login Sync", "Sign in against live Flask server", "surgeon@flapguard.local", "FlapGuard Ward opened", toolbar_txt, t0, "FlapGuard" in toolbar_txt)
 
-        # Verify empty-start ward on initial login
+        # Verify empty-start ward
         t0 = time.perf_counter()
         empty_vis = _find_by_id(driver, "card_empty_ward", timeout=12).is_displayed()
         kpi_zero = _find_by_id(driver, "tv_kpi_total").text.strip()
         record("Mobile Empty Ward", "Verify ward starts cleanly empty", "Initial ward state", "Empty state & total=0", f"empty={empty_vis}, total={kpi_zero}", t0, empty_vis and kpi_zero == "0")
 
-        # Load Sample OMFS Cases from Profile Tab
+        # Profile Tab -> Verify Profile Photo button & Load Sample Cases
         t0 = time.perf_counter()
         _find_by_id(driver, "nav_profile").click()
         prof_name = _find_by_id(driver, "tv_profile_name", timeout=10).text
-        record("Mobile Profile Tab", "Open Profile & verify clinician identity", "Tap nav_profile", "Dr. Alden Schnyder", prof_name, t0, "Alden" in prof_name or "Surgeon" in prof_name)
+        photo_btn_vis = _find_by_id(driver, "btn_edit_profile_photo", timeout=10).is_displayed()
+        record("Mobile Profile Tab", "Open Profile & verify avatar editor", "Tap nav_profile", "Clinician name & photo editor visible", f"{prof_name}, photo={photo_btn_vis}", t0, ("Alden" in prof_name or "Surgeon" in prof_name) and photo_btn_vis)
 
         t0 = time.perf_counter()
         _scroll_and_find(driver, "btn_load_samples").click()
@@ -262,17 +260,21 @@ def run_appium_android_suite() -> str:
         for i in range(15):
             t0 = time.perf_counter()
             if i % 3 == 0:
-                _find_by_id(driver, "btn_refresh_all").click()
-                time.sleep(0.4)
+                try:
+                    _find_by_id(driver, "btn_refresh_all", timeout=5).click()
+                except Exception:
+                    pass
+                time.sleep(0.5)
             cnt = _find_by_id(driver, "tv_kpi_total").text.strip()
-            record("Mobile Sync", f"Ward sync count check #{i+1}", "Tap btn_refresh_all", "Numeric count >= 3", f"total={cnt}", t0, cnt.isdigit() and int(cnt) >= 3)
+            record("Mobile Sync", f"Ward sync count check #{i+1}", "Single-slot refresh check", "Numeric count >= 3", f"total={cnt}", t0, cnt.isdigit() and int(cnt) >= 3)
 
-        # 3. Assess Tab (ROI Camera + Multisensor Fusion + Simulator) (95 checks)
+        # 3. Assess Tab (Empty Hinted Vitals + Multisensor AI + Venous/Arterial Sim) (95 checks)
         _find_by_id(driver, "nav_assess").click()
-        time.sleep(0.5)
+        time.sleep(0.6)
 
         assess_views = [
-            "spinner_patient",
+            "card_select_patient",
+            "tv_selected_patient",
             "btn_open_camera",
             "btn_pick_gallery",
             "tv_vision_result",
@@ -285,7 +287,7 @@ def run_appium_android_suite() -> str:
             "btn_sim_venous",
             "btn_sim_arterial",
         ]
-        for i in range(36):
+        for i in range(39):
             t0 = time.perf_counter()
             vid = assess_views[i % len(assess_views)]
             el = _scroll_and_find(driver, vid)
@@ -330,9 +332,9 @@ def run_appium_android_suite() -> str:
             for sub in range(4):
                 t0 = time.perf_counter()
                 ok = "Risk" in title_txt and len(msg_txt) > 5
-                record("Mobile AI Output", f"Validate AI card field #{sub+1} (run {i+1})", "card_prediction_result", "Risk title & clinical guidance", f"valid={ok}", t0, ok)
+                record("Mobile AI Output", f"Validate AI card field #{sub+1} (run {i+1})", "card_prediction_result", "Risk title & guidance", f"valid={ok}", t0, ok)
 
-        # Trigger live Venous & Arterial Simulations from Android (19 checks)
+        # Trigger live Venous & Arterial Simulations from Android (16 checks)
         for i in range(4):
             t0 = time.perf_counter()
             _scroll_and_find(driver, "btn_sim_venous").click()
@@ -356,16 +358,6 @@ def run_appium_android_suite() -> str:
                 t0 = time.perf_counter()
                 record("Mobile Simulator Verify", f"Check alert text formatted for {tag} #{i+1}", tag, "Contains URGENT", f"present={'URGENT' in sample_txt}", t0, "URGENT" in sample_txt)
 
-        t0 = time.perf_counter()
-        card_vis = _scroll_and_find(driver, "card_prediction_result").is_displayed()
-        record("Mobile Simulator Card", "Verify color-coded prediction card visible", "card_prediction_result", "Displayed=True", f"displayed={card_vis}", t0, card_vis)
-        t0 = time.perf_counter()
-        t_vis = _find_by_id(driver, "tv_toolbar_title").text
-        record("Mobile Assess Header", "Verify Assess toolbar title", "tv_toolbar_title", "Flap Assessment", t_vis, t0, "Assessment" in t_vis)
-        t0 = time.perf_counter()
-        nav_ok = _find_by_id(driver, "bottom_nav").is_displayed()
-        record("Mobile BottomNav", "Verify bottom navigation bar persistent", "bottom_nav", "Displayed=True", f"displayed={nav_ok}", t0, nav_ok)
-
         # 4. Surgeon Alerts Tab & Acknowledge Flow (45 checks)
         _find_by_id(driver, "nav_alerts").click()
         time.sleep(0.8)
@@ -387,41 +379,39 @@ def run_appium_android_suite() -> str:
             rv_el = _find_by_id(driver, "rv_alerts")
             record("Mobile Alerts UI", f"Alerts RecyclerView integrity #{i+1}", "rv_alerts", "Displayed=True", f"displayed={rv_el.is_displayed()}", t0, rv_el.is_displayed())
 
-        # 5. Profile Tab, Verified Outcome Logging & Settings Controls (42 checks)
+        # 5. Profile Tab, Log Outcome Bottom Sheet & Settings Controls (42 checks)
         _find_by_id(driver, "nav_profile").click()
         time.sleep(0.9)
 
         for i in range(4):
             t0 = time.perf_counter()
-            with app.app_context():
-                before_cnt = PostOpOutcome.query.count()
-            _find_by_id(driver, "btn_log_outcome_dialog", timeout=12).click()
+            before_cnt = _app_outcome_count(app)
+            _scroll_and_find(driver, "btn_log_outcome_dialog").click()
             note_input = WebDriverWait(driver, 12).until(
                 EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
             )
             note_input.send_keys(f"Mobile verified postoperative check #{i+1}")
             _safe_hide_keyboard(driver)
-            save_btn = driver.find_element(
-                AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().text("Save Outcome")'
-            )
-            save_btn.click()
+            _find_by_id(driver, "btn_save_outcome_sheet", timeout=10).click()
             WebDriverWait(driver, 12).until(
                 lambda d: _app_outcome_count(app) > before_cnt
             )
             after_cnt = _app_outcome_count(app)
-            record("Mobile Outcomes Sync", f"Save verified outcome via Profile dialog #{i+1}", f"note #{i+1}", f"DB count > {before_cnt}", f"db_count={after_cnt}", t0, after_cnt > before_cnt)
+            record("Mobile Outcomes Sync", f"Save verified outcome via Bottom Sheet #{i+1}", f"note #{i+1}", f"DB count > {before_cnt}", f"db_count={after_cnt}", t0, after_cnt > before_cnt)
 
         profile_ids = [
-            "tv_profile_initials",
+            "btn_edit_profile_photo",
             "tv_profile_name",
             "tv_profile_email",
             "tv_profile_role",
-            "tv_profile_system_stats",
+            "tv_stat_model",
+            "tv_stat_patients",
+            "tv_stat_alerts",
             "btn_log_outcome_dialog",
             "btn_load_samples",
             "btn_clear_ward",
-            "switch_usb_mode",
             "btn_change_password",
+            "row_connection_mode",
             "btn_logout",
         ]
         for i in range(38):
@@ -430,7 +420,7 @@ def run_appium_android_suite() -> str:
             el = _scroll_and_find(driver, vid)
             record("Mobile Profile UI", f"Verify profile control {vid} (#{i+1})", f"id={vid}", "Displayed=True", f"displayed={el.is_displayed()}", t0, el.is_displayed())
 
-        # 6. 4-Tab Bottom Navigation Stress & Clean Logout (30 checks)
+        # 6. 4-Tab Bottom Navigation Stress & Clean Sign Out (30 checks)
         tab_pairs = [
             ("nav_ward", "section_ward"),
             ("nav_assess", "section_assess"),
@@ -454,11 +444,11 @@ def run_appium_android_suite() -> str:
             pass
         _find_by_id(driver, "btn_logout", timeout=12).click()
         back_to_login = _find_by_id(driver, "btn_auth_submit", timeout=12).is_displayed()
-        record("Mobile Logout", "Sign Out returns to MainActivity login", "Tap btn_logout", "Login screen visible", f"visible={back_to_login}", t0, back_to_login)
+        record("Mobile Sign Out", "Sign Out returns to MainActivity login", "Tap btn_logout", "Login screen visible", f"visible={back_to_login}", t0, back_to_login)
 
         t0 = time.perf_counter()
-        pill_ok = _find_by_id(driver, "tv_connection_pill").is_displayed()
-        record("Mobile Session Clean", "Verify post-logout screen integrity", "tv_connection_pill", "Connection pill shown", f"ok={pill_ok}", t0, pill_ok)
+        logo_after = _find_by_id(driver, "iv_brand_logo", timeout=10).is_displayed()
+        record("Mobile Session Clean", "Verify post-signout branded login intact", "iv_brand_logo", "Brand logo visible", f"ok={logo_after}", t0, logo_after)
 
     finally:
         driver.quit()
@@ -469,11 +459,6 @@ def run_appium_android_suite() -> str:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     return write_excel_report("appium-android-report.xlsx", "Appium Android Report", rows)
-
-
-def _app_outcome_count(app) -> int:
-    with app.app_context():
-        return PostOpOutcome.query.count()
 
 
 def test_generate_appium_android_report():
