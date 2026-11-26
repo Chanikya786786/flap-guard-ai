@@ -39,24 +39,52 @@ def _find_by_id(driver, view_id: str, timeout: int = 12):
     )
 
 
-def _scroll_gesture(driver, direction: str, percent: float = 0.72) -> bool:
+def _scroll_gesture(driver, direction: str, percent: float = 0.7) -> bool:
+    """Scroll viewport 'down' (reveal below) or 'up' (reveal above) safely."""
+    scrolled = False
+    try:
+        # 1. Prefer scrolling the active visible ScrollView directly by elementId
+        for sv in driver.find_elements(AppiumBy.CLASS_NAME, "android.widget.ScrollView"):
+            try:
+                if sv.is_displayed():
+                    scrolled = bool(
+                        driver.execute_script(
+                            "mobile: scrollGesture",
+                            {
+                                "elementId": sv.id,
+                                "direction": direction,
+                                "percent": percent,
+                                "speed": 1200,
+                            },
+                        )
+                    )
+                    if scrolled:
+                        return True
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # 2. Fallback: physical swipeGesture strictly in the safe center band (24%-68% height)
+    #    Note: swipeGesture uses finger direction (up = reveal below, down = reveal above).
     try:
         size = driver.get_window_size()
-        return bool(
-            driver.execute_script(
-                "mobile: scrollGesture",
-                {
-                    "left": int(size["width"] * 0.1),
-                    "top": int(size["height"] * 0.18),
-                    "width": int(size["width"] * 0.8),
-                    "height": int(size["height"] * 0.62),
-                    "direction": direction,
-                    "percent": percent,
-                },
-            )
+        finger_dir = "up" if direction == "down" else "down"
+        driver.execute_script(
+            "mobile: swipeGesture",
+            {
+                "left": int(size["width"] * 0.15),
+                "top": int(size["height"] * 0.24),
+                "width": int(size["width"] * 0.70),
+                "height": int(size["height"] * 0.44),
+                "direction": finger_dir,
+                "percent": 0.85,
+                "speed": 1200,
+            },
         )
+        return True
     except Exception:
-        return False
+        return scrolled
 
 
 def _scroll_and_find(driver, view_id: str):
@@ -77,14 +105,12 @@ def _scroll_and_find(driver, view_id: str):
         return el
 
     for direction in ("down", "up"):
-        for _ in range(4):
-            can_more = _scroll_gesture(driver, direction, 0.72)
-            time.sleep(0.2)
+        for _ in range(3):
+            _scroll_gesture(driver, direction, 0.7)
+            time.sleep(0.25)
             el = _visible_match()
             if el is not None:
                 return el
-            if not can_more:
-                break
 
     try:
         return _find_by_id(driver, view_id, timeout=8)
