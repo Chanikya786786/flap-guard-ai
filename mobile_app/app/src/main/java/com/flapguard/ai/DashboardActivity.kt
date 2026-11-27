@@ -20,7 +20,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.app.KeyguardManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
+import android.os.CancellationSignal
 import android.view.View
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -54,6 +59,8 @@ import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -88,6 +95,8 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var tvControlSkinStatus: TextView
     private lateinit var btnPickControlSkin: MaterialButton
     private lateinit var switchBgMonitor: MaterialSwitch
+    private lateinit var switchScreenPrivacy: MaterialSwitch
+    private lateinit var switchAppLock: MaterialSwitch
 
     private var scannedRedness = 0.14
     private var scannedCyanosis = 0.03
@@ -218,6 +227,8 @@ class DashboardActivity : AppCompatActivity() {
         }
 
         offlineQueueDb = OfflineQueueDb(this)
+        applyScreenPrivacyFlag()
+        if (SecurePrefs.isAppLockEnabled(this)) promptDeviceUnlock()
         NotificationHelper.ensureChannels(this)
         AlertJobService.schedule(this)
         if (AlertMonitorService.isEnabled(this)) AlertMonitorService.start(this)
@@ -318,6 +329,8 @@ class DashboardActivity : AppCompatActivity() {
         tvControlSkinStatus = findViewById(R.id.tv_control_skin_status)
         btnPickControlSkin = findViewById(R.id.btn_pick_control_skin)
         switchBgMonitor = findViewById(R.id.switch_bg_monitor)
+        switchScreenPrivacy = findViewById(R.id.switch_screen_privacy)
+        switchAppLock = findViewById(R.id.switch_app_lock)
         cardWardAlertPill = findViewById(R.id.card_ward_alert_pill)
         tvWardAlertText = findViewById(R.id.tv_ward_alert_text)
         tvKpiCritical = findViewById(R.id.tv_kpi_critical)
@@ -368,9 +381,9 @@ class DashboardActivity : AppCompatActivity() {
         rvPatients.adapter = patientAdapter
 
         alertAdapter = AlertAdapter(
-            onAcknowledge = { alert -> acknowledgeAlert(alert.id) }
+            onAcknowledge = { alert -> acknowledgeAlert(alert.id) },
+            onCardClick = { alert -> openPatientFromAlert(alert) }
         )
-        rvAlerts.layoutManager = LinearLayoutManager(this)
         rvAlerts.adapter = alertAdapter
     }
 
@@ -430,8 +443,8 @@ class DashboardActivity : AppCompatActivity() {
         btnPickControlSkin.setOnClickListener {
             if (controlSkinBase64 != null) {
                 controlSkinBase64 = null
-                tvControlSkinStatus.text = "Control skin ref: none (optional lighting calibration)"
-                btnPickControlSkin.text = "+ Skin Ref"
+                tvControlSkinStatus.text = "Healthy skin photo: optional (balances room lighting)"
+                btnPickControlSkin.text = "+ Add Skin"
                 showNotice("Control skin reference cleared.")
             } else {
                 controlSkinGalleryLauncher.launch("image/*")
@@ -440,7 +453,29 @@ class DashboardActivity : AppCompatActivity() {
         switchBgMonitor.isChecked = AlertMonitorService.isEnabled(this)
         switchBgMonitor.setOnCheckedChangeListener { _, isChecked ->
             AlertMonitorService.setEnabled(this, isChecked)
-            showNotice(if (isChecked) "On-call lock-screen monitor enabled." else "On-call background monitor paused.")
+            showNotice(if (isChecked) "Alerts will keep checking while phone is locked." else "Lock-screen alert checks paused.")
+        }
+        switchScreenPrivacy.isChecked = SecurePrefs.isScreenPrivacyEnabled(this)
+        switchScreenPrivacy.setOnCheckedChangeListener { _, isChecked ->
+            SecurePrefs.setScreenPrivacyEnabled(this, isChecked)
+            applyScreenPrivacyFlag()
+            showNotice(if (isChecked) "Screenshots and app previews blocked." else "Screen privacy lock turned off.")
+        }
+        switchAppLock.isChecked = SecurePrefs.isAppLockEnabled(this)
+        switchAppLock.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !isDeviceLockAvailable()) {
+                switchAppLock.isChecked = false
+                showNotice("Set up a phone PIN or fingerprint in Android Settings first.")
+                return@setOnCheckedChangeListener
+            }
+            SecurePrefs.setAppLockEnabled(this, isChecked)
+            showNotice(if (isChecked) "Phone unlock required when opening FlapGuard." else "App unlock lock turned off.")
+        }
+        findViewById<LinearLayout>(R.id.row_sign_out_all).setOnClickListener {
+            confirmSignOutOtherDevices()
+        }
+        findViewById<LinearLayout>(R.id.row_delete_account).setOnClickListener {
+            showDeleteAccountSheet()
         }
         findViewById<MaterialButton>(R.id.btn_submit_reading).setOnClickListener { submitSensorReading() }
 
@@ -555,8 +590,8 @@ class DashboardActivity : AppCompatActivity() {
             }
             controlSkinBase64 = ImageUtils.toBase64Jpeg(bmp, 85)
             mainHandler.post {
-                tvControlSkinStatus.text = "Control skin ref attached (paired CIE-LAB active)"
-                btnPickControlSkin.text = "Clear"
+                tvControlSkinStatus.text = "Healthy skin photo attached · Lighting balanced"
+                btnPickControlSkin.text = "Remove"
                 showNotice("Control skin reference ready for paired scan.")
             }
         }
@@ -1015,20 +1050,28 @@ class DashboardActivity : AppCompatActivity() {
         val doppler = etDoppler.text?.toString()?.trim()?.toDoubleOrNull()
         val hours = etHours.text?.toString()?.trim()?.toDoubleOrNull() ?: patient.hoursPostOp
 
-        var ok = true
-        if (irTemp == null) { tilIrTemp.error = "Required"; ok = false }
-        if (ctrlTemp == null) { tilCtrlTemp.error = "Required"; ok = false }
-        if (spo2 == null) { tilSpo2.error = "Required"; ok = false }
-        if (doppler == null) { tilDoppler.error = "Required"; ok = false }
-        if (!ok) return
+        val providedCount = listOf(irTemp, ctrlTemp, spo2, doppler).count { it != null }
+        if (providedCount < 2) {
+            if (irTemp == null) tilIrTemp.error = "Needed"
+            if (spo2 == null) tilSpo2.error = "Needed"
+            showNotice("Enter at least 2 bedside readings to assess flap risk.")
+            return
+        }
+
+        var rangeOk = true
+        if (irTemp != null && (irTemp < 20.0 || irTemp > 43.0)) { tilIrTemp.error = "20–43°C"; rangeOk = false }
+        if (ctrlTemp != null && (ctrlTemp < 30.0 || ctrlTemp > 43.0)) { tilCtrlTemp.error = "30–43°C"; rangeOk = false }
+        if (spo2 != null && (spo2 < 0.0 || spo2 > 100.0)) { tilSpo2.error = "0–100%"; rangeOk = false }
+        if (doppler != null && (doppler < 0.0 || doppler > 60.0)) { tilDoppler.error = "0–60 cm/s"; rangeOk = false }
+        if (!rangeOk) return
 
         beginSync()
         executor.execute {
             val payload = JSONObject().apply {
-                put("ir_flap_temp_c", irTemp!!)
-                put("control_skin_temp_c", ctrlTemp!!)
-                put("spo2_pct", spo2!!)
-                put("doppler_flow_cm_s", doppler!!)
+                if (irTemp != null) put("ir_flap_temp_c", irTemp)
+                if (ctrlTemp != null) put("control_skin_temp_c", ctrlTemp)
+                if (spo2 != null) put("spo2_pct", spo2)
+                if (doppler != null) put("doppler_flow_cm_s", doppler)
                 put("hours_post_op", hours)
                 put("visual_redness_index", scannedRedness)
                 put("visual_cyanosis_index", scannedCyanosis)
@@ -1164,7 +1207,9 @@ class DashboardActivity : AppCompatActivity() {
                     if (!acked && notifiedAlertIds.add(id) && NotificationHelper.markAndCheckShouldNotify(this, id)) {
                         NotificationHelper.showSurgeonAlert(this, id, pName, tier, predClass, riskPct, msg)
                     }
-                    list.add(AlertItem(id, pName, tier, msg, acked, ackBy))
+                    val pId = a.optInt("patient_id", -1)
+                    val createdIso = a.optString("created_at", "")
+                    list.add(AlertItem(id, pName, tier, msg, acked, ackBy, pId, createdIso))
                 }
 
                 currentAlerts.clear()
@@ -1174,6 +1219,146 @@ class DashboardActivity : AppCompatActivity() {
                 rvAlerts.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
                 alertAdapter.submitList(list)
             }
+        }
+    }
+
+    private fun applyScreenPrivacyFlag() {
+        if (SecurePrefs.isScreenPrivacyEnabled(this)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
+    private fun isDeviceLockAvailable(): Boolean {
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        return km?.isDeviceSecure == true
+    }
+
+    private fun promptDeviceUnlock() {
+        if (!isDeviceLockAvailable()) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val prompt = BiometricPrompt.Builder(this)
+                    .setTitle("Unlock FlapGuard AI")
+                    .setSubtitle("Verify your identity to access patient data")
+                    .setAllowedAuthenticators(
+                        BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+                    )
+                    .build()
+                prompt.authenticate(
+                    CancellationSignal(),
+                    mainExecutor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
+                            finish()
+                        }
+                    }
+                )
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun confirmSignOutOtherDevices() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Sign Out Other Devices?")
+            .setMessage("This immediately revokes all active FlapGuard sessions on any other phone signed into your account.")
+            .setPositiveButton("Revoke Others") { _, _ ->
+                beginSync()
+                executor.execute {
+                    val res = ApiClient.request(
+                        serverUrl(),
+                        "/mobile/sessions/revoke-all",
+                        "POST",
+                        JSONObject().put("include_current", false),
+                        authToken
+                    )
+                    endSync()
+                    mainHandler.post {
+                        if (res.ok) {
+                            val rotated = res.json.optString("token", "")
+                            if (rotated.isNotBlank()) {
+                                authToken = rotated
+                                SecurePrefs.saveAuthToken(this, rotated)
+                            }
+                            showNotice("All other mobile sessions have been signed out.")
+                        } else {
+                            showNotice("Failed: ${res.errorMessage}")
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDeleteAccountSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_delete_account, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val deadlineStr = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.US)
+            .format(LocalDateTime.now().plusDays(30))
+        view.findViewById<TextView>(R.id.tv_delete_deadline_preview).text =
+            "Your personal profile will be permanently deleted on $deadlineStr (30 days from now). " +
+            "You can sign back in anytime before that exact time to cancel and restore your account. " +
+            "Clinical ward records remain anonymized for audit safety."
+
+        val tilPw = view.findViewById<TextInputLayout>(R.id.til_delete_password)
+        val etPw = view.findViewById<TextInputEditText>(R.id.et_delete_password)
+        val btnCancel = view.findViewById<MaterialButton>(R.id.btn_cancel_delete_sheet)
+        val btnConfirm = view.findViewById<MaterialButton>(R.id.btn_confirm_delete_account)
+
+        btnCancel.setOnClickListener { sheet.dismiss() }
+        btnConfirm.setOnClickListener {
+            tilPw.error = null
+            val pw = etPw.text?.toString().orEmpty()
+            if (pw.isBlank()) {
+                tilPw.error = "Enter your password"
+                return@setOnClickListener
+            }
+            btnConfirm.isEnabled = false
+            executor.execute {
+                val res = ApiClient.request(
+                    serverUrl(),
+                    "/mobile/account/delete",
+                    "POST",
+                    JSONObject().put("password", pw),
+                    authToken
+                )
+                mainHandler.post {
+                    btnConfirm.isEnabled = true
+                    if (res.ok) {
+                        sheet.dismiss()
+                        AlertMonitorService.setEnabled(this, false)
+                        AlertJobService.cancel(this)
+                        NotificationHelper.clearNotifiedHistory(this)
+                        SecurePrefs.clearAuthToken(this)
+                        getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE).edit()
+                            .remove("user_photo")
+                            .apply()
+                        startActivity(Intent(this, MainActivity::class.java))
+                        finish()
+                    } else {
+                        tilPw.error = res.errorMessage
+                    }
+                }
+            }
+        }
+        sheet.show()
+    }
+
+    private fun openPatientFromAlert(alert: AlertItem) {
+        val match = currentPatients.firstOrNull { it.id == alert.patientId }
+            ?: currentPatients.firstOrNull { it.fullName.equals(alert.patientName, ignoreCase = true) }
+        if (match != null) {
+            showPatientDetailSheet(match)
+        } else {
+            showNotice("${alert.patientName} is no longer in the active ward.")
         }
     }
 

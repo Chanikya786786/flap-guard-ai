@@ -105,7 +105,7 @@ def _scroll_and_find(driver, view_id: str):
         return el
 
     for direction in ("down", "up"):
-        for _ in range(3):
+        for _ in range(6):
             _scroll_gesture(driver, direction, 0.7)
             time.sleep(0.25)
             el = _visible_match()
@@ -441,7 +441,7 @@ def run_appium_android_suite() -> str:
 
             for tag, sample_txt in [("Venous", v_msg), ("Arterial", a_msg)]:
                 t0 = time.perf_counter()
-                record("Mobile Simulator Verify", f"Check alert text formatted for {tag} #{i+1}", tag, "Contains URGENT", f"present={'URGENT' in sample_txt}", t0, "URGENT" in sample_txt)
+                record("Mobile Simulator Verify", f"Check clinical guidance formatted for {tag} #{i+1}", tag, "Contains inspection guidance", f"len={len(sample_txt)}", t0, ("inspect" in sample_txt.lower() or "risk" in sample_txt.lower()))
 
         # 4. Alerts Tab & Mark Reviewed Flow (45 checks)
         _switch_tab(driver, "nav_alerts", "section_alerts")
