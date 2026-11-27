@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Restore Account | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card auth-box">
+  <div class="auth-brand">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="FlapGuard AI">
+    <h2>Account Scheduled for Deletion</h2>
+    <p class="muted" style="margin:0;">
+      Your account is queued for permanent anonymization on <strong>{{ deadline_utc }}</strong>
+      ({{ days_remaining }}d {{ hours_remaining }}h remaining).
+    </p>
+  </div>
+  <p class="muted" style="font-size:0.9rem;line-height:1.5;margin-bottom:16px;">
+    You can cancel deletion and restore full access right now. If you take no action, your personal details will be permanently wiped after the 30-day window while clinical audit records remain anonymized.
+  </p>
+  <form method="POST" action="{{ url_for('main.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="email" value="{{ email }}">
+    <input type="hidden" name="password" value="{{ password }}">
+    <input type="hidden" name="confirm_restore" value="yes">
+    <button id="confirm-restore-btn" type="submit" class="btn" style="width:100%;">Cancel Deletion &amp; Restore Account</button>
+  </form>
+  <p class="muted" style="margin-top:14px;text-align:center;">
+    <a href="{{ url_for('main.login') }}">Keep scheduled for deletion and return to Sign In</a>
+  </p>
+</div>
+{% endblock %}

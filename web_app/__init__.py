@@ -14,7 +14,7 @@ from sqlalchemy import inspect, text
 
 from ml_engine.model_service import load_model_and_metadata
 from web_app.models import ModelVersionLog, User, db
-from web_app.security import get_csrf_token, is_csrf_enabled, log_audit, validate_csrf_request
+from web_app.security import enforce_due_account_deletion, get_csrf_token, is_csrf_enabled, log_audit, purge_all_expired_accounts, validate_csrf_request
 from web_app.model_store import restore_active_model_from_db
 from web_app.ward_service import load_sample_ward_cases
 
@@ -27,7 +27,10 @@ login_manager.login_message_category = "warning"
 @login_manager.user_loader
 def load_user(user_id: str) -> Optional[User]:
     try:
-        return db.session.get(User, int(user_id))
+        user = db.session.get(User, int(user_id))
+        if user is None or enforce_due_account_deletion(user) or user.scheduled_deletion_at is not None:
+            return None
+        return user
     except (TypeError, ValueError):
         return None
 
@@ -79,6 +82,22 @@ def _run_safe_schema_migrations() -> None:
                 db.session.execute(
                     text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1")
                 )
+                db.session.commit()
+            if "deletion_requested_at" not in user_cols:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN deletion_requested_at TIMESTAMP"))
+                db.session.commit()
+            if "scheduled_deletion_at" not in user_cols:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN scheduled_deletion_at TIMESTAMP"))
+                db.session.commit()
+            if "is_deleted" not in user_cols:
+                if dialect == "postgresql":
+                    db.session.execute(
+                        text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE")
+                    )
+                else:
+                    db.session.execute(
+                        text("ALTER TABLE users ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0")
+                    )
                 db.session.commit()
 
         if "patients" in tables:
@@ -275,6 +294,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
         db.create_all()
         _run_safe_schema_migrations()
         restore_active_model_from_db()
+        purge_all_expired_accounts()
         if not app.config.get("SKIP_SEED"):
             seed_patients = bool(
                 app.config.get("SEED_SAMPLE_PATIENTS")

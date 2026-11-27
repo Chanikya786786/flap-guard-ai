@@ -20,7 +20,8 @@ from flask import current_app, flash, jsonify, redirect, request, session, url_f
 from flask_login import current_user
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-from web_app.models import AuditLog, RevokedToken, User, db
+from datetime import timedelta, timezone
+from web_app.models import AuditLog, RevokedToken, User, db, utc_now
 
 
 PRIVILEGED_ROLES = frozenset({"Surgeon", "Admin"})
@@ -161,7 +162,9 @@ def verify_mobile_token_with_meta(token: str) -> Tuple[Optional[User], Optional[
         return None, None
 
     user = db.session.get(User, user_id)
-    if user is None:
+    if user is None or enforce_due_account_deletion(user):
+        return None, None
+    if user.scheduled_deletion_at is not None:
         return None, None
     if int(user.token_version or 1) != token_tv:
         return None, None
@@ -270,3 +273,90 @@ def mobile_roles_required(allowed_roles: Iterable[str]):
         return wrapper
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# 30-Day Scheduled Account Deletion & Automatic Clinical-Safe PII Purge
+# ---------------------------------------------------------------------------
+ACCOUNT_DELETION_GRACE_DAYS = 30
+
+
+def normalize_utc(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def purge_user_pii(user: User) -> None:
+    """
+    Permanently erase personal identity fields while keeping relational
+    clinical charts, readings, outcomes, and audit trails intact.
+    """
+    if user.is_deleted:
+        return
+    old_email = user.email
+    user.full_name = f"Deleted Clinician #{user.id}"
+    user.email = f"deleted-user-{user.id}@anonymized.local"
+    user.profile_photo = None
+    user.set_password(secrets.token_urlsafe(32))
+    user.is_deleted = True
+    user.bump_token_version()
+    db.session.commit()
+    log_audit(
+        "ACCOUNT_PURGED",
+        "user",
+        str(user.id),
+        f"30-day grace expired; PII anonymized (prior={old_email}); clinical records preserved",
+    )
+
+
+def enforce_due_account_deletion(user: Optional[User]) -> bool:
+    """Purge a single user if their 30-day scheduled deletion timestamp has passed. Returns True if deleted."""
+    if user is None:
+        return False
+    if user.is_deleted:
+        return True
+    deadline = normalize_utc(user.scheduled_deletion_at)
+    if deadline is not None and deadline <= utc_now():
+        purge_user_pii(user)
+        return True
+    return False
+
+
+def purge_all_expired_accounts() -> int:
+    """Sweep any accounts whose 30-day deletion deadline has elapsed."""
+    now = utc_now()
+    candidates = User.query.filter(
+        User.is_deleted.is_(False),
+        User.scheduled_deletion_at.isnot(None),
+    ).all()
+    purged = 0
+    for u in candidates:
+        dl = normalize_utc(u.scheduled_deletion_at)
+        if dl is not None and dl <= now:
+            purge_user_pii(u)
+            purged += 1
+    return purged
+
+
+def schedule_user_deletion(user: User, grace_days: int = ACCOUNT_DELETION_GRACE_DAYS):
+    """Mark account for permanent deletion after `grace_days` and invalidate all active tokens."""
+    now = utc_now()
+    deadline = now + timedelta(days=grace_days)
+    user.deletion_requested_at = now
+    user.scheduled_deletion_at = deadline
+    user.bump_token_version()
+    db.session.commit()
+    return deadline
+
+
+def remaining_deletion_window(user: User) -> Tuple[int, int]:
+    """Return (days_remaining, hours_remaining) until scheduled deletion."""
+    deadline = normalize_utc(user.scheduled_deletion_at)
+    if deadline is None:
+        return 0, 0
+    delta = deadline - utc_now()
+    total_hours = max(0, int(delta.total_seconds() // 3600))
+    return total_hours // 24, total_hours % 24

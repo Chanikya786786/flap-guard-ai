@@ -29,7 +29,7 @@ object NotificationHelper {
 
         val alertChannel = NotificationChannel(
             ALERTS_CHANNEL_ID,
-            "FlapGuard Urgent Surgeon Alerts",
+            "FlapGuard Urgent Alerts",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Real-time venous and arterial flap compromise alerts"
@@ -39,10 +39,10 @@ object NotificationHelper {
 
         val monitorChannel = NotificationChannel(
             MONITOR_CHANNEL_ID,
-            "On-Call Ward Monitoring",
+            "Lock-Screen Alert Watcher",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Keeps postoperative flap alert checks active while screen is locked"
+            description = "Keeps checking for urgent flap alerts while phone is locked"
             setShowBadge(false)
         }
         manager.createNotificationChannel(monitorChannel)
@@ -131,11 +131,13 @@ object NotificationHelper {
         val isCritical = riskTier.equals("Critical", ignoreCase = true)
         val accentColor = Color.parseColor(if (isCritical) "#E11D48" else "#D97706")
 
-        val cleanTitle = if (predictedClass.isNotBlank()) {
-            "$patientName  ·  $predictedClass"
-        } else {
-            "$patientName  ·  $riskTier Flap Alert"
+        val shortType = when {
+            predictedClass.contains("Venous", ignoreCase = true) -> "Venous"
+            predictedClass.contains("Arterial", ignoreCase = true) -> "Arterial"
+            predictedClass.isNotBlank() -> predictedClass
+            else -> "$riskTier Alert"
         }
+        val cleanTitle = "$patientName · $shortType"
 
         val cleanedRaw = rawMessage
             .replace(Regex("^URGENT\\s*\\[[^]]+]:\\s*"), "")
@@ -147,13 +149,13 @@ object NotificationHelper {
         }
 
         val riskPrefix = if (riskScorePct >= 0.0) {
-            String.format(Locale.US, "%.0f%% risk", riskScorePct)
+            String.format(Locale.US, "%.1f%% risk", riskScorePct)
         } else {
             "$riskTier risk"
         }
 
-        val collapsedText = "$riskPrefix — $adviceLine"
-        val expandedText = "$riskPrefix ($riskTier)\n$adviceLine"
+        val collapsedText = "$riskPrefix · Inspect flap now"
+        val expandedText = "$riskPrefix ($riskTier)\n${if (predictedClass.isNotBlank()) "$predictedClass — " else ""}$adviceLine"
 
         val openIntent = Intent(context, DashboardActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -182,7 +184,6 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_stat_flapguard)
             .setLargeIcon(buildInitialsBadgeBitmap(patientName, isCritical))
             .setColor(accentColor)
-            .setSubText(if (isCritical) "Critical Alert" else "$riskTier Priority")
             .setContentTitle(cleanTitle)
             .setContentText(collapsedText)
             .setStyle(
@@ -218,8 +219,8 @@ object NotificationHelper {
         return NotificationCompat.Builder(context, MONITOR_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_flapguard)
             .setColor(Color.parseColor("#0B3B66"))
-            .setContentTitle("FlapGuard On-Call Monitor Active")
-            .setContentText("Checking postoperative flap alerts in background")
+            .setContentTitle("FlapGuard Alert Watcher On")
+            .setContentText("Checking for urgent flap alerts while locked")
             .setContentIntent(pi)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)

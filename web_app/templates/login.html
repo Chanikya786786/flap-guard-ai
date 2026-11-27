@@ -22,5 +22,9 @@
   <p class="muted" style="margin-top:18px;text-align:center;">
     New clinician? <a id="goto-register" href="{{ url_for('main.register') }}">Create an account</a>
   </p>
+  <p class="muted" style="margin-top:12px;text-align:center;font-size:0.78rem;">
+    Research &amp; Engineering Prototype &middot; Not CDSCO-approved for autonomous diagnosis &middot;
+    <a href="{{ url_for('main.public_account_deletion_policy') }}">Account Deletion Policy</a>
+  </p>
 </div>
 {% endblock %}

@@ -44,6 +44,11 @@ from web_app.models import (
     utc_now,
 )
 from web_app.security import (
+    ACCOUNT_DELETION_GRACE_DAYS,
+    enforce_due_account_deletion,
+    normalize_utc,
+    remaining_deletion_window,
+    schedule_user_deletion,
     ENROLLMENT_ROLES,
     PRIVILEGED_ROLES,
     clear_login_failures,
@@ -94,25 +99,32 @@ def mobile_auth_required(fn):
 
 
 def validate_sensor_inputs(
-    ir_temp: float,
-    control_temp: float,
-    spo2: float,
-    doppler: float,
+    ir_temp: Optional[float],
+    control_temp: Optional[float],
+    spo2: Optional[float],
+    doppler: Optional[float],
     hours_post_op: float,
     redness: float = 0.14,
     cyanosis: float = 0.03,
     pallor: float = 0.42,
 ) -> Tuple[bool, str]:
-    checks = [
-        (20.0 <= ir_temp <= 43.0, "IR Flap Temperature must be between 20.0 and 43.0 C."),
-        (30.0 <= control_temp <= 43.0, "Control Skin Temperature must be between 30.0 and 43.0 C."),
-        (0.0 <= spo2 <= 100.0, "SpO2 must be between 0 and 100%."),
-        (0.0 <= doppler <= 60.0, "Doppler flow must be between 0.0 and 60.0 cm/s."),
-        (0.0 <= hours_post_op <= 720.0, "Hours post-op must be between 0 and 720."),
-        (0.0 <= redness <= 1.0, "Visual redness index must be between 0.0 and 1.0."),
-        (0.0 <= cyanosis <= 1.0, "Visual cyanosis index must be between 0.0 and 1.0."),
-        (0.0 <= pallor <= 1.0, "Visual pallor index must be between 0.0 and 1.0."),
-    ]
+    checks = []
+    if ir_temp is not None:
+        checks.append((20.0 <= ir_temp <= 43.0, "IR Flap Temperature must be between 20.0 and 43.0 C."))
+    if control_temp is not None:
+        checks.append((30.0 <= control_temp <= 43.0, "Control Skin Temperature must be between 30.0 and 43.0 C."))
+    if spo2 is not None:
+        checks.append((0.0 <= spo2 <= 100.0, "SpO2 must be between 0 and 100%."))
+    if doppler is not None:
+        checks.append((0.0 <= doppler <= 60.0, "Doppler flow must be between 0.0 and 60.0 cm/s."))
+    checks.extend(
+        [
+            (0.0 <= hours_post_op <= 720.0, "Hours post-op must be between 0 and 720."),
+            (0.0 <= redness <= 1.0, "Visual redness index must be between 0.0 and 1.0."),
+            (0.0 <= cyanosis <= 1.0, "Visual cyanosis index must be between 0.0 and 1.0."),
+            (0.0 <= pallor <= 1.0, "Visual pallor index must be between 0.0 and 1.0."),
+        ]
+    )
     for ok, msg in checks:
         if not ok:
             return False, msg
@@ -316,8 +328,27 @@ def login():
             return render_template("login.html"), 429
 
         user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
+        if user and not enforce_due_account_deletion(user) and user.check_password(password):
             clear_login_failures(ip_addr, email)
+            if user.scheduled_deletion_at is not None:
+                if request.form.get("confirm_restore") == "yes":
+                    user.deletion_requested_at = None
+                    user.scheduled_deletion_at = None
+                    db.session.commit()
+                    login_user(user)
+                    log_audit("ACCOUNT_RESTORED", "user", str(user.id), "Restored via Web before 30-day deadline", actor=user)
+                    flash("Account deletion cancelled. Your clinician account has been restored.", "success")
+                    return redirect(url_for("main.dashboard"))
+                days_rem, hrs_rem = remaining_deletion_window(user)
+                dl = normalize_utc(user.scheduled_deletion_at)
+                return render_template(
+                    "restore_account.html",
+                    email=email,
+                    password=password,
+                    deadline_utc=dl.strftime("%d %b %Y, %H:%M UTC"),
+                    days_remaining=days_rem,
+                    hours_remaining=hrs_rem,
+                )
             login_user(user)
             log_audit("LOGIN_SUCCESS", "user", str(user.id), "Web session", actor=user)
             flash(f"Signed in as {user.full_name} ({user.role}).", "success")
@@ -412,6 +443,47 @@ def profile_load_samples():
     else:
         flash("Sample clinical cases are already loaded in the ward.", "info")
     return redirect(url_for("main.dashboard"))
+
+
+@bp.route("/profile/sign-out-all", methods=["POST"])
+@login_required
+def profile_sign_out_all():
+    current_user.bump_token_version()
+    db.session.commit()
+    log_audit("SESSIONS_REVOKED_ALL", "user", str(current_user.id), "Web sign-out all mobile devices")
+    flash("Signed out of all connected mobile devices. Re-sign in on your phone to reconnect.", "success")
+    return redirect(url_for("main.profile"))
+
+
+@bp.route("/profile/delete-account", methods=["POST"])
+@login_required
+def profile_delete_account():
+    password = request.form.get("confirm_delete_password", "")
+    if not current_user.check_password(password):
+        flash("Password is incorrect. Account deletion was not scheduled.", "danger")
+        return redirect(url_for("main.profile"))
+
+    actor = current_user._get_current_object()
+    deadline = schedule_user_deletion(actor)
+    log_audit(
+        "ACCOUNT_DELETION_SCHEDULED",
+        "user",
+        str(actor.id),
+        f"Web request; permanent purge scheduled at {deadline.isoformat()}",
+        actor=actor,
+    )
+    logout_user()
+    flash(
+        f"Account scheduled for permanent deletion on {deadline.strftime('%d %b %Y at %H:%M UTC')} "
+        f"({ACCOUNT_DELETION_GRACE_DAYS}-day grace period). Sign back in anytime before then to cancel and restore.",
+        "warning",
+    )
+    return redirect(url_for("main.login"))
+
+
+@bp.route("/account-deletion", methods=["GET"])
+def public_account_deletion_policy():
+    return render_template("account_deletion_policy.html", grace_days=ACCOUNT_DELETION_GRACE_DAYS)
 
 
 @bp.route("/profile/clear-ward", methods=["POST"])
@@ -889,13 +961,40 @@ def mobile_login():
         log_audit("LOGIN_RATE_LIMITED", "user", email, f"Mobile IP={ip_addr}")
         return jsonify({"error": "Too many failed login attempts. Try again later."}), 429
 
+    restore_flag = bool(data.get("restore", False))
     user = User.query.filter_by(email=email).first()
-    if not user or not user.check_password(password):
+    if not user or enforce_due_account_deletion(user) or not user.check_password(password):
         record_login_failure(ip_addr, email)
-        log_audit("LOGIN_FAILED", "user", email, "Mobile invalid credentials")
+        log_audit("LOGIN_FAILED", "user", email, "Mobile invalid credentials or purged account")
         return jsonify({"error": "Invalid email or password."}), 401
 
     clear_login_failures(ip_addr, email)
+    if user.scheduled_deletion_at is not None:
+        if restore_flag:
+            user.deletion_requested_at = None
+            user.scheduled_deletion_at = None
+            db.session.commit()
+            log_audit("ACCOUNT_RESTORED", "user", str(user.id), "Restored via Mobile before 30-day deadline", actor=user)
+            return jsonify({"token": generate_mobile_token(user), "user": user.to_dict(), "restored": True})
+
+        days_rem, hrs_rem = remaining_deletion_window(user)
+        dl = normalize_utc(user.scheduled_deletion_at)
+        return (
+            jsonify(
+                {
+                    "error": (
+                        f"Account scheduled for permanent deletion on "
+                        f"{dl.strftime('%d %b %Y, %H:%M UTC')} ({days_rem}d {hrs_rem}h left)."
+                    ),
+                    "code": "ACCOUNT_DELETION_PENDING",
+                    "scheduled_deletion_at": dl.isoformat(),
+                    "days_remaining": days_rem,
+                    "hours_remaining": hrs_rem,
+                }
+            ),
+            403,
+        )
+
     log_audit("LOGIN_SUCCESS", "user", str(user.id), "Mobile token issued", actor=user)
     return jsonify({"token": generate_mobile_token(user), "user": user.to_dict()})
 
@@ -1033,17 +1132,27 @@ def mobile_add_reading(patient_id: int):
     if not patient or patient.is_archived:
         return jsonify({"error": "Patient not found."}), 404
     data = request.get_json(silent=True) or {}
+
+    def _opt_float(key: str) -> Optional[float]:
+        raw = data.get(key)
+        if raw is None or str(raw).strip() == "":
+            return None
+        return float(raw)
+
     try:
-        ir_temp = float(data["ir_flap_temp_c"])
-        control_temp = float(data["control_skin_temp_c"])
-        spo2 = float(data["spo2_pct"])
-        doppler = float(data["doppler_flow_cm_s"])
+        ir_temp = _opt_float("ir_flap_temp_c")
+        control_temp = _opt_float("control_skin_temp_c")
+        spo2 = _opt_float("spo2_pct")
+        doppler = _opt_float("doppler_flow_cm_s")
         hours_post_op = float(data.get("hours_post_op", patient.hours_post_op))
         redness = float(data.get("visual_redness_index", 0.14))
         cyanosis = float(data.get("visual_cyanosis_index", 0.03))
         pallor = float(data.get("visual_pallor_index", 0.42))
-    except (KeyError, ValueError, TypeError):
-        return jsonify({"error": "Missing or non-numeric sensor fields."}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Sensor fields must be valid numbers."}), 400
+
+    if sum(v is not None for v in (ir_temp, control_temp, spo2, doppler)) < 2:
+        return jsonify({"error": "Provide at least 2 bedside sensor readings to run an assessment."}), 400
 
     valid, error_msg = validate_sensor_inputs(
         ir_temp, control_temp, spo2, doppler, hours_post_op, redness, cyanosis, pallor
@@ -1269,3 +1378,52 @@ def mobile_update_profile_photo():
         return jsonify({"status": "updated", "user": request.mobile_user.to_dict()})
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+
+
+@bp.route("/mobile/sessions/revoke-all", methods=["POST"])
+@mobile_auth_required
+def mobile_revoke_all_sessions():
+    data = request.get_json(silent=True) or {}
+    include_current = bool(data.get("include_current", False))
+    request.mobile_user.bump_token_version()
+    db.session.commit()
+    log_audit(
+        "SESSIONS_REVOKED_ALL",
+        "user",
+        str(request.mobile_user.id),
+        f"Mobile revoke all sessions (include_current={include_current})",
+        actor=request.mobile_user,
+    )
+    if include_current:
+        return jsonify({"status": "all_sessions_revoked"})
+    return jsonify({"status": "other_sessions_revoked", "token": generate_mobile_token(request.mobile_user)})
+
+
+@bp.route("/mobile/account/delete", methods=["POST"])
+@mobile_auth_required
+def mobile_delete_account():
+    data = request.get_json(silent=True) or {}
+    password = str(data.get("password", ""))
+    if not request.mobile_user.check_password(password):
+        return jsonify({"error": "Incorrect password. Account deletion was not scheduled."}), 400
+
+    deadline = schedule_user_deletion(request.mobile_user)
+    revoke_mobile_token(getattr(request, "mobile_token_jti", None), request.mobile_user.id)
+    log_audit(
+        "ACCOUNT_DELETION_SCHEDULED",
+        "user",
+        str(request.mobile_user.id),
+        f"Mobile request; permanent purge at {deadline.isoformat()}",
+        actor=request.mobile_user,
+    )
+    return jsonify(
+        {
+            "status": "deletion_scheduled",
+            "grace_days": ACCOUNT_DELETION_GRACE_DAYS,
+            "scheduled_deletion_at": deadline.isoformat(),
+            "message": (
+                f"Account scheduled for permanent deletion on {deadline.strftime('%d %b %Y, %H:%M UTC')}. "
+                "Sign back in anytime before then to cancel and restore."
+            ),
+        }
+    )

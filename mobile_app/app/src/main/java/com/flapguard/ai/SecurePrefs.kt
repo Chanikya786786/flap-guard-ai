@@ -11,16 +11,19 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Hardware-backed Android Keystore (AES-256-GCM) token vault.
- * Encrypts clinician bearer tokens at rest without deprecated security-crypto libraries.
+ * Hardware-backed Android Keystore (AES-256-GCM) vault for bearer tokens,
+ * encrypted offline SQLite payloads, and local device privacy preferences.
  */
 object SecurePrefs {
 
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     private const val KEY_ALIAS = "flapguard_auth_aes256_key"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
+    private const val ENC_PREFIX = "ENC_GCM_V1:"
     private const val ENC_TOKEN_KEY = "auth_token_enc"
     private const val LEGACY_TOKEN_KEY = "auth_token"
+    private const val PREF_SCREEN_PRIVACY = "screen_privacy_secure_flag"
+    private const val PREF_APP_LOCK = "device_biometric_app_lock"
 
     private fun getOrCreateKey(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
@@ -41,6 +44,33 @@ object SecurePrefs {
         return gen.generateKey()
     }
 
+    fun encryptString(plain: String): String {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        val iv = cipher.iv
+        val ciphertext = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
+        val combined = ByteArray(1 + iv.size + ciphertext.size)
+        combined[0] = iv.size.toByte()
+        System.arraycopy(iv, 0, combined, 1, iv.size)
+        System.arraycopy(ciphertext, 0, combined, 1 + iv.size, ciphertext.size)
+        return ENC_PREFIX + Base64.encodeToString(combined, Base64.NO_WRAP)
+    }
+
+    fun decryptString(stored: String): String? {
+        return try {
+            val payload = if (stored.startsWith(ENC_PREFIX)) stored.removePrefix(ENC_PREFIX) else stored
+            val combined = Base64.decode(payload, Base64.NO_WRAP)
+            val ivLen = combined[0].toInt() and 0xFF
+            val iv = combined.copyOfRange(1, 1 + ivLen)
+            val ciphertext = combined.copyOfRange(1 + ivLen, combined.size)
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
+            String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     fun saveAuthToken(context: Context, token: String) {
         val prefs = context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
         if (token.isBlank()) {
@@ -48,21 +78,12 @@ object SecurePrefs {
             return
         }
         try {
-            val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-            val iv = cipher.iv
-            val ciphertext = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
-            val combined = ByteArray(1 + iv.size + ciphertext.size)
-            combined[0] = iv.size.toByte()
-            System.arraycopy(iv, 0, combined, 1, iv.size)
-            System.arraycopy(ciphertext, 0, combined, 1 + iv.size, ciphertext.size)
-            val encoded = Base64.encodeToString(combined, Base64.NO_WRAP)
+            val encoded = encryptString(token)
             prefs.edit()
                 .putString(ENC_TOKEN_KEY, encoded)
                 .remove(LEGACY_TOKEN_KEY)
                 .apply()
         } catch (_: Exception) {
-            // Do not leave plaintext tokens unencrypted on keystore failure
             prefs.edit().remove(ENC_TOKEN_KEY).remove(LEGACY_TOKEN_KEY).apply()
         }
     }
@@ -71,21 +92,11 @@ object SecurePrefs {
         val prefs = context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
         val encoded = prefs.getString(ENC_TOKEN_KEY, null)
         if (!encoded.isNullOrBlank()) {
-            return try {
-                val combined = Base64.decode(encoded, Base64.NO_WRAP)
-                val ivLen = combined[0].toInt() and 0xFF
-                val iv = combined.copyOfRange(1, 1 + ivLen)
-                val ciphertext = combined.copyOfRange(1 + ivLen, combined.size)
-                val cipher = Cipher.getInstance(TRANSFORMATION)
-                cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
-                String(cipher.doFinal(ciphertext), Charsets.UTF_8)
-            } catch (_: Exception) {
-                clearAuthToken(context)
-                ""
-            }
+            val decrypted = decryptString(encoded)
+            if (decrypted != null) return decrypted
+            clearAuthToken(context)
+            return ""
         }
-
-        // Seamless one-time migration from legacy v2.1 plaintext preference
         val legacy = prefs.getString(LEGACY_TOKEN_KEY, null).orEmpty()
         if (legacy.isNotBlank()) {
             saveAuthToken(context, legacy)
@@ -99,6 +110,30 @@ object SecurePrefs {
             .edit()
             .remove(ENC_TOKEN_KEY)
             .remove(LEGACY_TOKEN_KEY)
+            .apply()
+    }
+
+    fun isScreenPrivacyEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_SCREEN_PRIVACY, false)
+    }
+
+    fun setScreenPrivacyEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_SCREEN_PRIVACY, enabled)
+            .apply()
+    }
+
+    fun isAppLockEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_APP_LOCK, false)
+    }
+
+    fun setAppLockEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_APP_LOCK, enabled)
             .apply()
     }
 }

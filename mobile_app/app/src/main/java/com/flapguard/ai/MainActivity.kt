@@ -18,9 +18,14 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -161,6 +166,58 @@ class MainActivity : AppCompatActivity() {
 
                         startActivity(Intent(this, DashboardActivity::class.java))
                         finish()
+                    } else if (!isRegisterMode && result.json.optString("code") == "ACCOUNT_DELETION_PENDING") {
+                        val deadlineIso = result.json.optString("scheduled_deletion_at", "")
+                        val daysRem = result.json.optInt("days_remaining", 30)
+                        val hrsRem = result.json.optInt("hours_remaining", 0)
+                        val formattedDeadline = try {
+                            val inst = Instant.parse(deadlineIso).atZone(ZoneId.systemDefault())
+                            DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.US).format(inst)
+                        } catch (_: Exception) {
+                            deadlineIso
+                        }
+                        tvStatus.setTextColor(Color.parseColor("#D97706"))
+                        tvStatus.text = "Deletion scheduled ($daysRem d $hrsRem h left)."
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle("Restore Your Account?")
+                            .setMessage(
+                                "This account is scheduled for permanent deletion on $formattedDeadline " +
+                                "($daysRem days, $hrsRem hours remaining).\n\nCancel deletion and sign back in?"
+                            )
+                            .setPositiveButton("Restore Account") { _, _ ->
+                                btnSubmit.isEnabled = false
+                                progressAuth.visibility = View.VISIBLE
+                                executor.execute {
+                                    val restoreBody = JSONObject()
+                                        .put("email", email)
+                                        .put("password", password)
+                                        .put("restore", true)
+                                    val rRes = ApiClient.request(serverUrl, "/mobile/login", "POST", restoreBody)
+                                    mainHandler.post {
+                                        btnSubmit.isEnabled = true
+                                        progressAuth.visibility = View.GONE
+                                        if (rRes.ok) {
+                                            val tok = rRes.json.optString("token")
+                                            val uObj = rRes.json.optJSONObject("user")
+                                            val ph = uObj?.optString("profile_photo", "").orEmpty()
+                                            SecurePrefs.saveAuthToken(this, tok)
+                                            prefs.edit()
+                                                .putString("user_name", uObj?.optString("full_name") ?: email)
+                                                .putString("user_role", uObj?.optString("role") ?: "Surgeon")
+                                                .putString("user_email", uObj?.optString("email") ?: email)
+                                                .putString("user_photo", if (ph == "null") "" else ph)
+                                                .apply()
+                                            startActivity(Intent(this, DashboardActivity::class.java))
+                                            finish()
+                                        } else {
+                                            tvStatus.setTextColor(Color.parseColor("#DC2626"))
+                                            tvStatus.text = rRes.errorMessage
+                                        }
+                                    }
+                                }
+                            }
+                            .setNegativeButton("Keep Scheduled", null)
+                            .show()
                     } else {
                         tvStatus.setTextColor(Color.parseColor("#DC2626"))
                         tvStatus.text = result.errorMessage

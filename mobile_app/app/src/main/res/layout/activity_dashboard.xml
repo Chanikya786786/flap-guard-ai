@@ -1,1451 +1,289 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/dashboard_root"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/fg_bg"
-    android:orientation="vertical">
-
-    <!-- Clean Minimalist Canvas Header (No heavy box bar, no cluttered subtitle) -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="10dp">
-
-        <ImageView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:contentDescription="FlapGuard AI"
-            android:src="@drawable/ic_brand_logo" />
-
-        <TextView
-            android:id="@+id/tv_toolbar_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
-            android:text="Ward"
-            android:textColor="@color/fg_text_primary"
-            android:textSize="22sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_ack_all"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:layout_marginEnd="4dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:text="Review All"
-            android:textAllCaps="false"
-            android:textColor="@color/fg_primary"
-            android:textSize="13sp"
-            android:visibility="gone" />
-
-        <!-- Single-slot circular refresh / loading indicator -->
-        <FrameLayout
-            android:layout_width="38dp"
-            android:layout_height="38dp"
-            android:background="@drawable/bg_circle_white">
-
-            <ImageButton
-                android:id="@+id/btn_refresh_all"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Refresh"
-                android:padding="9dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_refresh"
-                app:tint="@color/fg_text_secondary" />
-
-            <ProgressBar
-                android:id="@+id/progress_sync"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:indeterminateTint="@color/fg_primary"
-                android:visibility="gone" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/dashboard_root" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/fg_bg" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingTop="14dp" android:paddingEnd="16dp" android:paddingBottom="10dp">
+        <ImageView android:layout_width="30dp" android:layout_height="30dp" android:contentDescription="FlapGuard AI" android:src="@drawable/ic_brand_logo" />
+        <TextView android:id="@+id/tv_toolbar_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Ward" android:textColor="@color/fg_text_primary" android:textSize="22sp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btn_ack_all" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="4dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="Review All" android:textAllCaps="false" android:textColor="@color/fg_primary" android:textSize="13sp" android:visibility="gone" />
+        <FrameLayout android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_white">
+            <ImageButton android:id="@+id/btn_refresh_all" android:layout_width="match_parent" android:layout_height="match_parent" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Refresh" android:padding="9dp" android:scaleType="fitCenter" android:src="@drawable/ic_refresh" app:tint="@color/fg_text_secondary" />
+            <ProgressBar android:id="@+id/progress_sync" android:layout_width="20dp" android:layout_height="20dp" android:layout_gravity="center" android:indeterminateTint="@color/fg_primary" android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
-
-    <!-- Main 4-Tab Content Container -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <!-- TAB 1: WARD (Clean, Spacious, Zero Clutter) -->
-        <FrameLayout
-            android:id="@+id/section_ward"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp">
-
-                <!-- Offline Pending Sync Pill (visible only when unsynced readings exist) -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_offline_queue"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:visibility="gone"
-                    app:cardBackgroundColor="@color/fg_warning_bg"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <TextView
-                        android:id="@+id/tv_offline_queue_text"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:paddingStart="14dp"
-                        android:paddingTop="10dp"
-                        android:paddingEnd="14dp"
-                        android:paddingBottom="10dp"
-                        android:text=""
-                        android:textColor="@color/fg_warning"
-                        android:textSize="12sp" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <FrameLayout android:id="@+id/section_ward" android:layout_width="match_parent" android:layout_height="match_parent">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp">
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_offline_queue" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true" android:visibility="gone" app:cardBackgroundColor="@color/fg_warning_bg" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <TextView android:id="@+id/tv_offline_queue_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:paddingStart="14dp" android:paddingTop="10dp" android:paddingEnd="14dp" android:paddingBottom="10dp" android:text="" android:textColor="@color/fg_warning" android:textSize="12sp" />
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Soft, sleek Alert Pill — ONLY visible on Ward when critical alerts exist -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_ward_alert_pill"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:visibility="gone"
-                    app:cardBackgroundColor="@color/fg_danger_bg"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingStart="14dp"
-                        android:paddingTop="11dp"
-                        android:paddingEnd="12dp"
-                        android:paddingBottom="11dp">
-
-                        <View
-                            android:layout_width="8dp"
-                            android:layout_height="8dp"
-                            android:layout_marginEnd="10dp"
-                            android:background="@drawable/bg_status_bar"
-                            android:backgroundTint="@color/fg_danger" />
-
-                        <TextView
-                            android:id="@+id/tv_ward_alert_text"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text=""
-                            android:textColor="@color/fg_danger"
-                            android:textSize="13sp" />
-
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:contentDescription="Inspect alerts"
-                            android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/fg_danger" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_ward_alert_pill" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:clickable="true" android:focusable="true" android:visibility="gone" app:cardBackgroundColor="@color/fg_danger_bg" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="11dp" android:paddingEnd="12dp" android:paddingBottom="11dp">
+                        <View android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="10dp" android:background="@drawable/bg_status_bar" android:backgroundTint="@color/fg_danger" />
+                        <TextView android:id="@+id/tv_ward_alert_text" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="" android:textColor="@color/fg_danger" android:textSize="13sp" />
+                        <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Inspect alerts" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_danger" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Unified Borderless 3-Column Ward Summary -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_kpi_critical"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="0"
-                                android:textColor="@color/fg_danger"
-                                android:textSize="22sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Critical"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingTop="14dp" android:paddingBottom="14dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_kpi_critical" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_danger" android:textSize="22sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Critical" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="28dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_kpi_high"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="0"
-                                android:textColor="@color/fg_warning"
-                                android:textSize="22sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Watch"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                        <View android:layout_width="1dp" android:layout_height="28dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_kpi_high" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_warning" android:textSize="22sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Watch" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="28dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_kpi_total"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="0"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="22sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Total"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                        <View android:layout_width="1dp" android:layout_height="28dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_kpi_total" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_text_primary" android:textSize="22sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Total" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Clean Empty State -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_empty_ward"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:visibility="gone"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="22dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="32dp">
-
-                        <ImageView
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:alpha="0.85"
-                            android:contentDescription="Empty Ward"
-                            android:src="@drawable/ic_brand_logo" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="14dp"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="No Patients Yet"
-                            android:textColor="@color/fg_text_primary"
-                            android:textSize="17sp" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:gravity="center"
-                            android:text="Tap Enroll to add a postoperative patient, or load sample cases from Profile."
-                            android:textColor="@color/fg_text_muted"
-                            android:textSize="13sp" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_empty_ward" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="22dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="vertical" android:padding="32dp">
+                        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:alpha="0.85" android:contentDescription="Empty Ward" android:src="@drawable/ic_brand_logo" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:fontFamily="sans-serif-medium" android:text="No Patients Yet" android:textColor="@color/fg_text_primary" android:textSize="17sp" />
+                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:gravity="center" android:text="Tap Enroll to add a postoperative patient, or load sample cases from Profile." android:textColor="@color/fg_text_muted" android:textSize="13sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rv_patients"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:clipToPadding="false"
-                    android:paddingBottom="84dp" />
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_patients" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="84dp" />
             </LinearLayout>
-
-            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-                android:id="@+id/fab_add_patient"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="18dp"
-                android:text="Enroll"
-                android:textAllCaps="false"
-                android:textColor="@color/white"
-                app:backgroundTint="@color/fg_primary"
-                app:elevation="3dp"
-                app:icon="@drawable/ic_add"
-                app:iconTint="@color/white" />
+            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton android:id="@+id/fab_add_patient" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="18dp" android:text="Enroll" android:textAllCaps="false" android:textColor="@color/white" app:backgroundTint="@color/fg_primary" app:elevation="3dp" app:icon="@drawable/ic_add" app:iconTint="@color/white" />
         </FrameLayout>
-
-        <!-- TAB 2: ASSESS (Focused, Zero Truncation, Compact Photo Strip, Quiet Simulator Link) -->
-        <ScrollView
-            android:id="@+id/section_assess"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="24dp">
-
-                <!-- Patient Picker Row -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_select_patient"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="14dp">
-
-                        <TextView
-                            android:id="@+id/tv_selected_avatar"
-                            android:layout_width="38dp"
-                            android:layout_height="38dp"
-                            android:background="@drawable/bg_circle_soft"
-                            android:fontFamily="sans-serif-medium"
-                            android:gravity="center"
-                            android:text="PT"
-                            android:textColor="@color/fg_primary"
-                            android:textSize="13sp" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Patient"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/tv_selected_patient"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:fontFamily="sans-serif-medium"
-                                android:maxLines="1"
-                                android:text="No patients yet"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="15sp" />
+        <ScrollView android:id="@+id/section_assess" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp" android:paddingBottom="24dp">
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_select_patient" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
+                        <TextView android:id="@+id/tv_selected_avatar" android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_soft" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="PT" android:textColor="@color/fg_primary" android:textSize="13sp" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Patient" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
+                            <TextView android:id="@+id/tv_selected_patient" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end" android:fontFamily="sans-serif-medium" android:maxLines="1" android:text="No patients yet" android:textColor="@color/fg_text_primary" android:textSize="15sp" />
                         </LinearLayout>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Switch"
-                            android:textColor="@color/fg_primary"
-                            android:textSize="12sp"
-                            android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Switch" android:textColor="@color/fg_primary" android:textSize="12sp" android:textStyle="bold" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Compact Flap Photo Scan Card (Expands preview only after capture/upload) -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:fontFamily="sans-serif-medium"
-                                    android:text="Flap Photo"
-                                    android:textColor="@color/fg_text_primary"
-                                    android:textSize="15sp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Optional color scan"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="12sp" />
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Flap Photo" android:textColor="@color/fg_text_primary" android:textSize="15sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Optional color scan" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
                             </LinearLayout>
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_open_camera"
-                                style="@style/Widget.Material3.Button.TonalButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="38dp"
-                                android:layout_marginEnd="8dp"
-                                android:insetTop="0dp"
-                                android:insetBottom="0dp"
-                                android:paddingStart="12dp"
-                                android:paddingEnd="12dp"
-                                android:text="Camera"
-                                android:textAllCaps="false"
-                                android:textColor="@color/fg_accent"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                app:backgroundTint="@color/fg_accent_soft"
-                                app:cornerRadius="10dp"
-                                app:icon="@drawable/ic_camera"
-                                app:iconSize="16dp"
-                                app:iconTint="@color/fg_accent" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_pick_gallery"
-                                style="@style/Widget.Material3.Button.TonalButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="38dp"
-                                android:insetTop="0dp"
-                                android:insetBottom="0dp"
-                                android:paddingStart="12dp"
-                                android:paddingEnd="12dp"
-                                android:text="Gallery"
-                                android:textAllCaps="false"
-                                android:textColor="@color/fg_primary"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                app:backgroundTint="@color/fg_primary_soft"
-                                app:cornerRadius="10dp" />
+                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_open_camera" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="38dp" android:layout_marginEnd="8dp" android:insetTop="0dp" android:insetBottom="0dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="Camera" android:textAllCaps="false" android:textColor="@color/fg_accent" android:textSize="12sp" android:textStyle="bold" app:backgroundTint="@color/fg_accent_soft" app:cornerRadius="10dp" app:icon="@drawable/ic_camera" app:iconSize="16dp" app:iconTint="@color/fg_accent" />
+                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_pick_gallery" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="38dp" android:insetTop="0dp" android:insetBottom="0dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="Gallery" android:textAllCaps="false" android:textColor="@color/fg_primary" android:textSize="12sp" android:textStyle="bold" app:backgroundTint="@color/fg_primary_soft" app:cornerRadius="10dp" />
                         </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:id="@+id/tv_control_skin_status"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="Control skin ref: none (optional lighting calibration)"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/btn_pick_control_skin"
-                                style="@style/Widget.Material3.Button.TextButton"
-                                android:layout_width="wrap_content"
-                                android:layout_height="30dp"
-                                android:insetTop="0dp"
-                                android:insetBottom="0dp"
-                                android:minWidth="0dp"
-                                android:minHeight="0dp"
-                                android:paddingStart="8dp"
-                                android:paddingEnd="8dp"
-                                android:text="+ Skin Ref"
-                                android:textAllCaps="false"
-                                android:textColor="@color/fg_primary"
-                                android:textSize="11sp" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:gravity="center_vertical" android:orientation="horizontal">
+                            <TextView android:id="@+id/tv_control_skin_status" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Healthy skin photo: optional (balances room lighting)" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
+                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_pick_control_skin" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="30dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:minHeight="0dp" android:paddingStart="8dp" android:paddingEnd="8dp" android:text="+ Add Skin" android:textAllCaps="false" android:textColor="@color/fg_primary" android:textSize="11sp" />
                         </LinearLayout>
-
-                        <FrameLayout
-                            android:id="@+id/layout_preview_frame"
-                            android:layout_width="match_parent"
-                            android:layout_height="184dp"
-                            android:layout_marginTop="14dp"
-                            android:visibility="gone">
-
-                            <ImageView
-                                android:id="@+id/iv_flap_preview"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:background="#0F172A"
-                                android:contentDescription="Flap image preview"
-                                android:scaleType="centerCrop" />
-
-                            <View
-                                android:layout_width="136dp"
-                                android:layout_height="92dp"
-                                android:layout_gravity="center"
-                                android:background="@drawable/bg_roi_box" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="bottom|center_horizontal"
-                                android:layout_marginBottom="6dp"
-                                android:background="#990F172A"
-                                android:paddingStart="9dp"
-                                android:paddingTop="2dp"
-                                android:paddingEnd="9dp"
-                                android:paddingBottom="2dp"
-                                android:text="Center 50% Flap ROI"
-                                android:textColor="@color/white"
-                                android:textSize="10sp" />
+                        <FrameLayout android:id="@+id/layout_preview_frame" android:layout_width="match_parent" android:layout_height="184dp" android:layout_marginTop="14dp" android:visibility="gone">
+                            <ImageView android:id="@+id/iv_flap_preview" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F172A" android:contentDescription="Flap image preview" android:scaleType="centerCrop" />
+                            <View android:layout_width="136dp" android:layout_height="92dp" android:layout_gravity="center" android:background="@drawable/bg_roi_box" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="6dp" android:background="#990F172A" android:paddingStart="9dp" android:paddingTop="2dp" android:paddingEnd="9dp" android:paddingBottom="2dp" android:text="Center 50% Flap ROI" android:textColor="@color/white" android:textSize="10sp" />
                         </FrameLayout>
-
-                        <TextView
-                            android:id="@+id/tv_vision_result"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:text=""
-                            android:textColor="@color/fg_text_secondary"
-                            android:textSize="12sp"
-                            android:visibility="gone" />
+                        <TextView android:id="@+id/tv_vision_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="" android:textColor="@color/fg_text_secondary" android:textSize="12sp" android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Clean Borderless Vitals Input Card (Short crisp labels — zero truncation) -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="18dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="14dp"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Bedside Vitals"
-                            android:textColor="@color/fg_text_primary"
-                            android:textSize="15sp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal">
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:id="@+id/til_ir_temp"
-                                style="@style/Widget.FlapGuard.InputFilled"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="6dp"
-                                android:layout_weight="1"
-                                android:hint="Flap °C">
-
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_ir_temp"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="numberDecimal" />
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="14dp" android:fontFamily="sans-serif-medium" android:text="Bedside Vitals" android:textColor="@color/fg_text_primary" android:textSize="15sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:layout_marginBottom="10dp" android:text="Enter available readings (at least 2 required)" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_ir_temp" app:errorIconDrawable="@null" style="@style/Widget.FlapGuard.InputFilled" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1" android:hint="Flap °C">
+                                <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_ir_temp" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
                             </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:id="@+id/til_ctrl_temp"
-                                style="@style/Widget.FlapGuard.InputFilled"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:layout_weight="1"
-                                android:hint="Skin °C">
-
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_ctrl_temp"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="numberDecimal" />
+                            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_ctrl_temp" app:errorIconDrawable="@null" style="@style/Widget.FlapGuard.InputFilled" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:hint="Skin °C">
+                                <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_ctrl_temp" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
                             </com.google.android.material.textfield.TextInputLayout>
                         </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:orientation="horizontal">
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:id="@+id/til_spo2"
-                                style="@style/Widget.FlapGuard.InputFilled"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginEnd="6dp"
-                                android:layout_weight="1"
-                                android:hint="SpO₂ %">
-
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_spo2"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="numberDecimal" />
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
+                            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_spo2" app:errorIconDrawable="@null" style="@style/Widget.FlapGuard.InputFilled" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1" android:hint="SpO₂ %">
+                                <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_spo2" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
                             </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:id="@+id/til_doppler"
-                                style="@style/Widget.FlapGuard.InputFilled"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="6dp"
-                                android:layout_weight="1"
-                                android:hint="Doppler cm/s">
-
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_doppler"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="numberDecimal" />
+                            <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_doppler" app:errorIconDrawable="@null" style="@style/Widget.FlapGuard.InputFilled" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:hint="Doppler cm/s">
+                                <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_doppler" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
                             </com.google.android.material.textfield.TextInputLayout>
                         </LinearLayout>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/til_hours"
-                            style="@style/Widget.FlapGuard.InputFilled"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:hint="Hours Post-Op (Optional)">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/et_hours"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:inputType="numberDecimal" />
+                        <com.google.android.material.textfield.TextInputLayout android:id="@+id/til_hours" style="@style/Widget.FlapGuard.InputFilled" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Hours Post-Op (Optional)">
+                            <com.google.android.material.textfield.TextInputEditText android:id="@+id/et_hours" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="numberDecimal" />
                         </com.google.android.material.textfield.TextInputLayout>
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btn_submit_reading"
-                            android:layout_width="match_parent"
-                            android:layout_height="54dp"
-                            android:layout_marginTop="16dp"
-                            android:text="Assess Flap Risk"
-                            android:textAllCaps="false"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            app:backgroundTint="@color/fg_primary"
-                            app:cornerRadius="14dp"
-                            app:elevation="0dp" />
+                        <com.google.android.material.button.MaterialButton android:id="@+id/btn_submit_reading" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="16dp" android:text="Assess Flap Risk" android:textAllCaps="false" android:textSize="15sp" android:textStyle="bold" app:backgroundTint="@color/fg_primary" app:cornerRadius="14dp" app:elevation="0dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- AI Prediction Result Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/card_prediction_result"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:visibility="gone"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="18dp">
-
-                        <TextView
-                            android:id="@+id/tv_prediction_title"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="AI Assessment"
-                            android:textColor="@color/fg_text_primary"
-                            android:textSize="16sp" />
-
-                        <TextView
-                            android:id="@+id/tv_prediction_result"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text=""
-                            android:textColor="@color/fg_text_secondary"
-                            android:textSize="13sp" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_prediction_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+                        <TextView android:id="@+id/tv_prediction_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="AI Assessment" android:textColor="@color/fg_text_primary" android:textSize="16sp" />
+                        <TextView android:id="@+id/tv_prediction_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="" android:textColor="@color/fg_text_secondary" android:textSize="13sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Quiet Single-Row Simulator Launcher (Keeps clinical form spotless) -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/row_open_simulator"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="Simulator"
-                            android:src="@drawable/ic_science"
-                            app:tint="@color/fg_text_muted" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Crisis Simulator"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="14sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Test venous or arterial alerts"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="12sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginTop="14dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="DEMO &amp; ALERT TESTING" android:textColor="@color/fg_text_muted" android:textSize="11sp" android:textStyle="bold" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/row_open_simulator" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Simulator" android:src="@drawable/ic_science" app:tint="@color/fg_text_muted" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Simulate Flap Emergency" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Trigger a demo alert for testing" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
                         </LinearLayout>
-
-                        <ImageView
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:contentDescription="Open"
-                            android:src="@drawable/ic_chevron_right"
-                            app:tint="@color/fg_border_strong" />
+                        <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
-
-        <!-- TAB 3: ALERTS (Calm, Zero Red Banner) -->
-        <LinearLayout
-            android:id="@+id/section_alerts"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="16dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/tv_alerts_summary"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginBottom="10dp"
-                android:text="No active alerts"
-                android:textColor="@color/fg_text_muted"
-                android:textSize="13sp" />
-
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_empty_alerts"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                app:cardBackgroundColor="@color/fg_surface"
-                app:cardCornerRadius="22dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:padding="32dp"
-                    android:text="All clear — no active flap compromise alerts."
-                    android:textColor="@color/fg_text_muted"
-                    android:textSize="14sp" />
+        <LinearLayout android:id="@+id/section_alerts" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp" android:visibility="gone">
+            <TextView android:id="@+id/tv_alerts_summary" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginBottom="10dp" android:text="No active alerts" android:textColor="@color/fg_text_muted" android:textSize="13sp" />
+            <com.google.android.material.card.MaterialCardView android:id="@+id/card_empty_alerts" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="22dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="32dp" android:text="All clear — no active flap compromise alerts." android:textColor="@color/fg_text_muted" android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_alerts"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:clipToPadding="false"
-                android:paddingBottom="16dp" />
+            <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_alerts" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="16dp" />
         </LinearLayout>
-
-        <!-- TAB 4: PROFILE (Centered Minimal Hero + Clean Settings List Rows) -->
-        <ScrollView
-            android:id="@+id/section_profile"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="24dp">
-
-                <!-- Centered Clean Avatar & Identity (No heavy box!) -->
-                <FrameLayout
-                    android:id="@+id/btn_edit_profile_photo"
-                    android:layout_width="86dp"
-                    android:layout_height="86dp"
-                    android:clickable="true"
-                    android:contentDescription="Change profile photo"
-                    android:focusable="true">
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="82dp"
-                        android:layout_height="82dp"
-                        android:layout_gravity="center"
-                        app:cardBackgroundColor="@color/fg_primary"
-                        app:cardCornerRadius="41dp"
-                        app:cardElevation="0dp"
-                        app:strokeColor="@color/white"
-                        app:strokeWidth="3dp">
-
-                        <FrameLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent">
-
-                            <TextView
-                                android:id="@+id/tv_profile_initials"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:fontFamily="sans-serif-medium"
-                                android:gravity="center"
-                                android:text="DR"
-                                android:textColor="@color/white"
-                                android:textSize="26sp" />
-
-                            <ImageView
-                                android:id="@+id/iv_profile_photo"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent"
-                                android:contentDescription="Clinician photo"
-                                android:scaleType="centerCrop"
-                                android:visibility="gone" />
+        <ScrollView android:id="@+id/section_profile" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_horizontal" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="8dp" android:paddingEnd="16dp" android:paddingBottom="24dp">
+                <FrameLayout android:id="@+id/btn_edit_profile_photo" android:layout_width="86dp" android:layout_height="86dp" android:clickable="true" android:contentDescription="Change profile photo" android:focusable="true">
+                    <com.google.android.material.card.MaterialCardView android:layout_width="82dp" android:layout_height="82dp" android:layout_gravity="center" app:cardBackgroundColor="@color/fg_primary" app:cardCornerRadius="41dp" app:cardElevation="0dp" app:strokeColor="@color/white" app:strokeWidth="3dp">
+                        <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                            <TextView android:id="@+id/tv_profile_initials" android:layout_width="match_parent" android:layout_height="match_parent" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="DR" android:textColor="@color/white" android:textSize="26sp" />
+                            <ImageView android:id="@+id/iv_profile_photo" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="Clinician photo" android:scaleType="centerCrop" android:visibility="gone" />
                         </FrameLayout>
                     </com.google.android.material.card.MaterialCardView>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
-                        android:layout_gravity="bottom|end"
-                        app:cardBackgroundColor="@color/fg_accent"
-                        app:cardCornerRadius="13dp"
-                        app:cardElevation="1dp"
-                        app:strokeColor="@color/fg_bg"
-                        app:strokeWidth="2dp">
-
-                        <ImageView
-                            android:layout_width="13dp"
-                            android:layout_height="13dp"
-                            android:layout_gravity="center"
-                            android:contentDescription="Edit photo"
-                            android:src="@drawable/ic_edit_camera"
-                            app:tint="@color/white" />
+                    <com.google.android.material.card.MaterialCardView android:layout_width="26dp" android:layout_height="26dp" android:layout_gravity="bottom|end" app:cardBackgroundColor="@color/fg_accent" app:cardCornerRadius="13dp" app:cardElevation="1dp" app:strokeColor="@color/fg_bg" app:strokeWidth="2dp">
+                        <ImageView android:layout_width="13dp" android:layout_height="13dp" android:layout_gravity="center" android:contentDescription="Edit photo" android:src="@drawable/ic_edit_camera" app:tint="@color/white" />
                     </com.google.android.material.card.MaterialCardView>
                 </FrameLayout>
-
-                <TextView
-                    android:id="@+id/tv_profile_name"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="Clinician"
-                    android:textColor="@color/fg_text_primary"
-                    android:textSize="19sp" />
-
-                <TextView
-                    android:id="@+id/tv_profile_email"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="clinician@hospital.org"
-                    android:textColor="@color/fg_text_muted"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tv_profile_role"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:layout_marginBottom="18dp"
-                    android:background="@drawable/bg_badge"
-                    android:backgroundTint="@color/fg_primary_soft"
-                    android:paddingStart="12dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="4dp"
-                    android:text="Surgeon"
-                    android:textColor="@color/fg_primary"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
-                <!-- Unified Borderless 3-Column Stats Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp">
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_stat_model"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="v1.0"
-                                android:textColor="@color/fg_primary"
-                                android:textSize="17sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="AI Model"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                <TextView android:id="@+id/tv_profile_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:fontFamily="sans-serif-medium" android:text="Clinician" android:textColor="@color/fg_text_primary" android:textSize="19sp" />
+                <TextView android:id="@+id/tv_profile_email" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="clinician@hospital.org" android:textColor="@color/fg_text_muted" android:textSize="13sp" />
+                <TextView android:id="@+id/tv_profile_role" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:layout_marginBottom="18dp" android:background="@drawable/bg_badge" android:backgroundTint="@color/fg_primary_soft" android:paddingStart="12dp" android:paddingTop="4dp" android:paddingEnd="12dp" android:paddingBottom="4dp" android:text="Surgeon" android:textColor="@color/fg_primary" android:textSize="11sp" android:textStyle="bold" />
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingTop="14dp" android:paddingBottom="14dp">
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_stat_model" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="v1.0" android:textColor="@color/fg_primary" android:textSize="17sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Engine" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="26dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_stat_patients"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="0"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="17sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Patients"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                        <View android:layout_width="1dp" android:layout_height="26dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_stat_patients" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_text_primary" android:textSize="17sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Patients" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="1dp"
-                            android:layout_height="26dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:gravity="center"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/tv_stat_alerts"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="0"
-                                android:textColor="@color/fg_danger"
-                                android:textSize="17sp" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Alerts"
-                                android:textColor="@color/fg_text_muted"
-                                android:textSize="11sp" />
+                        <View android:layout_width="1dp" android:layout_height="26dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
+                            <TextView android:id="@+id/tv_stat_alerts" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_danger" android:textSize="17sp" />
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Alerts" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Clean iOS/Google-Style Grouped Settings List (Zero Bulky Buttons!) -->
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="14dp"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="20dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <LinearLayout
-                            android:id="@+id/row_log_outcome"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="16dp">
-
-                            <FrameLayout
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:background="@drawable/bg_circle_soft">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="Outcome"
-                                    android:src="@drawable/ic_science"
-                                    app:tint="@color/fg_primary" />
+                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <LinearLayout android:id="@+id/row_log_outcome" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Outcome" android:src="@drawable/ic_science" app:tint="@color/fg_primary" />
                             </FrameLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:fontFamily="sans-serif-medium"
-                                    android:text="Log Post-Op Outcome"
-                                    android:textColor="@color/fg_text_primary"
-                                    android:textSize="14sp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Continuous AI learning feedback"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="12sp" />
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Record Confirmed Diagnosis" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Save verified bedside or OR findings" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
                             </LinearLayout>
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Open"
-                                android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_border_strong" />
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
                         </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginStart="66dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:id="@+id/row_demo_data"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="16dp">
-
-                            <FrameLayout
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:background="@drawable/bg_circle_soft"
-                                android:backgroundTint="@color/fg_accent_soft">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="Ward data"
-                                    android:src="@drawable/ic_ward"
-                                    app:tint="@color/fg_accent" />
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/row_bg_monitor" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="12dp" android:paddingEnd="14dp" android:paddingBottom="12dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_danger_bg">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="On-call alerts" android:src="@drawable/ic_alerts" app:tint="@color/fg_danger" />
                             </FrameLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:fontFamily="sans-serif-medium"
-                                    android:text="Demo Ward Data"
-                                    android:textColor="@color/fg_text_primary"
-                                    android:textSize="14sp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Load sample cases or clear ward"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="12sp" />
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Alert While Phone Is Locked" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Checks for emergencies even when screen is off" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
                             </LinearLayout>
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Open"
-                                android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginStart="66dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:id="@+id/btn_change_password"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="16dp">
-
-                            <FrameLayout
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:background="@drawable/bg_circle_soft"
-                                android:backgroundTint="@color/fg_surface_soft">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="Password"
-                                    android:src="@drawable/ic_lock"
-                                    app:tint="@color/fg_text_secondary" />
-                            </FrameLayout>
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:layout_weight="1"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Change Password"
-                                android:textColor="@color/fg_text_primary"
-                                android:textSize="14sp" />
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Open"
-                                android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginStart="66dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:id="@+id/row_bg_monitor"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:paddingStart="16dp"
-                            android:paddingTop="12dp"
-                            android:paddingEnd="14dp"
-                            android:paddingBottom="12dp">
-
-                            <FrameLayout
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:background="@drawable/bg_circle_soft"
-                                android:backgroundTint="@color/fg_danger_bg">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="On-call alerts"
-                                    android:src="@drawable/ic_alerts"
-                                    app:tint="@color/fg_danger" />
-                            </FrameLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:fontFamily="sans-serif-medium"
-                                    android:text="Lock-Screen Alerts"
-                                    android:textColor="@color/fg_text_primary"
-                                    android:textSize="14sp" />
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="On-call 30s background monitor"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="12sp" />
-                            </LinearLayout>
-
-                            <com.google.android.material.materialswitch.MaterialSwitch
-                                android:id="@+id/switch_bg_monitor"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content" />
-                        </LinearLayout>
-
-                        <View
-                            android:layout_width="match_parent"
-                            android:layout_height="1dp"
-                            android:layout_marginStart="66dp"
-                            android:background="@color/fg_divider" />
-
-                        <LinearLayout
-                            android:id="@+id/row_connection_mode"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:background="?attr/selectableItemBackground"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal"
-                            android:padding="16dp">
-
-                            <FrameLayout
-                                android:layout_width="36dp"
-                                android:layout_height="36dp"
-                                android:background="@drawable/bg_circle_soft"
-                                android:backgroundTint="@color/fg_surface_soft">
-
-                                <ImageView
-                                    android:layout_width="18dp"
-                                    android:layout_height="18dp"
-                                    android:layout_gravity="center"
-                                    android:contentDescription="Connection"
-                                    android:src="@drawable/ic_cloud"
-                                    app:tint="@color/fg_text_secondary" />
-                            </FrameLayout>
-
-                            <LinearLayout
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="14dp"
-                                android:layout_weight="1"
-                                android:orientation="vertical">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:fontFamily="sans-serif-medium"
-                                    android:text="Connection Mode"
-                                    android:textColor="@color/fg_text_primary"
-                                    android:textSize="14sp" />
-
-                                <TextView
-                                    android:id="@+id/tv_active_server_label"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Live Cloud"
-                                    android:textColor="@color/fg_text_muted"
-                                    android:textSize="12sp" />
-                            </LinearLayout>
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:contentDescription="Open"
-                                android:src="@drawable/ic_chevron_right"
-                                app:tint="@color/fg_border_strong" />
+                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_bg_monitor" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-
-                <!-- Clean Borderless Sign Out Card -->
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/btn_logout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardBackgroundColor="@color/fg_surface"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    app:strokeWidth="0dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:gravity="center"
-                        android:padding="15dp"
-                        android:text="Sign Out"
-                        android:textColor="@color/fg_danger"
-                        android:textSize="15sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginTop="14dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="SECURITY &amp; ACCOUNT" android:textColor="@color/fg_text_muted" android:textSize="11sp" android:textStyle="bold" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_profile_security" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <LinearLayout android:id="@+id/row_app_lock" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="12dp" android:paddingEnd="14dp" android:paddingBottom="12dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_primary_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Unlock with Fingerprint / PIN" android:src="@drawable/ic_lock" app:tint="@color/fg_primary" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Unlock with Fingerprint / PIN" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Require phone lock when opening FlapGuard" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_app_lock" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        </LinearLayout>
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/row_screen_privacy" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="12dp" android:paddingEnd="14dp" android:paddingBottom="12dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_primary_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Hide Screen from Screenshots" android:src="@drawable/ic_lock" app:tint="@color/fg_primary" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Hide Screen from Screenshots" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blocks screenshots &amp; app-switcher previews" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_screen_privacy" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                        </LinearLayout>
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/btn_change_password" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Password" android:src="@drawable/ic_lock" app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Change Password" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+                        </LinearLayout>
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/row_sign_out_all" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="13dp" android:paddingEnd="16dp" android:paddingBottom="13dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_warning_bg">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Sign Out Other Devices" android:src="@drawable/ic_lock" app:tint="@color/fg_warning" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Sign Out Other Devices" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Revoke active sessions on other phones" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/fg_text_muted" android:textSize="20sp" />
+                        </LinearLayout>
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/row_delete_account" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp" android:paddingTop="13dp" android:paddingEnd="16dp" android:paddingBottom="13dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_danger_bg">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Delete Account" android:src="@drawable/ic_alerts" app:tint="@color/fg_danger" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Delete Account" android:textColor="@color/fg_danger" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30-day recovery window · keeps ward records safe" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="@color/fg_text_muted" android:textSize="20sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginTop="14dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="DEMO &amp; TESTING TOOLS" android:textColor="@color/fg_text_muted" android:textSize="11sp" android:textStyle="bold" />
+                <com.google.android.material.card.MaterialCardView android:id="@+id/card_profile_demo_tools" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                        <LinearLayout android:id="@+id/row_demo_data" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_accent_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Ward data" android:src="@drawable/ic_ward" app:tint="@color/fg_accent" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Sample Ward Cases" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Load demo patients or reset ward" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+                        </LinearLayout>
+                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="66dp" android:background="@color/fg_divider" />
+                        <LinearLayout android:id="@+id/row_connection_mode" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
+                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Connection" android:src="@drawable/ic_cloud" app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
+                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Server Connection" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
+                                <TextView android:id="@+id/tv_active_server_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Live Cloud" android:textColor="@color/fg_text_muted" android:textSize="12sp" />
+                            </LinearLayout>
+                            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+                <com.google.android.material.card.MaterialCardView android:id="@+id/btn_logout" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeWidth="0dp">
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:padding="15dp" android:text="Sign Out" android:textColor="@color/fg_danger" android:textSize="15sp" />
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/fg_divider" />
-
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottom_nav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/fg_surface"
-        app:elevation="0dp"
-        app:itemActiveIndicatorStyle="@style/Widget.FlapGuard.BottomNav.Indicator"
-        app:itemIconTint="@color/selector_bottom_nav"
-        app:itemTextColor="@color/selector_bottom_nav"
-        app:labelVisibilityMode="labeled"
-        app:menu="@menu/bottom_nav_menu" />
-
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/fg_divider" />
+    <com.google.android.material.bottomnavigation.BottomNavigationView android:id="@+id/bottom_nav" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/fg_surface" app:elevation="0dp" app:itemActiveIndicatorStyle="@style/Widget.FlapGuard.BottomNav.Indicator" app:itemIconTint="@color/selector_bottom_nav" app:itemTextColor="@color/selector_bottom_nav" app:labelVisibilityMode="labeled" app:menu="@menu/bottom_nav_menu" />
 </LinearLayout>

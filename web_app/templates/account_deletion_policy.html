@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Account Deletion Policy | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="card" style="max-width:680px;margin:20px auto;">
+  <h2>Account Deletion &amp; {{ grace_days }}-Day Recovery Window</h2>
+  <p class="muted">FlapGuard AI provides self-service account deletion on both Web and Android.</p>
+  <ol style="line-height:1.65;color:#334155;">
+    <li>Sign in to FlapGuard AI (Web or Android) and open <strong>Profile &rarr; Delete Account</strong>.</li>
+    <li>Confirm with your password to schedule permanent deletion in <strong>{{ grace_days }} days</strong> (exact date and time displayed).</li>
+    <li>All active sessions and mobile tokens are revoked immediately.</li>
+    <li><strong>Restore anytime before day {{ grace_days }}:</strong> Sign back in with your email and password before the deadline to cancel deletion and restore your account.</li>
+    <li><strong>What gets deleted vs. preserved:</strong> After {{ grace_days }} days, your name, email, profile photo, and password hash are permanently erased and anonymized. Clinical ward records and security audit logs remain anonymized for clinical and audit integrity.</li>
+  </ol>
+  <a class="btn btn-sm" href="{{ url_for('main.login') }}">Sign In to Manage Account</a>
+</div>
+{% endblock %}

@@ -40,10 +40,21 @@ class OfflineQueueDb(context: Context) : SQLiteOpenHelper(
     }
 
     fun enqueue(patientId: Int, patientName: String, payload: JSONObject): Long {
+        val raw = payload.toString()
+        val sealed = try {
+            SecurePrefs.encryptString(raw)
+        } catch (_: Exception) {
+            raw
+        }
+        val sealedName = try {
+            SecurePrefs.encryptString(patientName)
+        } catch (_: Exception) {
+            patientName
+        }
         val values = ContentValues().apply {
             put("patient_id", patientId)
-            put("patient_name", patientName)
-            put("payload_json", payload.toString())
+            put("patient_name", sealedName)
+            put("payload_json", sealed)
             put("created_at_ms", System.currentTimeMillis())
         }
         return writableDatabase.insert("queued_readings", null, values)
@@ -56,12 +67,24 @@ class OfflineQueueDb(context: Context) : SQLiteOpenHelper(
             null
         ).use { cursor ->
             while (cursor.moveToNext()) {
+                val rawName = cursor.getString(2)
+                val rawPayload = cursor.getString(3)
+                val decName = if (rawName.startsWith("ENC_GCM_V1:")) {
+                    SecurePrefs.decryptString(rawName) ?: "Patient"
+                } else {
+                    rawName
+                }
+                val decPayload = if (rawPayload.startsWith("ENC_GCM_V1:")) {
+                    SecurePrefs.decryptString(rawPayload) ?: continue
+                } else {
+                    rawPayload
+                }
                 list.add(
                     QueuedReading(
                         id = cursor.getLong(0),
                         patientId = cursor.getInt(1),
-                        patientName = cursor.getString(2),
-                        payloadJson = cursor.getString(3),
+                        patientName = decName,
+                        payloadJson = decPayload,
                         createdAtMs = cursor.getLong(4)
                     )
                 )
@@ -80,10 +103,6 @@ class OfflineQueueDb(context: Context) : SQLiteOpenHelper(
         }
     }
 
-    /**
-     * Attempts to sync every queued offline reading in FIFO order.
-     * Returns Pair(syncedCount, remainingCount).
-     */
     fun flushAll(serverUrl: String, authToken: String): Pair<Int, Int> {
         if (authToken.isBlank()) return 0 to count()
         val items = getAll()
@@ -108,7 +127,6 @@ class OfflineQueueDb(context: Context) : SQLiteOpenHelper(
                 deleteById(item.id)
                 if (res.ok) synced++
             } else {
-                // Network still unavailable or unauthorized — stop and retry later
                 break
             }
         }
