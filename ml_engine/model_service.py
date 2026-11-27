@@ -558,13 +558,17 @@ def retrain_from_postop_outcomes(
     )
     cand_f1 = float(cand_meta["macro_f1"])
     f1_drop = round(old_f1 - cand_f1, 4)
+    old_brier = float(old_meta.get("brier_score", 0.05))
+    cand_brier = float(cand_meta.get("brier_score", 0.0))
+    brier_inc = round(cand_brier - old_brier, 4)
 
-    if cand_f1 < min_holdout_f1 or f1_drop > max_f1_drop:
+    if cand_f1 < min_holdout_f1 or f1_drop > max_f1_drop or brier_inc > 0.08:
         return {
             "promoted": False,
             "rejection_reason": (
-                f"Holdout Macro-F1 safety gate blocked promotion "
-                f"(candidate F1={cand_f1:.4f}, baseline F1={old_f1:.4f}, drop={f1_drop:.4f})."
+                f"Holdout safety gate blocked promotion "
+                f"(candidate F1={cand_f1:.4f}, baseline F1={old_f1:.4f}, "
+                f"Brier={cand_brier:.4f}, +{brier_inc:.4f})."
             ),
             "old_version": old_meta["version"],
             "new_version": old_meta["version"],

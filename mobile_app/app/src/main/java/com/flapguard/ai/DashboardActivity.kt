@@ -47,6 +47,7 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -79,6 +80,14 @@ class DashboardActivity : AppCompatActivity() {
     private var lastAlertsSignature = ""
     private var pendingFlapCameraUri: Uri? = null
     private var pendingProfileCameraUri: Uri? = null
+
+    private lateinit var offlineQueueDb: OfflineQueueDb
+    private var controlSkinBase64: String? = null
+    private lateinit var cardOfflineQueue: MaterialCardView
+    private lateinit var tvOfflineQueueText: TextView
+    private lateinit var tvControlSkinStatus: TextView
+    private lateinit var btnPickControlSkin: MaterialButton
+    private lateinit var switchBgMonitor: MaterialSwitch
 
     private var scannedRedness = 0.14
     private var scannedCyanosis = 0.03
@@ -180,6 +189,12 @@ class DashboardActivity : AppCompatActivity() {
         if (success && uri != null) uploadProfilePhotoUri(uri)
     }
 
+    private val controlSkinGalleryLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) loadControlSkinReference(uri)
+    }
+
     private val profileGalleryLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -202,7 +217,10 @@ class DashboardActivity : AppCompatActivity() {
             return
         }
 
-        createNotificationChannel()
+        offlineQueueDb = OfflineQueueDb(this)
+        NotificationHelper.ensureChannels(this)
+        AlertJobService.schedule(this)
+        if (AlertMonitorService.isEnabled(this)) AlertMonitorService.start(this)
         requestNotificationPermissionIfNeeded()
         bindViews()
         setupAdapters()
@@ -295,6 +313,11 @@ class DashboardActivity : AppCompatActivity() {
         sectionAlerts = findViewById(R.id.section_alerts)
         sectionProfile = findViewById(R.id.section_profile)
 
+        cardOfflineQueue = findViewById(R.id.card_offline_queue)
+        tvOfflineQueueText = findViewById(R.id.tv_offline_queue_text)
+        tvControlSkinStatus = findViewById(R.id.tv_control_skin_status)
+        btnPickControlSkin = findViewById(R.id.btn_pick_control_skin)
+        switchBgMonitor = findViewById(R.id.switch_bg_monitor)
         cardWardAlertPill = findViewById(R.id.card_ward_alert_pill)
         tvWardAlertText = findViewById(R.id.tv_ward_alert_text)
         tvKpiCritical = findViewById(R.id.tv_kpi_critical)
@@ -403,6 +426,22 @@ class DashboardActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.btn_open_camera).setOnClickListener { launchFlapCamera() }
         findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { flapGalleryLauncher.launch("image/*") }
+        cardOfflineQueue.setOnClickListener { flushOfflineQueue(showFeedback = true) }
+        btnPickControlSkin.setOnClickListener {
+            if (controlSkinBase64 != null) {
+                controlSkinBase64 = null
+                tvControlSkinStatus.text = "Control skin ref: none (optional lighting calibration)"
+                btnPickControlSkin.text = "+ Skin Ref"
+                showNotice("Control skin reference cleared.")
+            } else {
+                controlSkinGalleryLauncher.launch("image/*")
+            }
+        }
+        switchBgMonitor.isChecked = AlertMonitorService.isEnabled(this)
+        switchBgMonitor.setOnCheckedChangeListener { _, isChecked ->
+            AlertMonitorService.setEnabled(this, isChecked)
+            showNotice(if (isChecked) "On-call lock-screen monitor enabled." else "On-call background monitor paused.")
+        }
         findViewById<MaterialButton>(R.id.btn_submit_reading).setOnClickListener { submitSensorReading() }
 
         findViewById<MaterialCardView>(R.id.row_open_simulator).setOnClickListener {
@@ -471,9 +510,56 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun syncAll() {
+        updateOfflineQueueBadge()
+        flushOfflineQueue(showFeedback = false)
         fetchPatients()
         fetchAlerts(silent = false)
         fetchProfileStats()
+    }
+
+    private fun updateOfflineQueueBadge() {
+        val pending = if (::offlineQueueDb.isInitialized) offlineQueueDb.count() else 0
+        mainHandler.post {
+            if (pending > 0) {
+                cardOfflineQueue.visibility = View.VISIBLE
+                tvOfflineQueueText.text = "$pending offline reading(s) queued — tap to sync now"
+            } else {
+                cardOfflineQueue.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun flushOfflineQueue(showFeedback: Boolean) {
+        if (!::offlineQueueDb.isInitialized || offlineQueueDb.count() == 0) return
+        executor.execute {
+            val (synced, remaining) = offlineQueueDb.flushAll(serverUrl(), authToken)
+            updateOfflineQueueBadge()
+            if (synced > 0) {
+                mainHandler.post {
+                    showNotice("Auto-synced $synced queued offline reading(s).")
+                    fetchPatients()
+                    fetchAlerts(silent = false)
+                }
+            } else if (showFeedback && remaining > 0) {
+                mainHandler.post { showNotice("Still offline — $remaining reading(s) safely queued.") }
+            }
+        }
+    }
+
+    private fun loadControlSkinReference(uri: Uri) {
+        executor.execute {
+            val bmp = ImageUtils.decodeScaledRotatedBitmap(this, uri, 480)
+            if (bmp == null) {
+                mainHandler.post { showNotice("Could not load control skin photo.") }
+                return@execute
+            }
+            controlSkinBase64 = ImageUtils.toBase64Jpeg(bmp, 85)
+            mainHandler.post {
+                tvControlSkinStatus.text = "Control skin ref attached (paired CIE-LAB active)"
+                btnPickControlSkin.text = "Clear"
+                showNotice("Control skin reference ready for paired scan.")
+            }
+        }
     }
 
     private fun handleUnauthorized(statusCode: Int): Boolean {
@@ -495,6 +581,9 @@ class DashboardActivity : AppCompatActivity() {
                 }
             }.start()
         }
+        AlertMonitorService.setEnabled(this, false)
+        AlertJobService.cancel(this)
+        NotificationHelper.clearNotifiedHistory(this)
         SecurePrefs.clearAuthToken(this)
         getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE).edit()
             .remove("user_photo")
@@ -550,7 +639,10 @@ class DashboardActivity : AppCompatActivity() {
                     spo2Pct = if (latest != null) latest.optDouble("spo2_pct") else null,
                     dopplerCmS = if (latest != null) latest.optDouble("doppler_flow_cm_s") else null,
                     visualScore = if (latest != null) latest.optDouble("visual_perfusion_score") else null,
-                    alertMessage = latest?.optString("alert_message").orEmpty()
+                    alertMessage = latest?.optString("alert_message").orEmpty(),
+                    trendStatus = latest?.optString("trend_status", "Baseline Established") ?: "Baseline Established",
+                    confidenceLabel = latest?.optString("confidence_label", "High") ?: "High",
+                    oodFlag = latest?.optBoolean("ood_flag", false) ?: false
                 )
             )
         }
@@ -647,6 +739,33 @@ class DashboardActivity : AppCompatActivity() {
             patient.visualScore?.let { String.format(Locale.US, "%.0f / 100", it) } ?: "--"
         view.findViewById<TextView>(R.id.tv_detail_summary).text =
             patient.alertMessage.ifBlank { "No sensor assessments logged yet for this patient." }
+        view.findViewById<TextView>(R.id.tv_detail_trend_badge).text = "Trend: ${patient.trendStatus}"
+        view.findViewById<TextView>(R.id.tv_detail_conf_badge).text = "Reliability: ${patient.confidenceLabel}"
+        view.findViewById<TextView>(R.id.tv_detail_ood_warning).visibility =
+            if (patient.oodFlag) View.VISIBLE else View.GONE
+
+        val chartView = view.findViewById<TrendChartView>(R.id.view_trend_chart)
+        executor.execute {
+            val res = ApiClient.request(serverUrl(), "/mobile/patients/${patient.id}/readings", "GET", null, authToken)
+            if (res.ok) {
+                val arr = res.json.optJSONArray("readings") ?: JSONArray()
+                val pts = mutableListOf<ReadingPoint>()
+                for (i in arr.length() - 1 downTo 0) {
+                    val r = arr.getJSONObject(i)
+                    val hrs = r.optDouble("hours_post_op", 0.0)
+                    pts.add(
+                        ReadingPoint(
+                            label = String.format(Locale.US, "%.0fh", hrs),
+                            tempDeltaC = r.optDouble("temp_delta_c", 0.0),
+                            spo2Pct = r.optDouble("spo2_pct", 0.0),
+                            dopplerCmS = r.optDouble("doppler_flow_cm_s", 0.0),
+                            riskScorePct = r.optDouble("risk_score_pct", 0.0)
+                        )
+                    )
+                }
+                mainHandler.post { chartView.setReadings(pts) }
+            }
+        }
 
         view.findViewById<MaterialButton>(R.id.btn_sheet_assess).setOnClickListener {
             sheet.dismiss()
@@ -847,6 +966,7 @@ class DashboardActivity : AppCompatActivity() {
                 }
 
                 val body = JSONObject().put("image_base64", encoded)
+                controlSkinBase64?.let { body.put("control_image_base64", it) }
                 val res = ApiClient.request(serverUrl(), "/mobile/analyze-image", "POST", body, authToken)
                 endSync()
                 mainHandler.post {
@@ -866,7 +986,7 @@ class DashboardActivity : AppCompatActivity() {
 
                         tvVisionResult.text = String.format(
                             Locale.US,
-                            "%s  •  Score %.0f/100 (%s)%s",
+                            "%s  •  Score %.0f/100 (%s)" + (if (res.json.optBoolean("calibrated_with_control", false)) " · Skin-Calibrated" else "") + "%s",
                             triage, score, qStatus, warnText
                         )
                     } else {
@@ -927,6 +1047,10 @@ class DashboardActivity : AppCompatActivity() {
                     showPredictionCard(res.json.getJSONObject("reading"))
                     fetchPatients()
                     fetchAlerts(silent = false)
+                } else if (res.statusCode == 0) {
+                    offlineQueueDb.enqueue(patient.id, patient.fullName, payload)
+                    updateOfflineQueueBadge()
+                    showNotice("Offline — reading saved locally and will auto-sync.")
                 } else {
                     showNotice("Assessment failed: ${res.errorMessage}")
                 }
@@ -1037,8 +1161,8 @@ class DashboardActivity : AppCompatActivity() {
 
                     val predClass = a.optString("predicted_class", "")
                     val riskPct = a.optDouble("risk_score_pct", -1.0)
-                    if (!acked && notifiedAlertIds.add(id)) {
-                        pushSurgeonNotification(id, pName, tier, predClass, riskPct, msg)
+                    if (!acked && notifiedAlertIds.add(id) && NotificationHelper.markAndCheckShouldNotify(this, id)) {
+                        NotificationHelper.showSurgeonAlert(this, id, pName, tier, predClass, riskPct, msg)
                     }
                     list.add(AlertItem(id, pName, tier, msg, acked, ackBy))
                 }

@@ -15,7 +15,10 @@ data class PatientItem(
     val spo2Pct: Double?,
     val dopplerCmS: Double?,
     val visualScore: Double?,
-    val alertMessage: String
+    val alertMessage: String,
+    val trendStatus: String = "Baseline Established",
+    val confidenceLabel: String = "High",
+    val oodFlag: Boolean = false
 )
 
 data class AlertItem(
@@ -25,4 +28,12 @@ data class AlertItem(
     val message: String,
     val acknowledged: Boolean,
     val acknowledgedBy: String
+)
+
+data class ReadingPoint(
+    val label: String,
+    val tempDeltaC: Double,
+    val spo2Pct: Double,
+    val dopplerCmS: Double,
+    val riskScorePct: Double
 )

@@ -12,8 +12,8 @@ android {
         applicationId = "com.flapguard.ai"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
-        versionName = "2.1"
+        versionCode = 4
+        versionName = "3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -207,21 +207,21 @@ def run_validation_suite() -> str:
     ))
     idx += 1
 
-    # 2e. Holdout F1 safety gate blocks heavily poisoned outcome batches
+    # 2e. Holdout F1 & Brier safety gate blocks distributed poisoned outcome batches
     t0 = time.perf_counter()
-    poisoned = [
-        {
-            "ir_flap_temp_c": 36.3, "control_skin_temp_c": 36.7, "spo2_pct": 98.0,
-            "doppler_flow_cm_s": 22.0, "visual_redness_index": 0.16,
-            "visual_cyanosis_index": 0.02, "visual_pallor_index": 0.40,
-            "hours_post_op": 8.0, "label": "Arterial Compromise",
-        }
-        for _ in range(900)
-    ]
+    import pandas as _pd
+    _base_df = _pd.read_csv(_ms.BASE_DATASET_PATH)
+    _flip_map = {0: "Arterial Compromise", 1: "Normal", 2: "Normal"}
+    _sample_poison = _base_df.sample(n=min(600, len(_base_df)), random_state=7)
+    poisoned = []
+    for _, _row in _sample_poison.iterrows():
+        _rec = {col: float(_row[col]) for col in _ms.FEATURE_COLUMNS}
+        _rec["label"] = _flip_map[int(_row["label"])]
+        poisoned.append(_rec)
     gate_res = _ms.retrain_from_postop_outcomes(poisoned)
     rows.append(make_row(
-        "VAL", idx, "Track 2 Clinical ML (Safety Gate)", "Holdout Macro-F1 gate blocks poisoned retraining batch",
-        "900 mislabeled healthy->Arterial rows", "promoted=False",
+        "VAL", idx, "Track 2 Clinical ML (Safety Gate)", "Holdout Macro-F1 & Brier gate blocks poisoned retraining batch",
+        "600 distributed label-flipped outcome rows", "promoted=False",
         f"promoted={gate_res['promoted']}, cand_f1={gate_res.get('candidate_macro_f1')}",
         (time.perf_counter() - t0) * 1000, gate_res["promoted"] is False,
     ))
