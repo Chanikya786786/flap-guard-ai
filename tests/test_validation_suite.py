@@ -259,6 +259,82 @@ def run_validation_suite() -> str:
     ))
     idx += 1
 
+    # v3.2 Clinical Workflow: Post-Op Q1h/Q2h/Q4h Schedule, Overdue Check, Bedside Exam Notes & SBAR Handoff
+    from datetime import timedelta as _td32
+    from types import SimpleNamespace as _NS
+    from web_app.clinical_workflow import (
+        build_bedside_exam_notes as _exam_notes,
+        compute_check_schedule as _calc_sched,
+    )
+    from web_app.models import utc_now as _now32
+
+    # 3a. Q1h/Q2h/Q4h protocol intervals & overdue detection
+    t0 = time.perf_counter()
+    s_q1_over = _calc_sched(_NS(hours_post_op=10.0), _NS(created_at=_now32() - _td32(minutes=78)))
+    s_q2_ok = _calc_sched(_NS(hours_post_op=36.0), _NS(created_at=_now32() - _td32(minutes=30)))
+    s_q4_ok = _calc_sched(_NS(hours_post_op=96.0), _NS(created_at=_now32() - _td32(minutes=60)))
+    sched_ok = (
+        s_q1_over["protocol"] == "Q1h" and s_q1_over["overdue"] is True
+        and s_q2_ok["protocol"] == "Q2h" and s_q2_ok["overdue"] is False
+        and s_q4_ok["protocol"] == "Q4h" and s_q4_ok["overdue"] is False
+    )
+    rows.append(make_row(
+        "VAL", idx, "v3.2 Clinical Workflow (Schedule)", "Compute Q1h/Q2h/Q4h post-op schedule & detect overdue check",
+        "10h(78m ago), 36h(30m ago), 96h(60m ago)", "Q1h overdue, Q2h ok, Q4h ok",
+        f"{s_q1_over['status_label']} | {s_q2_ok['status_label']} | {s_q4_ok['status_label']}",
+        (time.perf_counter() - t0) * 1000, sched_ok,
+    ))
+    idx += 1
+
+    # 3b. Bedside physical exam interpreter detects venous & arterial clinical red flags
+    t0 = time.perf_counter()
+    ven_notes = _exam_notes({"capillary_refill": "Brisk (<1s · Venous)", "pinprick_bleeding": "Dark Rapid Ooze (Venous)"})
+    art_notes = _exam_notes({"capillary_refill": "Sluggish (>3s · Arterial)", "doppler_quality": "Absent"})
+    exam_ok = len(ven_notes) == 2 and len(art_notes) == 2
+    rows.append(make_row(
+        "VAL", idx, "v3.2 Clinical Workflow (Bedside Exam)", "Interpret capillary refill, pinprick & Doppler quality",
+        "Venous + Arterial bedside exam signs", "2 venous notes & 2 arterial notes",
+        f"venous={len(ven_notes)}, arterial={len(art_notes)}",
+        (time.perf_counter() - t0) * 1000, exam_ok,
+    ))
+    idx += 1
+
+    # 3c. Mobile bedside exam submission + /mobile/handoff SBAR & Web /handoff report
+    t0 = time.perf_counter()
+    wf_app = _create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "SEED_SAMPLE_PATIENTS": True})
+    wfc = wf_app.test_client()
+    tok32 = wfc.post(
+        "/mobile/register",
+        json={"full_name": "Dr. Shift Lead", "email": "shift@hospital.org", "role": "Surgeon", "password": "Password@123"},
+    ).get_json()["token"]
+    h32 = {"Authorization": f"Bearer {tok32}"}
+    r_exam = wfc.post(
+        "/mobile/patients/1/reading",
+        headers=h32,
+        json={
+            "ir_flap_temp_c": 34.8, "control_skin_temp_c": 36.7, "spo2_pct": 82.0, "doppler_flow_cm_s": 10.0,
+            "capillary_refill": "Brisk (<1s · Venous)", "flap_turgor": "Tense / Congested",
+            "pinprick_bleeding": "Dark Rapid Ooze (Venous)", "doppler_quality": "Venous Hum Only",
+        },
+    )
+    h_mob = wfc.get("/mobile/handoff", headers=h32)
+    h_json = h_mob.get_json() or {}
+    sbar_txt = h_json.get("sbar_text", "")
+    sbar_ok = (
+        r_exam.status_code == 201
+        and h_mob.status_code == 200
+        and "SBAR" in sbar_txt
+        and "Bedside Exam:" in sbar_txt
+        and h_json.get("total_patients", 0) >= 3
+    )
+    rows.append(make_row(
+        "VAL", idx, "v3.2 Clinical Workflow (SBAR Handoff)", "Persist bedside exam & generate SBAR shift handoff report",
+        "POST reading w/ bedside exam -> GET /mobile/handoff", "201 reading, 200 SBAR containing Bedside Exam & >=3 patients",
+        f"read={r_exam.status_code}, handoff={h_mob.status_code}, pts={h_json.get('total_patients')}",
+        (time.perf_counter() - t0) * 1000, sbar_ok,
+    ))
+    idx += 1
+
     return write_excel_report("validation-test-report.xlsx", "Validation Test Report", rows)
 
 

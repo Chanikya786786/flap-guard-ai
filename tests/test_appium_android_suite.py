@@ -105,7 +105,7 @@ def _scroll_and_find(driver, view_id: str):
         return el
 
     for direction in ("down", "up"):
-        for _ in range(6):
+        for _ in range(7):
             _scroll_gesture(driver, direction, 0.7)
             time.sleep(0.25)
             el = _visible_match()

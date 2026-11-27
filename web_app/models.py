@@ -147,6 +147,10 @@ class SensorReading(db.Model):
     ood_flag = db.Column(db.Boolean, nullable=False, default=False)
     confidence_label = db.Column(db.String(40), nullable=False, default="High")
     trend_json = db.Column(db.Text, nullable=False, default="{}")
+    capillary_refill = db.Column(db.String(40), nullable=True)
+    flap_turgor = db.Column(db.String(40), nullable=True)
+    pinprick_bleeding = db.Column(db.String(40), nullable=True)
+    doppler_quality = db.Column(db.String(40), nullable=True)
     source_mode = db.Column(db.String(80), nullable=False, default="Manual + Camera")
     model_version = db.Column(db.String(20), nullable=False, default="v1.0")
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
@@ -196,6 +200,10 @@ class SensorReading(db.Model):
             "ood_flag": bool(self.ood_flag),
             "confidence_label": self.confidence_label,
             "trend_summary": self.trend_summary,
+            "capillary_refill": self.capillary_refill,
+            "flap_turgor": self.flap_turgor,
+            "pinprick_bleeding": self.pinprick_bleeding,
+            "doppler_quality": self.doppler_quality,
             "source_mode": self.source_mode,
             "model_version": self.model_version,
             "created_at": self.created_at.isoformat() if self.created_at else None,

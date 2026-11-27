@@ -47,6 +47,16 @@ class PatientAdapter(
             else -> Quad("New", "#F1F5F9", "#64748B", "#CBD5E1")
         }
 
+        if (item.checkScheduleLabel.isNotBlank()) {
+            holder.tvCheckSchedule.visibility = View.VISIBLE
+            holder.tvCheckSchedule.text = item.checkScheduleLabel
+            holder.tvCheckSchedule.setTextColor(
+                Color.parseColor(if (item.checkOverdue) "#E11D48" else "#0D9488")
+            )
+        } else {
+            holder.tvCheckSchedule.visibility = View.GONE
+        }
+
         holder.tvBadge.text = badgeLabel
         holder.tvBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor(badgeBg))
         holder.tvBadge.setTextColor(Color.parseColor(badgeFg))
@@ -87,6 +97,7 @@ class PatientAdapter(
         val tvName: TextView = view.findViewById(R.id.tv_patient_name)
         val tvBadge: TextView = view.findViewById(R.id.tv_risk_badge)
         val tvFlap: TextView = view.findViewById(R.id.tv_patient_flap)
+        val tvCheckSchedule: TextView = view.findViewById(R.id.tv_check_schedule)
         val layoutVitalsStrip: LinearLayout = view.findViewById(R.id.layout_vitals_strip)
         val tvMetricDelta: TextView = view.findViewById(R.id.tv_metric_delta)
         val tvMetricSpo2: TextView = view.findViewById(R.id.tv_metric_spo2)

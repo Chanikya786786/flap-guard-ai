@@ -1,3 +1,4 @@
+from web_app.clinical_workflow import compute_check_schedule, format_bedside_exam_summary
 """
 Fast Ward Query, Sample Case Seeding, and Soft-Archive Cleanup Service for FlapGuard AI.
 Preserves historical patient records and readings for clinical audit traceability.
@@ -137,6 +138,7 @@ def fetch_patients_with_latest_readings(include_archived: bool = False) -> List[
                 "visual_triage_label": latest.visual_triage_label,
                 "perfusion_fusion_index": latest.perfusion_fusion_index,
                 "hours_post_op": latest.hours_post_op,
+        "check_schedule": compute_check_schedule(latest, latest),
                 "predicted_class": latest.predicted_class,
                 "risk_tier": latest.risk_tier,
                 "risk_score_pct": latest.risk_score_pct,
@@ -150,6 +152,12 @@ def fetch_patients_with_latest_readings(include_archived: bool = False) -> List[
                 "ood_flag": bool(latest.ood_flag),
                 "confidence_label": latest.confidence_label,
                 "trend_summary": latest.trend_summary,
+                "bedside_exam_summary": format_bedside_exam_summary({
+                    "capillary_refill": latest.capillary_refill,
+                    "flap_turgor": latest.flap_turgor,
+                    "pinprick_bleeding": latest.pinprick_bleeding,
+                    "doppler_quality": latest.doppler_quality,
+                }),
                 "source_mode": latest.source_mode,
                 "model_version": latest.model_version,
                 "created_at": latest.created_at.isoformat() if latest.created_at else None,

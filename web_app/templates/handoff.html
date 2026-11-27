@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Shift Handoff (SBAR) | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Shift Handoff Report (SBAR)</h1>
+    <span class="muted">Generated {{ sbar.generated_at_utc }} by <strong>{{ sbar.generated_by }}</strong></span>
+  </div>
+  <div class="btn-row">
+    <a class="btn btn-outline" href="{{ url_for('main.dashboard') }}">&larr; Back to Ward</a>
+    <button type="button" class="btn btn-outline" id="copy-sbar-btn">Copy SBAR Text</button>
+    <button type="button" class="btn" onclick="window.print()">Print / Save PDF</button>
+  </div>
+</div>
+
+<div class="grid-4">
+  <div class="kpi">
+    <div class="kpi-label">Active Patients</div>
+    <div class="kpi-value">{{ sbar.total_patients }}</div>
+  </div>
+  <div class="kpi kpi-critical">
+    <div class="kpi-label">Critical / High</div>
+    <div class="kpi-value">{{ sbar.critical_high_count }}</div>
+  </div>
+  <div class="kpi kpi-high">
+    <div class="kpi-label">Overdue Checks</div>
+    <div class="kpi-value">{{ sbar.overdue_count }}</div>
+  </div>
+  <div class="kpi kpi-moderate">
+    <div class="kpi-label">Pending Alerts</div>
+    <div class="kpi-value">{{ sbar.active_alerts_count }}</div>
+  </div>
+</div>
+
+{% if sbar.patients %}
+  {% for item in sbar.patients %}
+  <div class="card" style="margin-bottom:14px;border-left:5px solid {% if item.tier == 'Critical' %}#dc2626{% elif item.tier == 'High' %}#d97706{% elif item.tier == 'Moderate' %}#2563eb{% else %}#059669{% endif %};">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div>
+        <strong style="font-size:1.05rem;">{{ item.patient_name }}</strong>
+        <span class="muted">({{ item.mrn }})</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="badge badge-{{ 'critical' if item.schedule.overdue else 'low' }}">{{ item.schedule.status_label }}</span>
+        <span class="badge badge-{{ item.tier|lower }}">{{ item.tier }}</span>
+      </div>
+    </div>
+    <div style="font-size:0.9rem;line-height:1.55;">
+      <div><strong>S (Situation):</strong> {{ item.situation }}</div>
+      <div><strong>B (Background):</strong> {{ item.background }}</div>
+      <div><strong>A (Assessment):</strong> {{ item.assessment }}</div>
+      <div><strong>R (Recommendation):</strong> {{ item.recommendation }}</div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card empty-state">
+    <h3>No Active Patients for Handoff</h3>
+    <p class="muted">Enroll patients on the Ward dashboard to generate a shift handoff report.</p>
+  </div>
+{% endif %}
+
+<textarea id="sbar-plain-text" style="position:absolute;left:-9999px;">{{ sbar.sbar_text }}</textarea>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const btn = document.getElementById("copy-sbar-btn");
+  const txt = document.getElementById("sbar-plain-text");
+  if (btn && txt) {
+    btn.addEventListener("click", function () {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt.value).then(function () {
+          btn.textContent = "Copied!";
+          setTimeout(function () { btn.textContent = "Copy SBAR Text"; }, 2000);
+        });
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -65,6 +65,12 @@ from web_app.security import (
     verify_mobile_token_with_meta,
     web_roles_required,
 )
+from web_app.clinical_workflow import (
+    build_bedside_exam_notes,
+    compute_check_schedule,
+    extract_bedside_exam,
+    generate_ward_sbar,
+)
 from web_app.model_store import persist_active_model_to_db
 from web_app.ward_service import (
     clear_all_ward_patients,
@@ -146,6 +152,7 @@ def _save_prediction_reading(
     recorded_by_id: Optional[int],
     pred: dict,
     source_mode: str,
+    bedside_exam: Optional[dict] = None,
 ) -> SensorReading:
     feat = pred["features"]
     triage = classify_visual_triage(
@@ -175,7 +182,11 @@ def _save_prediction_reading(
         compromise_probability=pred["compromise_probability"],
         alert_required=pred["alert_required"],
         alert_message=pred["alert_message"],
-        clinical_notes_json=json.dumps(pred["clinical_notes"]),
+        clinical_notes_json=json.dumps(list(pred["clinical_notes"]) + build_bedside_exam_notes(bedside_exam)),
+        capillary_refill=(bedside_exam or {}).get("capillary_refill"),
+        flap_turgor=(bedside_exam or {}).get("flap_turgor"),
+        pinprick_bleeding=(bedside_exam or {}).get("pinprick_bleeding"),
+        doppler_quality=(bedside_exam or {}).get("doppler_quality"),
         trend_status=str(pred.get("trend_status", "Baseline Established"))[:40],
         ood_flag=bool(pred.get("ood_flag", False)),
         confidence_label=str(pred.get("confidence_label", "High"))[:40],
@@ -699,7 +710,7 @@ def add_reading(patient_id: int):
         hours_post_op=hours_post_op,
         history=_recent_patient_history(patient),
     )
-    reading = _save_prediction_reading(patient, current_user.id, pred, source_mode)
+    reading = _save_prediction_reading(patient, current_user.id, pred, source_mode, bedside_exam=extract_bedside_exam(request.form))
     log_audit(
         "READING_LOGGED",
         "sensor_reading",
@@ -1171,7 +1182,7 @@ def mobile_add_reading(patient_id: int):
         hours_post_op=hours_post_op,
         history=_recent_patient_history(patient),
     )
-    reading = _save_prediction_reading(patient, request.mobile_user.id, pred, "Android Mobile App")
+    reading = _save_prediction_reading(patient, request.mobile_user.id, pred, "Android Mobile App", bedside_exam=extract_bedside_exam(data))
     log_audit("READING_LOGGED", "sensor_reading", str(reading.id), f"Mobile Patient={patient.mrn}")
     return jsonify({"reading": reading.to_dict()}), 201
 
@@ -1427,3 +1438,43 @@ def mobile_delete_account():
             ),
         }
     )
+
+
+def _build_current_ward_sbar(actor_name: str) -> dict:
+    patients = (
+        Patient.query.filter(Patient.is_archived.is_(False))
+        .order_by(Patient.created_at.desc())
+        .all()
+    )
+    entries = []
+    for p in patients:
+        latest = p.latest_reading
+        tier = latest.risk_tier if latest else "Unassessed"
+        entries.append({"patient": p, "latest": latest, "tier": tier})
+    unack_alerts = (
+        SensorReading.query.join(Patient)
+        .filter(
+            Patient.is_archived.is_(False),
+            SensorReading.alert_required.is_(True),
+            SensorReading.alert_acknowledged.is_(False),
+        )
+        .count()
+    )
+    return generate_ward_sbar(entries, unack_alerts, actor_name)
+
+
+@bp.route("/handoff", methods=["GET"])
+@login_required
+def shift_handoff_report():
+    sbar = _build_current_ward_sbar(current_user.full_name)
+    if request.args.get("format") == "text":
+        from flask import Response
+        return Response(sbar["sbar_text"], mimetype="text/plain; charset=utf-8")
+    return render_template("handoff.html", sbar=sbar)
+
+
+@bp.route("/mobile/handoff", methods=["GET"])
+@mobile_auth_required
+def mobile_shift_handoff():
+    sbar = _build_current_ward_sbar(request.mobile_user.full_name)
+    return jsonify(sbar)

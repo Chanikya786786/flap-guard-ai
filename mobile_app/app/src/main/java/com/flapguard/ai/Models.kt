@@ -18,7 +18,10 @@ data class PatientItem(
     val alertMessage: String,
     val trendStatus: String = "Baseline Established",
     val confidenceLabel: String = "High",
-    val oodFlag: Boolean = false
+    val oodFlag: Boolean = false,
+    val checkScheduleLabel: String = "",
+    val checkOverdue: Boolean = false,
+    val bedsideExamSummary: String = ""
 )
 
 data class AlertItem(

@@ -15,6 +15,7 @@ from sqlalchemy import inspect, text
 from ml_engine.model_service import load_model_and_metadata
 from web_app.models import ModelVersionLog, User, db
 from web_app.security import enforce_due_account_deletion, get_csrf_token, is_csrf_enabled, log_audit, purge_all_expired_accounts, validate_csrf_request
+from web_app.clinical_workflow import compute_check_schedule, format_bedside_exam_summary
 from web_app.model_store import restore_active_model_from_db
 from web_app.ward_service import load_sample_ward_cases
 
@@ -146,6 +147,12 @@ def _run_safe_schema_migrations() -> None:
                     text("ALTER TABLE sensor_readings ADD COLUMN trend_json TEXT NOT NULL DEFAULT '{}'")
                 )
                 db.session.commit()
+            for exam_col in ("capillary_refill", "flap_turgor", "pinprick_bleeding", "doppler_quality"):
+                if exam_col not in sr_cols:
+                    db.session.execute(
+                        text(f"ALTER TABLE sensor_readings ADD COLUMN {exam_col} VARCHAR(40)")
+                    )
+                    db.session.commit()
 
         if "sensor_readings" in tables and dialect == "postgresql":
             cols = {c["name"]: c for c in inspector.get_columns("sensor_readings")}
@@ -243,6 +250,8 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     db.init_app(app)
     login_manager.init_app(app)
     app.jinja_env.globals["csrf_token"] = get_csrf_token
+    app.jinja_env.globals["get_check_schedule"] = compute_check_schedule
+    app.jinja_env.globals["format_bedside_exam"] = format_bedside_exam_summary
 
     from web_app.routes import bp as main_bp
 

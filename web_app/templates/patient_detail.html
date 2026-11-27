@@ -123,6 +123,50 @@
         </div>
       </details>
 
+      <details style="margin:10px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;">
+        <summary style="cursor:pointer;font-weight:600;font-size:0.88rem;color:#0f4c81;">Optional Bedside Physical Exam (Capillary Refill, Turgor, Pinprick, Doppler)</summary>
+        <div class="form-grid" style="margin-top:10px;">
+          <div class="form-group">
+            <label for="exam-cap-refill">Capillary Refill</label>
+            <select id="exam-cap-refill" name="capillary_refill">
+              <option value="">Not recorded</option>
+              <option value="Normal (1-3s)">Normal (1-3s)</option>
+              <option value="Brisk (<1s · Venous)">Brisk (&lt;1s &middot; Venous)</option>
+              <option value="Sluggish (>3s · Arterial)">Sluggish (&gt;3s &middot; Arterial)</option>
+              <option value="Absent">Absent</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="exam-turgor">Flap Turgor</label>
+            <select id="exam-turgor" name="flap_turgor">
+              <option value="">Not recorded</option>
+              <option value="Soft / Normal">Soft / Normal</option>
+              <option value="Tense / Congested">Tense / Congested</option>
+              <option value="Pale / Flaccid">Pale / Flaccid</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="exam-pinprick">Pinprick Bleeding</label>
+            <select id="exam-pinprick" name="pinprick_bleeding">
+              <option value="">Not recorded</option>
+              <option value="Bright Red (Normal)">Bright Red (Normal)</option>
+              <option value="Dark Rapid Ooze (Venous)">Dark Rapid Ooze (Venous)</option>
+              <option value="None / Minimal (Arterial)">None / Minimal (Arterial)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="exam-doppler">Doppler Signal Quality</label>
+            <select id="exam-doppler" name="doppler_quality">
+              <option value="">Not recorded</option>
+              <option value="Triphasic / Strong">Triphasic / Strong</option>
+              <option value="Biphasic / Normal">Biphasic / Normal</option>
+              <option value="Monophasic / Weak">Monophasic / Weak</option>
+              <option value="Venous Hum Only">Venous Hum Only</option>
+              <option value="Absent">Absent</option>
+            </select>
+          </div>
+        </div>
+      </details>
       <button id="submit-reading-btn" type="submit" class="btn" style="width:100%;">Run AI Prediction &amp; Save Assessment</button>
     </form>
   </div>

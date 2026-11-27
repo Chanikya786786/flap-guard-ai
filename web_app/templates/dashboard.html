@@ -7,6 +7,7 @@
     <span class="muted">Active AI Engine: <strong>{{ model_meta.version }}</strong> ({{ (model_meta.accuracy * 100)|round(1) }}% validation accuracy)</span>
   </div>
   <div class="btn-row">
+    <a id="open-handoff-btn" class="btn btn-outline" href="{{ url_for('main.shift_handoff_report') }}">Shift Handoff (SBAR)</a>
     <button id="open-enroll-modal-btn" type="button" class="btn">+ Enroll Patient</button>
   </div>
 </div>
@@ -60,6 +61,7 @@
           <th>Risk Tier</th>
           <th>Patient / MRN</th>
           <th>Flap &amp; Site</th>
+          <th>Check Schedule</th>
           <th>&Delta;T (&deg;C)</th>
           <th>SpO<sub>2</sub> (%)</th>
           <th>Doppler (cm/s)</th>
@@ -76,6 +78,7 @@
           <td><span class="badge badge-{{ item.tier|lower }}">{{ item.tier }}</span></td>
           <td><strong>{{ p.full_name }}</strong><br><span class="muted">{{ p.mrn }} &middot; {{ p.age }}y</span></td>
           <td>{{ p.flap_type }}<br><span class="muted">{{ p.surgery_site }}</span></td>
+          <td>{% set sched = get_check_schedule(p, r) %}<span class="badge badge-{{ 'critical' if sched.badge_tone == 'danger' else ('high' if sched.badge_tone == 'warning' else 'low') }}">{{ sched.status_label }}</span></td>
           <td>{{ "%.2f"|format(r.temp_delta_c) if r else "-" }}</td>
           <td>{{ "%.1f"|format(r.spo2_pct) if r else "-" }}</td>
           <td>{{ "%.1f"|format(r.doppler_flow_cm_s) if r else "-" }}</td>

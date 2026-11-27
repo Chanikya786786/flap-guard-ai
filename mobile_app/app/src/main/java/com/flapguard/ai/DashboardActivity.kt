@@ -10,6 +10,8 @@ import android.graphics.Bitmap
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
 import android.app.PendingIntent
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -124,6 +126,13 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var rootView: View
     private lateinit var tvToolbarTitle: TextView
     private lateinit var btnAckAll: MaterialButton
+    private lateinit var btnWardHandoff: MaterialButton
+    private lateinit var layoutExamFields: LinearLayout
+    private lateinit var tvToggleExamLabel: TextView
+    private lateinit var cgCapRefill: ChipGroup
+    private lateinit var cgTurgor: ChipGroup
+    private lateinit var cgPinprick: ChipGroup
+    private lateinit var cgDopplerQual: ChipGroup
     private lateinit var btnRefreshAll: ImageButton
     private lateinit var progressSync: ProgressBar
     private lateinit var bottomNav: BottomNavigationView
@@ -358,6 +367,13 @@ class DashboardActivity : AppCompatActivity() {
         rootView = findViewById(R.id.dashboard_root)
         tvToolbarTitle = findViewById(R.id.tv_toolbar_title)
         btnAckAll = findViewById(R.id.btn_ack_all)
+        btnWardHandoff = findViewById(R.id.btn_ward_handoff)
+        layoutExamFields = findViewById(R.id.layout_exam_fields)
+        tvToggleExamLabel = findViewById(R.id.tv_toggle_exam_label)
+        cgCapRefill = findViewById(R.id.cg_cap_refill)
+        cgTurgor = findViewById(R.id.cg_turgor)
+        cgPinprick = findViewById(R.id.cg_pinprick)
+        cgDopplerQual = findViewById(R.id.cg_doppler_qual)
         btnRefreshAll = findViewById(R.id.btn_refresh_all)
         progressSync = findViewById(R.id.progress_sync)
         bottomNav = findViewById(R.id.bottom_nav)
@@ -434,6 +450,8 @@ class DashboardActivity : AppCompatActivity() {
     private fun updateAckAllVisibility() {
         val onAlerts = bottomNav.selectedItemId == R.id.nav_alerts
         btnAckAll.visibility = if (onAlerts && unackCount > 0) View.VISIBLE else View.GONE
+        val onWard = bottomNav.selectedItemId == R.id.nav_ward
+        btnWardHandoff.visibility = if (onWard) View.VISIBLE else View.GONE
     }
 
     private fun setupNavigation() {
@@ -527,6 +545,13 @@ class DashboardActivity : AppCompatActivity() {
         }
         findViewById<LinearLayout>(R.id.row_sign_out_all).setOnClickListener {
             confirmSignOutOtherDevices()
+        }
+        btnWardHandoff.setOnClickListener { showSbarHandoffSheet() }
+        findViewById<LinearLayout>(R.id.row_sbar_handoff).setOnClickListener { showSbarHandoffSheet() }
+        findViewById<LinearLayout>(R.id.row_toggle_exam).setOnClickListener {
+            val expand = layoutExamFields.visibility != View.VISIBLE
+            layoutExamFields.visibility = if (expand) View.VISIBLE else View.GONE
+            tvToggleExamLabel.text = if (expand) "− Bedside Physical Exam (Optional)" else "+ Bedside Physical Exam (Optional)"
         }
         findViewById<LinearLayout>(R.id.row_delete_account).setOnClickListener {
             showDeleteAccountSheet()
@@ -731,7 +756,10 @@ class DashboardActivity : AppCompatActivity() {
                     alertMessage = latest?.optString("alert_message").orEmpty(),
                     trendStatus = latest?.optString("trend_status", "Baseline Established") ?: "Baseline Established",
                     confidenceLabel = latest?.optString("confidence_label", "High") ?: "High",
-                    oodFlag = latest?.optBoolean("ood_flag", false) ?: false
+                    oodFlag = latest?.optBoolean("ood_flag", false) ?: false,
+                    checkScheduleLabel = p.optJSONObject("check_schedule")?.optString("status_label").orEmpty(),
+                    checkOverdue = p.optJSONObject("check_schedule")?.optBoolean("overdue", false) ?: false,
+                    bedsideExamSummary = latest?.optString("bedside_exam_summary").orEmpty()
                 )
             )
         }
@@ -832,6 +860,21 @@ class DashboardActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tv_detail_conf_badge).text = "Reliability: ${patient.confidenceLabel}"
         view.findViewById<TextView>(R.id.tv_detail_ood_warning).visibility =
             if (patient.oodFlag) View.VISIBLE else View.GONE
+        val tvSched = view.findViewById<TextView>(R.id.tv_detail_schedule)
+        if (patient.checkScheduleLabel.isNotBlank()) {
+            tvSched.visibility = View.VISIBLE
+            tvSched.text = "Monitoring Protocol: ${patient.checkScheduleLabel}"
+            tvSched.setTextColor(Color.parseColor(if (patient.checkOverdue) "#E11D48" else "#0D9488"))
+        } else {
+            tvSched.visibility = View.GONE
+        }
+        val tvExam = view.findViewById<TextView>(R.id.tv_detail_bedside_exam)
+        if (patient.bedsideExamSummary.isNotBlank()) {
+            tvExam.visibility = View.VISIBLE
+            tvExam.text = "Bedside Exam: ${patient.bedsideExamSummary}"
+        } else {
+            tvExam.visibility = View.GONE
+        }
 
         val chartView = view.findViewById<TrendChartView>(R.id.view_trend_chart)
         executor.execute {
@@ -1130,6 +1173,10 @@ class DashboardActivity : AppCompatActivity() {
                 put("visual_redness_index", scannedRedness)
                 put("visual_cyanosis_index", scannedCyanosis)
                 put("visual_pallor_index", scannedPallor)
+                selectedChipText(cgCapRefill)?.let { put("capillary_refill", it) }
+                selectedChipText(cgTurgor)?.let { put("flap_turgor", it) }
+                selectedChipText(cgPinprick)?.let { put("pinprick_bleeding", it) }
+                selectedChipText(cgDopplerQual)?.let { put("doppler_quality", it) }
             }
             val res = ApiClient.request(
                 serverUrl(),
@@ -1522,6 +1569,65 @@ class DashboardActivity : AppCompatActivity() {
                 }
             }
         }
+        sheet.show()
+    }
+
+    private fun selectedChipText(group: ChipGroup): String? {
+        val id = group.checkedChipId
+        if (id == View.NO_ID) return null
+        return group.findViewById<Chip>(id)?.text?.toString()?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    private fun showSbarHandoffSheet() {
+        val sheet = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.sheet_sbar_handoff, null)
+        sheet.setContentView(view)
+        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        sheet.behavior.skipCollapsed = true
+
+        val tvMeta = view.findViewById<TextView>(R.id.tv_sbar_meta)
+        val tvBody = view.findViewById<TextView>(R.id.tv_sbar_body)
+        val btnCopy = view.findViewById<MaterialButton>(R.id.btn_copy_sbar)
+        val btnShare = view.findViewById<MaterialButton>(R.id.btn_share_sbar)
+        btnCopy.isEnabled = false
+        btnShare.isEnabled = false
+
+        var fullReport = ""
+        executor.execute {
+            val res = ApiClient.request(serverUrl(), "/mobile/handoff", "GET", null, authToken)
+            mainHandler.post {
+                if (res.ok) {
+                    val total = res.json.optInt("total_patients", 0)
+                    val crit = res.json.optInt("critical_high_count", 0)
+                    val overdue = res.json.optInt("overdue_count", 0)
+                    tvMeta.text = "$total patients · $crit Critical/High · $overdue Overdue checks"
+                    fullReport = res.json.optString("sbar_text", "")
+                    tvBody.text = fullReport.ifBlank { "No active ward cases." }
+                    btnCopy.isEnabled = fullReport.isNotBlank()
+                    btnShare.isEnabled = fullReport.isNotBlank()
+                } else {
+                    tvMeta.text = "Could not load handoff report"
+                    tvBody.text = res.errorMessage
+                }
+            }
+        }
+
+        btnCopy.setOnClickListener {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cm.setPrimaryClip(ClipData.newPlainText("FlapGuard SBAR Handoff", fullReport))
+            showNotice("SBAR shift handoff copied to clipboard.")
+        }
+
+        btnShare.setOnClickListener {
+            suppressNextAppLock = true
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "FlapGuard AI — Shift Handoff (SBAR)")
+                putExtra(Intent.EXTRA_TEXT, fullReport)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share Shift Handoff"))
+        }
+
         sheet.show()
     }
 
