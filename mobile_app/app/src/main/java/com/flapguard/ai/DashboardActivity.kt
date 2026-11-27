@@ -1353,8 +1353,8 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun openPatientFromAlert(alert: AlertItem) {
-        val match = currentPatients.firstOrNull { it.id == alert.patientId }
-            ?: currentPatients.firstOrNull { it.fullName.equals(alert.patientName, ignoreCase = true) }
+        val match = patientsList.firstOrNull { it.id == alert.patientId }
+            ?: patientsList.firstOrNull { it.fullName.equals(alert.patientName, ignoreCase = true) }
         if (match != null) {
             showPatientDetailSheet(match)
         } else {
