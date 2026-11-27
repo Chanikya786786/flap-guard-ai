@@ -1,7 +1,7 @@
 """
 FlapGuard AI Flask Application Factory.
 Hardened for Neon Serverless PostgreSQL and local SQLite with safe schema migrations,
-empty-start ward support, and clean JSON error handling for mobile clients.
+session CSRF protection, HTTPS transport headers, and JSON error handling for mobile clients.
 """
 
 import os
@@ -14,6 +14,7 @@ from sqlalchemy import inspect, text
 
 from ml_engine.model_service import load_model_and_metadata
 from web_app.models import ModelVersionLog, User, db
+from web_app.security import get_csrf_token, is_csrf_enabled, log_audit, validate_csrf_request
 from web_app.ward_service import load_sample_ward_cases
 
 
@@ -73,6 +74,30 @@ def _run_safe_schema_migrations() -> None:
             if "profile_photo" not in user_cols:
                 db.session.execute(text("ALTER TABLE users ADD COLUMN profile_photo TEXT"))
                 db.session.commit()
+            if "token_version" not in user_cols:
+                db.session.execute(
+                    text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1")
+                )
+                db.session.commit()
+
+        if "patients" in tables:
+            patient_cols = {c["name"] for c in inspector.get_columns("patients")}
+            if "is_archived" not in patient_cols:
+                if dialect == "postgresql":
+                    db.session.execute(
+                        text("ALTER TABLE patients ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE")
+                    )
+                else:
+                    db.session.execute(
+                        text("ALTER TABLE patients ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT 0")
+                    )
+                db.session.commit()
+            if "archived_at" not in patient_cols:
+                db.session.execute(text("ALTER TABLE patients ADD COLUMN archived_at TIMESTAMP"))
+                db.session.commit()
+            if "archived_by_id" not in patient_cols:
+                db.session.execute(text("ALTER TABLE patients ADD COLUMN archived_by_id INTEGER"))
+                db.session.commit()
 
         if "sensor_readings" in tables and dialect == "postgresql":
             cols = {c["name"]: c for c in inspector.get_columns("sensor_readings")}
@@ -89,10 +114,11 @@ def _run_safe_schema_migrations() -> None:
 
 def seed_initial_data(include_sample_patients: bool = False) -> None:
     """
-    Initialize starter clinician accounts and baseline model log once.
-    Patients are NOT auto-seeded by default; use Profile -> Load Sample Cases instead.
+    Initialize starter clinician accounts (unless SEED_DEFAULT_USERS=false)
+    and baseline model log once. Patients remain empty by default.
     """
-    if User.query.first() is None:
+    seed_users = os.environ.get("SEED_DEFAULT_USERS", "true").strip().lower() != "false"
+    if seed_users and User.query.first() is None:
         surgeon = User(
             full_name="Dr. Alden Schnyder",
             email="surgeon@flapguard.local",
@@ -138,6 +164,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     )
 
     db_uri = _resolve_database_uri(base_dir)
+    is_https_prod = bool(os.environ.get("RENDER") or os.environ.get("HTTPS_ONLY", "").lower() == "true")
 
     app.config["SECRET_KEY"] = _get_or_create_secret_key(app.instance_path)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
@@ -145,6 +172,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = is_https_prod
 
     if test_config:
         app.config.update(test_config)
@@ -166,10 +194,31 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
 
     db.init_app(app)
     login_manager.init_app(app)
+    app.jinja_env.globals["csrf_token"] = get_csrf_token
 
     from web_app.routes import bp as main_bp
 
     app.register_blueprint(main_bp)
+
+    @app.before_request
+    def enforce_web_csrf():
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return None
+        if request.path.startswith("/mobile/"):
+            return None
+        if not is_csrf_enabled():
+            return None
+        if not validate_csrf_request():
+            log_audit(
+                "CSRF_REJECTED",
+                resource_type="web_route",
+                resource_id=request.path,
+                details="Missing or invalid CSRF token on state-changing request",
+            )
+            if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Invalid or missing CSRF token."}), 403
+            return "Forbidden: Invalid or missing CSRF token.", 403
+        return None
 
     @app.errorhandler(500)
     def handle_internal_error(err):
@@ -189,6 +238,8 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
             "style-src 'self' 'unsafe-inline'; "
             "script-src 'self' 'unsafe-inline';"
         )
+        if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
     with app.app_context():

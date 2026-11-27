@@ -5,6 +5,11 @@
 */
 
 (function () {
+  function getCsrfToken() {
+    const m = document.querySelector('meta[name="csrf-token"]');
+    return m ? m.getAttribute("content") || "" : "";
+  }
+
   function drawTrendChart(canvasId, points) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -179,7 +184,7 @@
 
         const resp = await fetch("/analyze-image", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": getCsrfToken() },
           body: JSON.stringify({ image_base64: dataUrl }),
         });
         const data = await resp.json();
@@ -230,7 +235,7 @@
 
         const formData = new FormData();
         formData.append("image", file);
-        const resp = await fetch("/analyze-image", { method: "POST", body: formData });
+        const resp = await fetch("/analyze-image", { method: "POST", headers: { "X-CSRF-Token": getCsrfToken() }, body: formData });
         const data = await resp.json();
         if (resp.ok) {
           applyVisionResult(data);
@@ -260,6 +265,7 @@
           headers: {
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest",
+            "X-CSRF-Token": getCsrfToken(),
           },
           body: JSON.stringify({ scenario: scenario, step: simStep }),
         });

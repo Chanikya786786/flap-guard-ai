@@ -38,6 +38,7 @@
           <td>
             {% if not a.alert_acknowledged %}
             <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=a.id) }}" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm ack-alert-btn">Acknowledge</button>
             </form>
             {% else %}

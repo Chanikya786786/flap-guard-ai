@@ -1,21 +1,19 @@
 """
-Web Routes & Local Android Mobile Sync Routes for FlapGuard AI.
-Zero third-party APIs: all authentication, ML inference, image analysis,
-and database persistence execute strictly on this self-hosted server.
+Web Routes & Mobile Sync Routes for FlapGuard AI.
+Enforces RBAC, CSRF protection, server-side token revocation, login rate limiting,
+soft-delete patient archiving, and an append-only clinical AuditLog.
 """
 
 import base64
 import json
 import re
-
-import cv2
-import numpy as np
 from functools import wraps
 from typing import Optional, Tuple
 
+import cv2
+import numpy as np
 from flask import (
     Blueprint,
-    current_app,
     flash,
     jsonify,
     redirect,
@@ -24,7 +22,6 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required, login_user, logout_user
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from sqlalchemy import func, text
 from sqlalchemy.orm import joinedload
 
@@ -36,7 +33,33 @@ from ml_engine.model_service import (
 )
 from ml_engine.simulator import SCENARIOS, generate_simulated_reading
 from ml_engine.vision_analyzer import analyze_flap_image_bytes
-from web_app.models import ModelVersionLog, Patient, PostOpOutcome, SensorReading, User, db
+from web_app.models import (
+    AuditLog,
+    ModelVersionLog,
+    Patient,
+    PostOpOutcome,
+    SensorReading,
+    User,
+    db,
+    utc_now,
+)
+from web_app.security import (
+    ENROLLMENT_ROLES,
+    PRIVILEGED_ROLES,
+    clear_login_failures,
+    generate_mobile_token,
+    get_client_ip,
+    get_required_invite_code,
+    is_login_rate_limited,
+    log_audit,
+    mobile_roles_required,
+    record_login_failure,
+    revoke_mobile_token,
+    validate_invite_code,
+    verify_mobile_token,
+    verify_mobile_token_with_meta,
+    web_roles_required,
+)
 from web_app.ward_service import (
     clear_all_ward_patients,
     fetch_patients_with_latest_readings,
@@ -52,22 +75,6 @@ VALID_OUTCOMES = {"Normal", "Venous Compromise", "Arterial Compromise"}
 RISK_PRIORITY = {"Critical": 0, "High": 1, "Moderate": 2, "Low": 3, "Unassessed": 4}
 
 
-def _token_serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="flapguard-mobile-auth")
-
-
-def generate_mobile_token(user: User) -> str:
-    return _token_serializer().dumps({"user_id": user.id, "email": user.email})
-
-
-def verify_mobile_token(token: str) -> Optional[User]:
-    try:
-        payload = _token_serializer().loads(token, max_age=86400 * 7)
-        return db.session.get(User, int(payload["user_id"]))
-    except (BadSignature, SignatureExpired, KeyError, ValueError, TypeError):
-        return None
-
-
 def mobile_auth_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -75,10 +82,11 @@ def mobile_auth_required(fn):
         if not auth_header.startswith("Bearer "):
             return jsonify({"error": "Missing or invalid Bearer token."}), 401
         token = auth_header.split(" ", 1)[1].strip()
-        user = verify_mobile_token(token)
+        user, jti = verify_mobile_token_with_meta(token)
         if user is None:
-            return jsonify({"error": "Expired or invalid authentication token."}), 401
+            return jsonify({"error": "Expired, revoked, or invalid authentication token."}), 401
         request.mobile_user = user
+        request.mobile_token_jti = jti
         return fn(*args, **kwargs)
 
     return wrapper
@@ -177,6 +185,29 @@ def _collect_outcome_records_for_retraining() -> list:
     return records
 
 
+def _encode_profile_avatar(image_bytes: bytes) -> str:
+    """Validate, center-crop to 256x256 JPEG, and return a compact base64 data URI."""
+    if not image_bytes:
+        raise ValueError("Empty image uploaded.")
+    if len(image_bytes) > 6 * 1024 * 1024:
+        raise ValueError("Profile photo must be under 6 MB.")
+    arr = np.frombuffer(image_bytes, dtype=np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None or img.size == 0:
+        raise ValueError("Unsupported or corrupted image file.")
+    h, w = img.shape[:2]
+    side = min(h, w)
+    y0 = (h - side) // 2
+    x0 = (w - side) // 2
+    cropped = img[y0 : y0 + side, x0 : x0 + side]
+    resized = cv2.resize(cropped, (256, 256), interpolation=cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 84])
+    if not ok:
+        raise ValueError("Could not encode profile photo.")
+    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
+
+
 # ---------------------------------------------------------------------------
 # Health Check
 # ---------------------------------------------------------------------------
@@ -184,7 +215,12 @@ def _collect_outcome_records_for_retraining() -> list:
 def health():
     try:
         db.session.execute(text("SELECT 1"))
-        patients_count = db.session.query(func.count(Patient.id)).scalar() or 0
+        patients_count = (
+            db.session.query(func.count(Patient.id))
+            .filter(Patient.is_archived.is_(False))
+            .scalar()
+            or 0
+        )
         _, meta = load_model_and_metadata()
         return jsonify(
             {
@@ -209,13 +245,19 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
+    invite_required = bool(get_required_invite_code())
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
         email = request.form.get("email", "").strip().lower()
         role = request.form.get("role", "Surgeon").strip()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
+        invite_code = request.form.get("invite_code", "")
 
+        if not validate_invite_code(invite_code):
+            flash("Invalid or missing hospital registration invite code.", "danger")
+            log_audit("REGISTER_DENIED", "user", email, "Invalid invite code")
+            return render_template("register.html", invite_required=invite_required), 403
         if len(full_name) < 2:
             flash("Please enter your full name (at least 2 characters).", "danger")
         elif not EMAIL_REGEX.match(email):
@@ -234,10 +276,11 @@ def register():
             db.session.add(user)
             db.session.commit()
             login_user(user)
+            log_audit("REGISTER", "user", str(user.id), f"Role={user.role}", actor=user)
             flash(f"Welcome, {user.full_name}! Account created successfully.", "success")
             return redirect(url_for("main.dashboard"))
 
-    return render_template("register.html")
+    return render_template("register.html", invite_required=invite_required)
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -248,12 +291,23 @@ def login():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
-        user = User.query.filter_by(email=email).first()
+        ip_addr = get_client_ip()
 
+        if is_login_rate_limited(ip_addr, email):
+            log_audit("LOGIN_RATE_LIMITED", "user", email, f"IP={ip_addr}")
+            flash("Too many failed login attempts. Please wait a few minutes.", "danger")
+            return render_template("login.html"), 429
+
+        user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
+            clear_login_failures(ip_addr, email)
             login_user(user)
+            log_audit("LOGIN_SUCCESS", "user", str(user.id), "Web session", actor=user)
             flash(f"Signed in as {user.full_name} ({user.role}).", "success")
             return redirect(url_for("main.dashboard"))
+
+        record_login_failure(ip_addr, email)
+        log_audit("LOGIN_FAILED", "user", email, "Web login invalid credentials")
         flash("Invalid email or password.", "danger")
 
     return render_template("login.html")
@@ -262,6 +316,8 @@ def login():
 @bp.route("/logout", methods=["POST", "GET"])
 @login_required
 def logout():
+    actor = current_user._get_current_object()
+    log_audit("LOGOUT", "user", str(actor.id), "Web logout", actor=actor)
     logout_user()
     flash("You have been signed out.", "info")
     return redirect(url_for("main.login"))
@@ -283,37 +339,22 @@ def profile():
             flash("New passwords do not match.", "danger")
         else:
             current_user.set_password(new_pw)
+            current_user.bump_token_version()
             db.session.commit()
-            flash("Password updated successfully.", "success")
+            log_audit(
+                "PASSWORD_CHANGED",
+                "user",
+                str(current_user.id),
+                "Password updated via Web; prior mobile tokens revoked",
+            )
+            flash("Password updated successfully. Active mobile sessions were reset.", "success")
 
+    active_patients = Patient.query.filter(Patient.is_archived.is_(False)).count()
     return render_template(
         "profile.html",
-        patients_count=Patient.query.count(),
+        patients_count=active_patients,
         readings_count=SensorReading.query.count(),
     )
-
-
-def _encode_profile_avatar(image_bytes: bytes) -> str:
-    """Validate, center-crop to 256x256 JPEG, and return a compact base64 data URI."""
-    if not image_bytes:
-        raise ValueError("Empty image uploaded.")
-    if len(image_bytes) > 6 * 1024 * 1024:
-        raise ValueError("Profile photo must be under 6 MB.")
-    arr = np.frombuffer(image_bytes, dtype=np.uint8)
-    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-    if img is None or img.size == 0:
-        raise ValueError("Unsupported or corrupted image file.")
-    h, w = img.shape[:2]
-    side = min(h, w)
-    y0 = (h - side) // 2
-    x0 = (w - side) // 2
-    cropped = img[y0 : y0 + side, x0 : x0 + side]
-    resized = cv2.resize(cropped, (256, 256), interpolation=cv2.INTER_AREA)
-    ok, buf = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 84])
-    if not ok:
-        raise ValueError("Could not encode profile photo.")
-    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-    return f"data:image/jpeg;base64,{b64}"
 
 
 @bp.route("/profile/photo", methods=["POST"])
@@ -322,6 +363,7 @@ def profile_update_photo():
     if request.form.get("action") == "remove":
         current_user.profile_photo = None
         db.session.commit()
+        log_audit("PROFILE_PHOTO_REMOVED", "user", str(current_user.id), "Web")
         flash("Profile photo removed.", "success")
         return redirect(url_for("main.profile"))
 
@@ -332,6 +374,7 @@ def profile_update_photo():
     try:
         current_user.profile_photo = _encode_profile_avatar(photo_file.read())
         db.session.commit()
+        log_audit("PROFILE_PHOTO_UPDATED", "user", str(current_user.id), "Web")
         flash("Profile photo updated.", "success")
     except ValueError as exc:
         flash(str(exc), "danger")
@@ -340,11 +383,13 @@ def profile_update_photo():
 
 @bp.route("/profile/load-samples", methods=["POST"])
 @login_required
+@web_roles_required(PRIVILEGED_ROLES)
 def profile_load_samples():
     created = load_sample_ward_cases(
         assigned_surgeon_id=current_user.id,
         recorded_by_id=current_user.id,
     )
+    log_audit("SAMPLES_LOADED", "ward", "samples", f"Created/restored={created}")
     if created > 0:
         flash(f"Loaded {created} sample OMFS clinical cases into the ward.", "success")
     else:
@@ -354,10 +399,24 @@ def profile_load_samples():
 
 @bp.route("/profile/clear-ward", methods=["POST"])
 @login_required
+@web_roles_required(PRIVILEGED_ROLES)
 def profile_clear_ward():
-    removed = clear_all_ward_patients()
-    flash(f"Cleared {removed} patient record(s). Ward is now empty.", "success")
+    removed = clear_all_ward_patients(archived_by_id=current_user.id)
+    log_audit("WARD_ARCHIVED", "ward", "all", f"Archived {removed} active patient(s)")
+    flash(f"Archived {removed} patient record(s). Historical data preserved in Audit Log.", "success")
     return redirect(url_for("main.dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# Audit Trail Viewer (Surgeon / Admin Only)
+# ---------------------------------------------------------------------------
+@bp.route("/audit")
+@login_required
+@web_roles_required(PRIVILEGED_ROLES)
+def audit_center():
+    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
+    archived_count = Patient.query.filter(Patient.is_archived.is_(True)).count()
+    return render_template("audit.html", logs=logs, archived_count=archived_count)
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +425,11 @@ def profile_clear_ward():
 @bp.route("/")
 @login_required
 def dashboard():
-    patients = Patient.query.order_by(Patient.created_at.desc()).all()
+    patients = (
+        Patient.query.filter(Patient.is_archived.is_(False))
+        .order_by(Patient.created_at.desc())
+        .all()
+    )
     latest_by_pid = {}
     if patients:
         pids = [p.id for p in patients]
@@ -400,8 +463,13 @@ def dashboard():
     )
 
     active_alerts = (
-        SensorReading.query.options(joinedload(SensorReading.patient))
-        .filter_by(alert_required=True, alert_acknowledged=False)
+        SensorReading.query.join(Patient, SensorReading.patient_id == Patient.id)
+        .options(joinedload(SensorReading.patient))
+        .filter(
+            Patient.is_archived.is_(False),
+            SensorReading.alert_required.is_(True),
+            SensorReading.alert_acknowledged.is_(False),
+        )
         .order_by(SensorReading.created_at.desc())
         .limit(10)
         .all()
@@ -419,6 +487,7 @@ def dashboard():
 
 @bp.route("/patients/new", methods=["POST"])
 @login_required
+@web_roles_required(ENROLLMENT_ROLES)
 def create_patient():
     mrn = request.form.get("mrn", "").strip().upper()
     full_name = request.form.get("full_name", "").strip()
@@ -439,7 +508,7 @@ def create_patient():
     elif not (0.0 <= hours_post_op <= 720.0):
         flash("Hours post-op must be between 0 and 720.", "danger")
     elif Patient.query.filter_by(mrn=mrn).first():
-        flash(f"Patient with MRN '{mrn}' already exists.", "danger")
+        flash(f"Patient with MRN '{mrn}' already exists in active or archived records.", "danger")
     else:
         patient = Patient(
             mrn=mrn,
@@ -452,6 +521,7 @@ def create_patient():
         )
         db.session.add(patient)
         db.session.commit()
+        log_audit("PATIENT_ENROLLED", "patient", str(patient.id), f"MRN={patient.mrn}, Flap={patient.flap_type}")
         flash(f"Patient {patient.full_name} ({patient.mrn}) added for monitoring.", "success")
         return redirect(url_for("main.patient_detail", patient_id=patient.id))
 
@@ -460,15 +530,19 @@ def create_patient():
 
 @bp.route("/patients/<int:patient_id>/delete", methods=["POST"])
 @login_required
+@web_roles_required(PRIVILEGED_ROLES)
 def delete_patient(patient_id: int):
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         flash("Patient record not found.", "warning")
     else:
         name = patient.full_name
-        db.session.delete(patient)
+        patient.is_archived = True
+        patient.archived_at = utc_now()
+        patient.archived_by_id = current_user.id
         db.session.commit()
-        flash(f"Removed patient {name} from ward monitoring.", "success")
+        log_audit("PATIENT_ARCHIVED", "patient", str(patient.id), f"MRN={patient.mrn}, Name={name}")
+        flash(f"Archived patient {name} from active ward monitoring (history preserved).", "success")
     return redirect(url_for("main.dashboard"))
 
 
@@ -536,6 +610,12 @@ def add_reading(patient_id: int):
         hours_post_op=hours_post_op,
     )
     reading = _save_prediction_reading(patient, current_user.id, pred, source_mode)
+    log_audit(
+        "READING_LOGGED",
+        "sensor_reading",
+        str(reading.id),
+        f"Patient={patient.mrn}, Class={reading.predicted_class}, Tier={reading.risk_tier}",
+    )
 
     if reading.alert_required:
         flash(reading.alert_message, "danger")
@@ -611,7 +691,9 @@ def simulate_step(patient_id: int):
 @login_required
 def alerts_center():
     alerts = (
-        SensorReading.query.filter_by(alert_required=True)
+        SensorReading.query.join(Patient, SensorReading.patient_id == Patient.id)
+        .options(joinedload(SensorReading.patient))
+        .filter(Patient.is_archived.is_(False), SensorReading.alert_required.is_(True))
         .order_by(SensorReading.alert_acknowledged.asc(), SensorReading.created_at.desc())
         .limit(50)
         .all()
@@ -626,6 +708,7 @@ def acknowledge_alert(reading_id: int):
     reading.alert_acknowledged = True
     reading.acknowledged_by = current_user.full_name
     db.session.commit()
+    log_audit("ALERT_ACKNOWLEDGED", "sensor_reading", str(reading.id), f"Web by {current_user.full_name}")
     flash(f"Alert #{reading.id} acknowledged by {current_user.full_name}.", "success")
     return redirect(request.referrer or url_for("main.alerts_center"))
 
@@ -637,7 +720,11 @@ def acknowledge_alert(reading_id: int):
 @login_required
 def learning_center():
     _, model_meta = load_model_and_metadata()
-    patients = Patient.query.order_by(Patient.full_name.asc()).all()
+    patients = (
+        Patient.query.filter(Patient.is_archived.is_(False))
+        .order_by(Patient.full_name.asc())
+        .all()
+    )
     outcomes = PostOpOutcome.query.order_by(PostOpOutcome.created_at.desc()).limit(30).all()
     versions = ModelVersionLog.query.order_by(ModelVersionLog.id.desc()).limit(15).all()
     return render_template(
@@ -651,6 +738,7 @@ def learning_center():
 
 @bp.route("/learning/outcome", methods=["POST"])
 @login_required
+@web_roles_required(ENROLLMENT_ROLES)
 def log_outcome():
     try:
         patient_id = int(request.form.get("patient_id", "0"))
@@ -662,7 +750,7 @@ def log_outcome():
     surgeon_notes = request.form.get("surgeon_notes", "").strip()[:300]
 
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         flash("Selected patient not found.", "danger")
         return redirect(url_for("main.learning_center"))
     if verified_outcome not in VALID_OUTCOMES:
@@ -679,6 +767,7 @@ def log_outcome():
     )
     db.session.add(outcome)
     db.session.commit()
+    log_audit("OUTCOME_LOGGED", "postop_outcome", str(outcome.id), f"Patient={patient.mrn}, Outcome={verified_outcome}")
     flash(
         f"Verified postoperative outcome ({verified_outcome}) saved for {patient.full_name}.",
         "success",
@@ -688,6 +777,7 @@ def log_outcome():
 
 @bp.route("/learning/retrain", methods=["POST"])
 @login_required
+@web_roles_required(PRIVILEGED_ROLES)
 def retrain_model():
     records = _collect_outcome_records_for_retraining()
     summary = retrain_from_postop_outcomes(records)
@@ -705,17 +795,17 @@ def retrain_model():
         )
     )
     db.session.commit()
-
+    log_audit("MODEL_RETRAINED", "model", str(new_meta["version"]), f"Outcomes={len(records)}")
     flash(
-        f"Continuous learning complete: {summary['old_version']} ({summary['old_accuracy']*100:.2f}%) -> "
-        f"{summary['new_version']} ({summary['new_accuracy']*100:.2f}%) using {summary['outcomes_incorporated']} outcomes.",
+        f"Continuous learning complete: AI model upgraded to {new_meta['version']} "
+        f"(Accuracy: {new_meta['accuracy'] * 100:.2f}%, Outcomes included: {len(records)}).",
         "success",
     )
     return redirect(url_for("main.learning_center"))
 
 
 # ---------------------------------------------------------------------------
-# Local Mobile Sync Routes (For Your Android Kotlin App in Phase 4)
+# Mobile JSON Endpoints (Android Surgeon & Clinician App Sync)
 # ---------------------------------------------------------------------------
 @bp.route("/mobile/register", methods=["POST"])
 def mobile_register():
@@ -724,18 +814,21 @@ def mobile_register():
     email = str(data.get("email", "")).strip().lower()
     role = str(data.get("role", "Surgeon")).strip()
     password = str(data.get("password", ""))
+    invite_code = str(data.get("invite_code", ""))
 
-    if len(full_name) < 2 or not EMAIL_REGEX.match(email) or len(password) < 8:
-        return jsonify({"error": "Provide full name, valid email, and password (8+ chars)."}), 400
-    if role not in VALID_ROLES:
-        role = "Surgeon"
+    if not validate_invite_code(invite_code):
+        log_audit("REGISTER_DENIED", "user", email, "Mobile invalid invite code")
+        return jsonify({"error": "Invalid or missing hospital registration invite code."}), 403
+    if len(full_name) < 2 or not EMAIL_REGEX.match(email) or role not in VALID_ROLES or len(password) < 8:
+        return jsonify({"error": "Invalid registration fields. Password must be at least 8 characters."}), 400
     if User.query.filter_by(email=email).first():
-        return jsonify({"error": "Email already registered."}), 409
+        return jsonify({"error": "Account with this email already exists."}), 409
 
     user = User(full_name=full_name, email=email, role=role)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
+    log_audit("REGISTER", "user", str(user.id), f"Mobile Role={user.role}", actor=user)
     return jsonify({"token": generate_mobile_token(user), "user": user.to_dict()}), 201
 
 
@@ -744,16 +837,39 @@ def mobile_login():
     data = request.get_json(silent=True) or {}
     email = str(data.get("email", "")).strip().lower()
     password = str(data.get("password", ""))
+    ip_addr = get_client_ip()
+
+    if is_login_rate_limited(ip_addr, email):
+        log_audit("LOGIN_RATE_LIMITED", "user", email, f"Mobile IP={ip_addr}")
+        return jsonify({"error": "Too many failed login attempts. Try again later."}), 429
+
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
+        record_login_failure(ip_addr, email)
+        log_audit("LOGIN_FAILED", "user", email, "Mobile invalid credentials")
         return jsonify({"error": "Invalid email or password."}), 401
+
+    clear_login_failures(ip_addr, email)
+    log_audit("LOGIN_SUCCESS", "user", str(user.id), "Mobile token issued", actor=user)
     return jsonify({"token": generate_mobile_token(user), "user": user.to_dict()})
+
+
+@bp.route("/mobile/logout", methods=["POST"])
+@mobile_auth_required
+def mobile_logout():
+    revoke_mobile_token(getattr(request, "mobile_token_jti", None), request.mobile_user.id)
+    log_audit("LOGOUT", "user", str(request.mobile_user.id), "Mobile token revoked", actor=request.mobile_user)
+    return jsonify({"status": "logged_out"})
 
 
 @bp.route("/mobile/patients", methods=["GET", "POST"])
 @mobile_auth_required
 def mobile_patients():
     if request.method == "POST":
+        if request.mobile_user.role not in ENROLLMENT_ROLES:
+            log_audit("RBAC_DENIED", "mobile_route", "/mobile/patients", f"Role={request.mobile_user.role}")
+            return jsonify({"error": "Insufficient role permissions to enroll patients."}), 403
+
         data = request.get_json(silent=True) or {}
         mrn = str(data.get("mrn", "")).strip().upper()
         full_name = str(data.get("full_name", "")).strip()
@@ -768,7 +884,7 @@ def mobile_patients():
         if not mrn or len(full_name) < 2 or not flap_type or not surgery_site or not (1 <= age <= 120):
             return jsonify({"error": "Invalid or missing patient details."}), 400
         if Patient.query.filter_by(mrn=mrn).first():
-            return jsonify({"error": "MRN already exists."}), 409
+            return jsonify({"error": "MRN already exists in active or archived records."}), 409
 
         patient = Patient(
             mrn=mrn,
@@ -781,6 +897,7 @@ def mobile_patients():
         )
         db.session.add(patient)
         db.session.commit()
+        log_audit("PATIENT_ENROLLED", "patient", str(patient.id), f"Mobile MRN={patient.mrn}")
         return jsonify(patient.to_dict()), 201
 
     patients = fetch_patients_with_latest_readings()
@@ -799,8 +916,9 @@ def mobile_patients():
 @mobile_auth_required
 def mobile_alerts():
     alerts = (
-        SensorReading.query.options(joinedload(SensorReading.patient))
-        .filter_by(alert_required=True)
+        SensorReading.query.join(Patient, SensorReading.patient_id == Patient.id)
+        .options(joinedload(SensorReading.patient))
+        .filter(Patient.is_archived.is_(False), SensorReading.alert_required.is_(True))
         .order_by(SensorReading.alert_acknowledged.asc(), SensorReading.created_at.desc())
         .limit(30)
         .all()
@@ -822,6 +940,7 @@ def mobile_acknowledge_alert(reading_id: int):
     reading.alert_acknowledged = True
     reading.acknowledged_by = request.mobile_user.full_name
     db.session.commit()
+    log_audit("ALERT_ACKNOWLEDGED", "sensor_reading", str(reading.id), f"Mobile by {request.mobile_user.full_name}")
     return jsonify({"status": "acknowledged", "reading": reading.to_dict()})
 
 
@@ -853,7 +972,7 @@ def mobile_analyze_image():
 @mobile_auth_required
 def mobile_add_reading(patient_id: int):
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         return jsonify({"error": "Patient not found."}), 404
     data = request.get_json(silent=True) or {}
     try:
@@ -885,6 +1004,7 @@ def mobile_add_reading(patient_id: int):
         hours_post_op=hours_post_op,
     )
     reading = _save_prediction_reading(patient, request.mobile_user.id, pred, "Android Mobile App")
+    log_audit("READING_LOGGED", "sensor_reading", str(reading.id), f"Mobile Patient={patient.mrn}")
     return jsonify({"reading": reading.to_dict()}), 201
 
 
@@ -892,7 +1012,7 @@ def mobile_add_reading(patient_id: int):
 @mobile_auth_required
 def mobile_simulate(patient_id: int):
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         return jsonify({"error": "Patient not found."}), 404
     data = request.get_json(silent=True) or {}
     scenario = str(data.get("scenario", "arterial_deteriorating"))
@@ -913,6 +1033,7 @@ def mobile_simulate(patient_id: int):
 
 @bp.route("/mobile/outcomes", methods=["POST"])
 @mobile_auth_required
+@mobile_roles_required(ENROLLMENT_ROLES)
 def mobile_log_outcome():
     data = request.get_json(silent=True) or {}
     try:
@@ -923,7 +1044,7 @@ def mobile_log_outcome():
     surgeon_notes = str(data.get("surgeon_notes", "")).strip()[:300]
 
     patient = db.session.get(Patient, patient_id)
-    if not patient or verified_outcome not in VALID_OUTCOMES:
+    if not patient or patient.is_archived or verified_outcome not in VALID_OUTCOMES:
         return jsonify({"error": "Valid patient_id and verified_outcome are required."}), 400
 
     latest = patient.latest_reading
@@ -936,32 +1057,37 @@ def mobile_log_outcome():
     )
     db.session.add(outcome)
     db.session.commit()
+    log_audit("OUTCOME_LOGGED", "postop_outcome", str(outcome.id), f"Mobile Patient={patient.mrn}")
     return jsonify({"outcome": outcome.to_dict()}), 201
 
 
 @bp.route("/mobile/patients/<int:patient_id>", methods=["DELETE"])
 @bp.route("/mobile/patients/<int:patient_id>/delete", methods=["POST"])
 @mobile_auth_required
+@mobile_roles_required(PRIVILEGED_ROLES)
 def mobile_delete_patient(patient_id: int):
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         return jsonify({"error": "Patient not found."}), 404
     name = patient.full_name
-    db.session.delete(patient)
+    patient.is_archived = True
+    patient.archived_at = utc_now()
+    patient.archived_by_id = request.mobile_user.id
     db.session.commit()
-    return jsonify({"status": "deleted", "patient_id": patient_id, "full_name": name})
+    log_audit("PATIENT_ARCHIVED", "patient", str(patient.id), f"Mobile MRN={patient.mrn}")
+    return jsonify({"status": "deleted", "archived": True, "patient_id": patient_id, "full_name": name})
 
 
 @bp.route("/mobile/patients/<int:patient_id>/readings", methods=["GET"])
 @mobile_auth_required
 def mobile_patient_readings(patient_id: int):
     patient = db.session.get(Patient, patient_id)
-    if not patient:
+    if not patient or patient.is_archived:
         return jsonify({"error": "Patient not found."}), 404
     readings = (
         SensorReading.query.filter_by(patient_id=patient.id)
         .order_by(SensorReading.created_at.desc())
-        .limit(15)
+        .limit(20)
         .all()
     )
     return jsonify({"patient": patient.to_dict(), "readings": [r.to_dict() for r in readings]})
@@ -971,10 +1097,20 @@ def mobile_patient_readings(patient_id: int):
 @mobile_auth_required
 def mobile_profile():
     _, meta = load_model_and_metadata()
-    patients_count = db.session.query(func.count(Patient.id)).scalar() or 0
+    patients_count = (
+        db.session.query(func.count(Patient.id))
+        .filter(Patient.is_archived.is_(False))
+        .scalar()
+        or 0
+    )
     unack_alerts = (
         db.session.query(func.count(SensorReading.id))
-        .filter_by(alert_required=True, alert_acknowledged=False)
+        .join(Patient, SensorReading.patient_id == Patient.id)
+        .filter(
+            Patient.is_archived.is_(False),
+            SensorReading.alert_required.is_(True),
+            SensorReading.alert_acknowledged.is_(False),
+        )
         .scalar()
         or 0
     )
@@ -1000,31 +1136,47 @@ def mobile_change_password():
     if len(new_pw) < 8:
         return jsonify({"error": "New password must be at least 8 characters."}), 400
     request.mobile_user.set_password(new_pw)
+    request.mobile_user.bump_token_version()
     db.session.commit()
-    return jsonify({"status": "password_updated"})
+    new_token = generate_mobile_token(request.mobile_user)
+    log_audit("PASSWORD_CHANGED", "user", str(request.mobile_user.id), "Mobile password updated; prior tokens revoked")
+    return jsonify({"status": "password_updated", "token": new_token})
 
 
 @bp.route("/mobile/ward/load-samples", methods=["POST"])
 @mobile_auth_required
+@mobile_roles_required(PRIVILEGED_ROLES)
 def mobile_load_samples():
     created = load_sample_ward_cases(
         assigned_surgeon_id=request.mobile_user.id,
         recorded_by_id=request.mobile_user.id,
     )
+    log_audit("SAMPLES_LOADED", "ward", "samples", f"Mobile created/restored={created}")
+    active_count = Patient.query.filter(Patient.is_archived.is_(False)).count()
     return jsonify(
         {
             "status": "ok",
             "created_count": created,
-            "patients_count": Patient.query.count(),
+            "patients_count": active_count,
         }
     )
 
 
 @bp.route("/mobile/ward/clear", methods=["POST"])
 @mobile_auth_required
+@mobile_roles_required(PRIVILEGED_ROLES)
 def mobile_clear_ward():
-    removed = clear_all_ward_patients()
-    return jsonify({"status": "cleared", "removed_count": removed})
+    removed = clear_all_ward_patients(archived_by_id=request.mobile_user.id)
+    log_audit("WARD_ARCHIVED", "ward", "all", f"Mobile archived={removed}")
+    return jsonify({"status": "cleared", "archived": True, "removed_count": removed})
+
+
+@bp.route("/mobile/audit", methods=["GET"])
+@mobile_auth_required
+@mobile_roles_required(PRIVILEGED_ROLES)
+def mobile_audit_logs():
+    logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(60).all()
+    return jsonify({"logs": [entry.to_dict() for entry in logs]})
 
 
 @bp.route("/mobile/profile/photo", methods=["POST"])
@@ -1035,6 +1187,7 @@ def mobile_update_profile_photo():
         if data.get("remove") is True:
             request.mobile_user.profile_photo = None
             db.session.commit()
+            log_audit("PROFILE_PHOTO_REMOVED", "user", str(request.mobile_user.id), "Mobile")
             return jsonify({"status": "removed", "user": request.mobile_user.to_dict()})
         raw_b64 = str(data.get("image_base64", ""))
         if "," in raw_b64:
@@ -1053,6 +1206,7 @@ def mobile_update_profile_photo():
     try:
         request.mobile_user.profile_photo = _encode_profile_avatar(image_bytes)
         db.session.commit()
+        log_audit("PROFILE_PHOTO_UPDATED", "user", str(request.mobile_user.id), "Mobile")
         return jsonify({"status": "updated", "user": request.mobile_user.to_dict()})
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400

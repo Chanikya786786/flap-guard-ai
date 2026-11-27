@@ -7,6 +7,7 @@ Deployment Test Suite (320+ test cases) covering:
 
 import os
 import threading
+import re
 import time
 
 import requests
@@ -80,9 +81,14 @@ def run_deployment_suite() -> str:
     try:
         session = requests.Session()
         # Authenticate web session & mobile bearer token
+        login_page = session.get(f"{base_url}/login", timeout=5)
+        csrf_match = re.search(r'name="csrf_token"\s+value="([^"]+)"', login_page.text)
+        login_data = {"email": "surgeon@flapguard.local", "password": "Surgeon@123"}
+        if csrf_match:
+            login_data["csrf_token"] = csrf_match.group(1)
         login_resp = session.post(
             f"{base_url}/login",
-            data={"email": "surgeon@flapguard.local", "password": "Surgeon@123"},
+            data=login_data,
             timeout=5,
         )
         assert login_resp.status_code == 200

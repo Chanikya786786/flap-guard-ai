@@ -8,6 +8,7 @@
     <p class="muted" style="margin:0;">Postoperative Free-Flap Perfusion &amp; Early Vascular Compromise Monitoring</p>
   </div>
   <form method="POST" action="{{ url_for('main.login') }}" id="login-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
       <label for="login-email">Hospital Email</label>
       <input id="login-email" name="email" type="email" required placeholder="clinician@hospital.org" autocomplete="email">

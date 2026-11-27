@@ -1,6 +1,6 @@
 """
-Fast Ward Query, Sample Case Seeding, and Cleanup Service for FlapGuard AI.
-Eliminates N+1 database queries on Neon PostgreSQL and keeps startup empty by default.
+Fast Ward Query, Sample Case Seeding, and Soft-Archive Cleanup Service for FlapGuard AI.
+Preserves historical patient records and readings for clinical audit traceability.
 """
 
 import json
@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from ml_engine.fusion import classify_visual_triage
 from ml_engine.model_service import predict_flap_status
-from web_app.models import Patient, PostOpOutcome, SensorReading, User, db
+from web_app.models import Patient, SensorReading, User, db, utc_now
 
 
 SAMPLE_WARD_CASES = [
@@ -77,12 +77,15 @@ SAMPLE_WARD_CASES = [
 ]
 
 
-def fetch_patients_with_latest_readings() -> List[Dict[str, object]]:
+def fetch_patients_with_latest_readings(include_archived: bool = False) -> List[Dict[str, object]]:
     """
-    Fetch all patients along with their latest sensor reading in constant query count
+    Fetch active patients along with their latest sensor reading in constant query count
     (avoids N+1 round trips over remote PostgreSQL).
     """
-    patients = Patient.query.order_by(Patient.created_at.desc()).all()
+    query = Patient.query
+    if not include_archived:
+        query = query.filter(Patient.is_archived.is_(False))
+    patients = query.order_by(Patient.created_at.desc()).all()
     if not patients:
         return []
 
@@ -158,6 +161,7 @@ def fetch_patients_with_latest_readings() -> List[Dict[str, object]]:
                 "surgery_site": p.surgery_site,
                 "hours_post_op": latest.hours_post_op if latest else p.hours_post_op,
                 "assigned_surgeon": surgeons_by_id.get(p.assigned_surgeon_id, "Unassigned"),
+                "is_archived": bool(p.is_archived),
                 "latest_reading": latest_dict,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
             }
@@ -171,9 +175,8 @@ def load_sample_ward_cases(
     recorded_by_id: Optional[int] = None,
 ) -> int:
     """
-    Insert up to 3 realistic OMFS/microsurgical sample patients on demand.
-    Skips any MRN that already exists so repeated clicks are safe.
-    Returns the number of patients created.
+    Insert or restore up to 3 realistic OMFS/microsurgical sample patients on demand.
+    Skips any active MRN so repeated clicks are safe.
     """
     if assigned_surgeon_id is None:
         surgeon = User.query.filter_by(role="Surgeon").first() or User.query.first()
@@ -185,15 +188,21 @@ def load_sample_ward_cases(
 
     created_count = 0
     for patient_data, params in SAMPLE_WARD_CASES:
-        if Patient.query.filter_by(mrn=patient_data["mrn"]).first() is not None:
-            continue
-
-        patient = Patient(
-            assigned_surgeon_id=assigned_surgeon_id,
-            **patient_data,
-        )
-        db.session.add(patient)
-        db.session.flush()
+        existing = Patient.query.filter_by(mrn=patient_data["mrn"]).first()
+        if existing is not None:
+            if not existing.is_archived:
+                continue
+            existing.is_archived = False
+            existing.archived_at = None
+            existing.archived_by_id = None
+            patient = existing
+        else:
+            patient = Patient(
+                assigned_surgeon_id=assigned_surgeon_id,
+                **patient_data,
+            )
+            db.session.add(patient)
+            db.session.flush()
 
         pred = predict_flap_status(**params)
         feat = pred["features"]
@@ -236,11 +245,13 @@ def load_sample_ward_cases(
     return created_count
 
 
-def clear_all_ward_patients() -> int:
-    """Delete all patients (and cascade readings/outcomes) cleanly."""
-    count = Patient.query.count()
-    PostOpOutcome.query.delete()
-    SensorReading.query.delete()
-    Patient.query.delete()
+def clear_all_ward_patients(archived_by_id: Optional[int] = None) -> int:
+    """Soft-archive all active patients without destroying historical clinical data."""
+    active_patients = Patient.query.filter(Patient.is_archived.is_(False)).all()
+    now = utc_now()
+    for p in active_patients:
+        p.is_archived = True
+        p.archived_at = now
+        p.archived_by_id = archived_by_id
     db.session.commit()
-    return count
+    return len(active_patients)

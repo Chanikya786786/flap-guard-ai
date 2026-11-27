@@ -17,6 +17,7 @@
         <span id="current-risk-badge" class="badge badge-unassessed" style="font-size:0.88rem;padding:7px 14px;">Awaiting First Reading</span>
       {% endif %}
       <form method="POST" action="{{ url_for('main.delete_patient', patient_id=patient.id) }}" style="margin:0;" onsubmit="return confirm('Remove {{ patient.full_name }} and all associated readings?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
       </form>
     </div>
@@ -66,6 +67,7 @@
       Enter thermal, tissue oximetry, and Doppler metrics. Visual color indices auto-populate when a photo is scanned.
     </p>
     <form method="POST" action="{{ url_for('main.add_reading', patient_id=patient.id) }}" id="sensor-reading-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input id="source-mode-input" type="hidden" name="source_mode" value="Bedside + Camera Fusion">
       <div class="form-grid">
         <div class="form-group">

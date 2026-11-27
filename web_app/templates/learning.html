@@ -21,6 +21,7 @@
       </tbody>
     </table>
     <form method="POST" action="{{ url_for('main.retrain_model') }}" style="margin-top:16px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button id="retrain-btn" type="submit" class="btn btn-accent" style="width:100%;">Retrain Local Model With Verified Outcomes</button>
     </form>
   </div>
@@ -29,6 +30,7 @@
     <h2>Log Verified Postoperative Outcome</h2>
     <p class="muted" style="margin-bottom:14px;">Record ground-truth clinical findings after follow-up or salvage exploration.</p>
     <form method="POST" action="{{ url_for('main.log_outcome') }}" id="outcome-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label for="outcome-patient">Patient</label>
         <select id="outcome-patient" name="patient_id" required>

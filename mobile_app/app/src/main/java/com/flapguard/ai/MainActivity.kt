@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
-        if (!prefs.getString("auth_token", null).isNullOrBlank()) {
+        if (SecurePrefs.getAuthToken(this).isNotBlank()) {
             startActivity(Intent(this, DashboardActivity::class.java))
             finish()
             return
@@ -151,8 +151,8 @@ class MainActivity : AppCompatActivity() {
                         val token = result.json.optString("token")
                         val userObj = result.json.optJSONObject("user")
                         val photo = userObj?.optString("profile_photo", "").orEmpty()
+                        SecurePrefs.saveAuthToken(this, token)
                         prefs.edit()
-                            .putString("auth_token", token)
                             .putString("user_name", userObj?.optString("full_name") ?: email)
                             .putString("user_role", userObj?.optString("role") ?: "Surgeon")
                             .putString("user_email", userObj?.optString("email") ?: email)

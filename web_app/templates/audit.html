@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Clinical Audit Trail | FlapGuard AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Immutable Clinical &amp; Security Audit Trail</h1>
+    <span class="muted">Append-only governance log &middot; Archived patient records preserved: <strong>{{ archived_count }}</strong></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table id="audit-log-table">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Action</th>
+          <th>Clinician</th>
+          <th>Role</th>
+          <th>Resource</th>
+          <th>Details</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in logs %}
+        <tr>
+          <td class="muted">{{ entry.created_at.strftime('%Y-%m-%d %H:%M:%S') if entry.created_at else '-' }}</td>
+          <td><strong>{{ entry.action }}</strong></td>
+          <td>{{ entry.actor_email }}</td>
+          <td><span class="badge badge-moderate">{{ entry.actor_role }}</span></td>
+          <td>{{ entry.resource_type }} {{ entry.resource_id }}</td>
+          <td class="muted">{{ entry.details }}</td>
+          <td class="muted">{{ entry.ip_address }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="muted" style="text-align:center;padding:24px;">No audit entries recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

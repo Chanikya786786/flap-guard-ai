@@ -14,8 +14,7 @@ class AlertActionReceiver : BroadcastReceiver() {
         val alertId = intent.getIntExtra(EXTRA_ALERT_ID, -1)
         if (alertId <= 0) return
 
-        val prefs = context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
-        val token = prefs.getString("auth_token", "").orEmpty()
+        val token = SecurePrefs.getAuthToken(context)
         if (token.isBlank()) return
 
         val pendingResult = goAsync()

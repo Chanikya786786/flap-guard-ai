@@ -8,6 +8,7 @@
     <p class="muted" style="margin:0;">Join your surgical ward monitoring workspace</p>
   </div>
   <form method="POST" action="{{ url_for('main.register') }}" id="register-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
       <label for="reg-name">Full Name</label>
       <input id="reg-name" name="full_name" type="text" required placeholder="Dr. Full Name">
@@ -33,6 +34,12 @@
       <label for="reg-confirm">Confirm Password</label>
       <input id="reg-confirm" name="confirm_password" type="password" minlength="8" required placeholder="Re-enter password">
     </div>
+        {% if invite_required %}
+    <div class="form-group">
+      <label for="reg-invite">Hospital Invite Code</label>
+      <input id="reg-invite" name="invite_code" type="text" required placeholder="Enter hospital onboarding code">
+    </div>
+    {% endif %}
     <button id="register-submit" type="submit" class="btn" style="width:100%;margin-top:4px;">Create Account</button>
   </form>
   <p class="muted" style="margin-top:18px;text-align:center;">

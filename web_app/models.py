@@ -1,6 +1,7 @@
 """
 Relational Database Models for FlapGuard AI.
-Works identically on local SQLite (offline/USB demo) and PostgreSQL (cloud deployment).
+Includes soft-delete patient archiving, server-side token revocation,
+and an append-only clinical & security AuditLog.
 """
 
 import json
@@ -27,6 +28,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(40), nullable=False, default="Surgeon")
     password_hash = db.Column(db.String(256), nullable=False)
     profile_photo = db.Column(db.Text, nullable=True)
+    token_version = db.Column(db.Integer, nullable=False, default=1)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     def set_password(self, raw_password: str) -> None:
@@ -34,6 +36,9 @@ class User(UserMixin, db.Model):
 
     def check_password(self, raw_password: str) -> bool:
         return check_password_hash(self.password_hash, raw_password)
+
+    def bump_token_version(self) -> None:
+        self.token_version = int(self.token_version or 1) + 1
 
     def to_dict(self) -> dict:
         return {
@@ -57,9 +62,13 @@ class Patient(db.Model):
     surgery_site = db.Column(db.String(120), nullable=False)
     hours_post_op = db.Column(db.Float, nullable=False, default=1.0)
     assigned_surgeon_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    is_archived = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    archived_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    archived_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
 
     assigned_surgeon = db.relationship("User", foreign_keys=[assigned_surgeon_id])
+    archived_by = db.relationship("User", foreign_keys=[archived_by_id])
     readings = db.relationship(
         "SensorReading",
         backref="patient",
@@ -90,6 +99,7 @@ class Patient(db.Model):
             "surgery_site": self.surgery_site,
             "hours_post_op": latest.hours_post_op if latest else self.hours_post_op,
             "assigned_surgeon": self.assigned_surgeon.full_name if self.assigned_surgeon else "Unassigned",
+            "is_archived": bool(self.is_archived),
             "latest_reading": latest.to_dict() if latest else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
@@ -221,4 +231,42 @@ class ModelVersionLog(db.Model):
             "postop_outcomes_added": self.postop_outcomes_added,
             "trained_at_utc": self.trained_at_utc,
             "notes": self.notes,
+        }
+
+
+class RevokedToken(db.Model):
+    __tablename__ = "revoked_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    jti = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    revoked_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    actor_email = db.Column(db.String(150), nullable=False, default="anonymous")
+    actor_role = db.Column(db.String(40), nullable=False, default="Unknown")
+    action = db.Column(db.String(60), nullable=False, index=True)
+    resource_type = db.Column(db.String(50), nullable=False, default="")
+    resource_id = db.Column(db.String(60), nullable=False, default="")
+    details = db.Column(db.String(400), nullable=False, default="")
+    ip_address = db.Column(db.String(64), nullable=False, default="")
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "actor_id": self.actor_id,
+            "actor_email": self.actor_email,
+            "actor_role": self.actor_role,
+            "action": self.action,
+            "resource_type": self.resource_type,
+            "resource_id": self.resource_id,
+            "details": self.details,
+            "ip_address": self.ip_address,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }

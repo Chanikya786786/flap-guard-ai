@@ -1,0 +1,104 @@
+package com.flapguard.ai
+
+import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+
+/**
+ * Hardware-backed Android Keystore (AES-256-GCM) token vault.
+ * Encrypts clinician bearer tokens at rest without deprecated security-crypto libraries.
+ */
+object SecurePrefs {
+
+    private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
+    private const val KEY_ALIAS = "flapguard_auth_aes256_key"
+    private const val TRANSFORMATION = "AES/GCM/NoPadding"
+    private const val ENC_TOKEN_KEY = "auth_token_enc"
+    private const val LEGACY_TOKEN_KEY = "auth_token"
+
+    private fun getOrCreateKey(): SecretKey {
+        val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+        val existing = ks.getKey(KEY_ALIAS, null) as? SecretKey
+        if (existing != null) return existing
+
+        val spec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+
+        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE_PROVIDER)
+        gen.init(spec)
+        return gen.generateKey()
+    }
+
+    fun saveAuthToken(context: Context, token: String) {
+        val prefs = context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+        if (token.isBlank()) {
+            clearAuthToken(context)
+            return
+        }
+        try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+            val iv = cipher.iv
+            val ciphertext = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
+            val combined = ByteArray(1 + iv.size + ciphertext.size)
+            combined[0] = iv.size.toByte()
+            System.arraycopy(iv, 0, combined, 1, iv.size)
+            System.arraycopy(ciphertext, 0, combined, 1 + iv.size, ciphertext.size)
+            val encoded = Base64.encodeToString(combined, Base64.NO_WRAP)
+            prefs.edit()
+                .putString(ENC_TOKEN_KEY, encoded)
+                .remove(LEGACY_TOKEN_KEY)
+                .apply()
+        } catch (_: Exception) {
+            // Do not leave plaintext tokens unencrypted on keystore failure
+            prefs.edit().remove(ENC_TOKEN_KEY).remove(LEGACY_TOKEN_KEY).apply()
+        }
+    }
+
+    fun getAuthToken(context: Context): String {
+        val prefs = context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+        val encoded = prefs.getString(ENC_TOKEN_KEY, null)
+        if (!encoded.isNullOrBlank()) {
+            return try {
+                val combined = Base64.decode(encoded, Base64.NO_WRAP)
+                val ivLen = combined[0].toInt() and 0xFF
+                val iv = combined.copyOfRange(1, 1 + ivLen)
+                val ciphertext = combined.copyOfRange(1 + ivLen, combined.size)
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
+                String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+            } catch (_: Exception) {
+                clearAuthToken(context)
+                ""
+            }
+        }
+
+        // Seamless one-time migration from legacy v2.1 plaintext preference
+        val legacy = prefs.getString(LEGACY_TOKEN_KEY, null).orEmpty()
+        if (legacy.isNotBlank()) {
+            saveAuthToken(context, legacy)
+            return legacy
+        }
+        return ""
+    }
+
+    fun clearAuthToken(context: Context) {
+        context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(ENC_TOKEN_KEY)
+            .remove(LEGACY_TOKEN_KEY)
+            .apply()
+    }
+}

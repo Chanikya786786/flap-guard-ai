@@ -41,6 +41,7 @@
     <div class="btn-row">
       <a class="btn btn-sm" href="{{ url_for('main.patient_detail', patient_id=alert.patient_id) }}">Inspect</a>
       <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=alert.id) }}" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-secondary">Acknowledge</button>
       </form>
     </div>
@@ -91,6 +92,7 @@
             <div class="btn-row">
               <a class="btn btn-sm open-patient-btn" href="{{ url_for('main.patient_detail', patient_id=p.id) }}">Monitor</a>
               <form method="POST" action="{{ url_for('main.delete_patient', patient_id=p.id) }}" style="margin:0;" onsubmit="return confirm('Remove {{ p.full_name }} from ward monitoring?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
               </form>
             </div>
@@ -122,6 +124,7 @@
       <button type="button" class="modal-close" id="close-enroll-modal-btn" aria-label="Close">&times;</button>
     </div>
     <form method="POST" action="{{ url_for('main.create_patient') }}" id="add-patient-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="form-group">
           <label for="patient-mrn">MRN / Hospital ID</label>

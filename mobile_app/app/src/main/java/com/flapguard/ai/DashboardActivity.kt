@@ -191,7 +191,7 @@ class DashboardActivity : AppCompatActivity() {
         setContentView(R.layout.activity_dashboard)
 
         val prefs = getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
-        authToken = prefs.getString("auth_token", "").orEmpty()
+        authToken = SecurePrefs.getAuthToken(this)
         userName = prefs.getString("user_name", "Clinician") ?: "Clinician"
         userRole = prefs.getString("user_role", "Surgeon") ?: "Surgeon"
         userEmail = prefs.getString("user_email", "") ?: ""
@@ -485,8 +485,18 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun logoutToLogin() {
+        val tokenToRevoke = if (::authToken.isInitialized) authToken else SecurePrefs.getAuthToken(this)
+        val urlToNotify = serverUrl()
+        if (tokenToRevoke.isNotBlank()) {
+            Thread {
+                try {
+                    ApiClient.request(urlToNotify, "/mobile/logout", "POST", JSONObject(), tokenToRevoke)
+                } catch (_: Exception) {
+                }
+            }.start()
+        }
+        SecurePrefs.clearAuthToken(this)
         getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE).edit()
-            .remove("auth_token")
             .remove("user_photo")
             .apply()
         startActivity(Intent(this, MainActivity::class.java))
@@ -1285,6 +1295,11 @@ class DashboardActivity : AppCompatActivity() {
                 mainHandler.post {
                     btnUpdate.isEnabled = true
                     if (res.ok) {
+                        val rotated = res.json.optString("token", "")
+                        if (rotated.isNotBlank()) {
+                            authToken = rotated
+                            SecurePrefs.saveAuthToken(this, rotated)
+                        }
                         sheet.dismiss()
                         showNotice("Password updated.")
                     } else {
