@@ -24,7 +24,9 @@ import android.app.KeyguardManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.CancellationSignal
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
@@ -97,6 +99,23 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var switchBgMonitor: MaterialSwitch
     private lateinit var switchScreenPrivacy: MaterialSwitch
     private lateinit var switchAppLock: MaterialSwitch
+    private var appLockOverlay: LinearLayout? = null
+    private var isAppLocked = false
+    private var needsReauthOnReturn = false
+    private var suppressNextAppLock = false
+    private var pendingEnableAppLock = false
+    private var ignoreAppLockSwitchChange = false
+
+    private val deviceCredentialLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        suppressNextAppLock = false
+        if (result.resultCode == RESULT_OK) {
+            onAppUnlocked()
+        } else {
+            onAppUnlockFailedOrCancelled(null)
+        }
+    }
 
     private var scannedRedness = 0.14
     private var scannedCyanosis = 0.03
@@ -228,7 +247,7 @@ class DashboardActivity : AppCompatActivity() {
 
         offlineQueueDb = OfflineQueueDb(this)
         applyScreenPrivacyFlag()
-        if (SecurePrefs.isAppLockEnabled(this)) promptDeviceUnlock()
+        // App lock triggers once window is attached below
         NotificationHelper.ensureChannels(this)
         AlertJobService.schedule(this)
         if (AlertMonitorService.isEnabled(this)) AlertMonitorService.start(this)
@@ -239,6 +258,10 @@ class DashboardActivity : AppCompatActivity() {
         setupActions()
         populateProfileHeader()
         updateServerModeLabel()
+        if (SecurePrefs.isAppLockEnabled(this)) {
+            showAppLockOverlay()
+            window.decorView.post { promptDeviceUnlock() }
+        }
 
         ContextCompat.registerReceiver(
             this,
@@ -275,6 +298,26 @@ class DashboardActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         mainHandler.removeCallbacks(pollRunnable)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (suppressNextAppLock) {
+            suppressNextAppLock = false
+            return
+        }
+        if (SecurePrefs.isAppLockEnabled(this) && (needsReauthOnReturn || isAppLocked)) {
+            showAppLockOverlay()
+            window.decorView.post { promptDeviceUnlock() }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (SecurePrefs.isAppLockEnabled(this) && !suppressNextAppLock) {
+            needsReauthOnReturn = true
+            showAppLockOverlay()
+        }
     }
 
     override fun onDestroy() {
@@ -384,6 +427,7 @@ class DashboardActivity : AppCompatActivity() {
             onAcknowledge = { alert -> acknowledgeAlert(alert.id) },
             onCardClick = { alert -> openPatientFromAlert(alert) }
         )
+        rvAlerts.layoutManager = LinearLayoutManager(this)
         rvAlerts.adapter = alertAdapter
     }
 
@@ -438,7 +482,7 @@ class DashboardActivity : AppCompatActivity() {
         cardSelectPatient.setOnClickListener { showPatientPickerDialog() }
 
         findViewById<MaterialButton>(R.id.btn_open_camera).setOnClickListener { launchFlapCamera() }
-        findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { flapGalleryLauncher.launch("image/*") }
+        findViewById<MaterialButton>(R.id.btn_pick_gallery).setOnClickListener { suppressNextAppLock = true; flapGalleryLauncher.launch("image/*") }
         cardOfflineQueue.setOnClickListener { flushOfflineQueue(showFeedback = true) }
         btnPickControlSkin.setOnClickListener {
             if (controlSkinBase64 != null) {
@@ -447,7 +491,7 @@ class DashboardActivity : AppCompatActivity() {
                 btnPickControlSkin.text = "+ Add Skin"
                 showNotice("Control skin reference cleared.")
             } else {
-                controlSkinGalleryLauncher.launch("image/*")
+                suppressNextAppLock = true; controlSkinGalleryLauncher.launch("image/*")
             }
         }
         switchBgMonitor.isChecked = AlertMonitorService.isEnabled(this)
@@ -463,13 +507,23 @@ class DashboardActivity : AppCompatActivity() {
         }
         switchAppLock.isChecked = SecurePrefs.isAppLockEnabled(this)
         switchAppLock.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked && !isDeviceLockAvailable()) {
-                switchAppLock.isChecked = false
-                showNotice("Set up a phone PIN or fingerprint in Android Settings first.")
-                return@setOnCheckedChangeListener
+            if (ignoreAppLockSwitchChange) return@setOnCheckedChangeListener
+            if (isChecked) {
+                if (!isDeviceLockAvailable()) {
+                    ignoreAppLockSwitchChange = true
+                    switchAppLock.isChecked = false
+                    ignoreAppLockSwitchChange = false
+                    showNotice("Set up a phone PIN, pattern, or fingerprint in Android Settings first.")
+                    return@setOnCheckedChangeListener
+                }
+                pendingEnableAppLock = true
+                promptDeviceUnlock()
+            } else {
+                pendingEnableAppLock = false
+                SecurePrefs.setAppLockEnabled(this, false)
+                hideAppLockOverlay()
+                showNotice("App unlock lock turned off.")
             }
-            SecurePrefs.setAppLockEnabled(this, isChecked)
-            showNotice(if (isChecked) "Phone unlock required when opening FlapGuard." else "App unlock lock turned off.")
         }
         findViewById<LinearLayout>(R.id.row_sign_out_all).setOnClickListener {
             confirmSignOutOtherDevices()
@@ -976,7 +1030,7 @@ class DashboardActivity : AppCompatActivity() {
         try {
             val uri = createTempCameraUri("flap")
             pendingFlapCameraUri = uri
-            flapCameraLauncher.launch(uri)
+            suppressNextAppLock = true; flapCameraLauncher.launch(uri)
         } catch (e: Exception) {
             showNotice("Camera unavailable: ${e.message}")
         }
@@ -1235,15 +1289,118 @@ class DashboardActivity : AppCompatActivity() {
         return km?.isDeviceSecure == true
     }
 
+    private fun showAppLockOverlay() {
+        isAppLocked = true
+        val contentRoot = findViewById<ViewGroup>(android.R.id.content) ?: return
+        if (appLockOverlay == null) {
+            val dp = resources.displayMetrics.density
+            val overlay = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setBackgroundColor(Color.parseColor("#F4F7FA"))
+                isClickable = true
+                isFocusable = true
+                elevation = 120f
+                setPadding((32 * dp).toInt(), (32 * dp).toInt(), (32 * dp).toInt(), (32 * dp).toInt())
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+            val icon = ImageView(this).apply {
+                setImageResource(R.drawable.ic_brand_logo)
+                layoutParams = LinearLayout.LayoutParams((64 * dp).toInt(), (64 * dp).toInt())
+            }
+            val title = TextView(this).apply {
+                text = "FlapGuard AI Locked"
+                textSize = 21f
+                setTextColor(Color.parseColor("#0F172A"))
+                gravity = Gravity.CENTER
+                setPadding(0, (16 * dp).toInt(), 0, (6 * dp).toInt())
+            }
+            val sub = TextView(this).apply {
+                text = "Verify with your fingerprint, face, or phone PIN to view patient data."
+                textSize = 13f
+                setTextColor(Color.parseColor("#64748B"))
+                gravity = Gravity.CENTER
+                setPadding(0, 0, 0, (24 * dp).toInt())
+            }
+            val btn = MaterialButton(this).apply {
+                text = "Unlock FlapGuard"
+                isAllCaps = false
+                cornerRadius = (14 * dp).toInt()
+                backgroundTintList = ColorStateList.valueOf(Color.parseColor("#0F4C81"))
+                setTextColor(Color.WHITE)
+                setOnClickListener { promptDeviceUnlock() }
+            }
+            overlay.addView(icon)
+            overlay.addView(title)
+            overlay.addView(sub)
+            overlay.addView(btn)
+            appLockOverlay = overlay
+            contentRoot.addView(overlay)
+        }
+        appLockOverlay?.visibility = View.VISIBLE
+        appLockOverlay?.bringToFront()
+    }
+
+    private fun hideAppLockOverlay() {
+        isAppLocked = false
+        appLockOverlay?.visibility = View.GONE
+    }
+
+    private fun onAppUnlocked() {
+        needsReauthOnReturn = false
+        hideAppLockOverlay()
+        if (pendingEnableAppLock) {
+            pendingEnableAppLock = false
+            SecurePrefs.setAppLockEnabled(this, true)
+            showNotice("App lock enabled — phone unlock required whenever you reopen FlapGuard.")
+        }
+    }
+
+    private fun onAppUnlockFailedOrCancelled(errMsg: String?) {
+        if (pendingEnableAppLock) {
+            pendingEnableAppLock = false
+            ignoreAppLockSwitchChange = true
+            switchAppLock.isChecked = false
+            ignoreAppLockSwitchChange = false
+            SecurePrefs.setAppLockEnabled(this, false)
+            hideAppLockOverlay()
+            showNotice(errMsg ?: "App lock not enabled — verification cancelled.")
+        } else if (SecurePrefs.isAppLockEnabled(this)) {
+            showAppLockOverlay()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun launchKeyguardFallback() {
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        val intent = km?.createConfirmDeviceCredentialIntent(
+            "Unlock FlapGuard AI",
+            "Verify your identity to access patient data"
+        )
+        if (intent != null) {
+            suppressNextAppLock = true
+            deviceCredentialLauncher.launch(intent)
+        } else {
+            onAppUnlockFailedOrCancelled("Phone lock screen is unavailable.")
+        }
+    }
+
     private fun promptDeviceUnlock() {
-        if (!isDeviceLockAvailable()) return
+        if (!isDeviceLockAvailable()) {
+            onAppUnlockFailedOrCancelled("Set up a phone PIN or fingerprint in Android Settings first.")
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 val prompt = BiometricPrompt.Builder(this)
                     .setTitle("Unlock FlapGuard AI")
                     .setSubtitle("Verify your identity to access patient data")
                     .setAllowedAuthenticators(
-                        BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                            BiometricManager.Authenticators.BIOMETRIC_WEAK or
                             BiometricManager.Authenticators.DEVICE_CREDENTIAL
                     )
                     .build()
@@ -1251,13 +1408,29 @@ class DashboardActivity : AppCompatActivity() {
                     CancellationSignal(),
                     mainExecutor,
                     object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
+                            mainHandler.post { onAppUnlocked() }
+                        }
+
                         override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) {
-                            finish()
+                            mainHandler.post {
+                                if (errorCode == BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS ||
+                                    errorCode == BiometricPrompt.BIOMETRIC_ERROR_HW_UNAVAILABLE ||
+                                    errorCode == BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT
+                                ) {
+                                    launchKeyguardFallback()
+                                } else {
+                                    onAppUnlockFailedOrCancelled(errString?.toString())
+                                }
+                            }
                         }
                     }
                 )
             } catch (_: Exception) {
+                launchKeyguardFallback()
             }
+        } else {
+            launchKeyguardFallback()
         }
     }
 
@@ -1441,12 +1614,12 @@ class DashboardActivity : AppCompatActivity() {
             .setTitle("Profile Photo")
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> profileGalleryLauncher.launch("image/*")
+                    0 -> { suppressNextAppLock = true; profileGalleryLauncher.launch("image/*") }
                     1 -> {
                         try {
                             val uri = createTempCameraUri("avatar")
                             pendingProfileCameraUri = uri
-                            profileCameraLauncher.launch(uri)
+                            suppressNextAppLock = true; profileCameraLauncher.launch(uri)
                         } catch (e: Exception) {
                             showNotice("Camera unavailable: ${e.message}")
                         }
