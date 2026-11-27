@@ -27,7 +27,9 @@ data class AlertItem(
     val riskTier: String,
     val message: String,
     val acknowledged: Boolean,
-    val acknowledgedBy: String
+    val acknowledgedBy: String,
+    val patientId: Int = -1,
+    val createdAtIso: String = ""
 )
 
 data class ReadingPoint(
