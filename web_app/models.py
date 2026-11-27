@@ -138,6 +138,10 @@ class SensorReading(db.Model):
     acknowledged_by = db.Column(db.String(120), nullable=True)
 
     clinical_notes_json = db.Column(db.Text, nullable=False, default="[]")
+    trend_status = db.Column(db.String(40), nullable=False, default="Baseline Established")
+    ood_flag = db.Column(db.Boolean, nullable=False, default=False)
+    confidence_label = db.Column(db.String(40), nullable=False, default="High")
+    trend_json = db.Column(db.Text, nullable=False, default="{}")
     source_mode = db.Column(db.String(80), nullable=False, default="Manual + Camera")
     model_version = db.Column(db.String(20), nullable=False, default="v1.0")
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
@@ -148,6 +152,13 @@ class SensorReading(db.Model):
             return json.loads(self.clinical_notes_json or "[]")
         except ValueError:
             return []
+
+    @property
+    def trend_summary(self) -> dict:
+        try:
+            return json.loads(self.trend_json or "{}")
+        except ValueError:
+            return {}
 
     def to_dict(self) -> dict:
         return {
@@ -176,6 +187,10 @@ class SensorReading(db.Model):
             "alert_acknowledged": self.alert_acknowledged,
             "acknowledged_by": self.acknowledged_by,
             "clinical_notes": self.clinical_notes,
+            "trend_status": self.trend_status,
+            "ood_flag": bool(self.ood_flag),
+            "confidence_label": self.confidence_label,
+            "trend_summary": self.trend_summary,
             "source_mode": self.source_mode,
             "model_version": self.model_version,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -270,3 +285,16 @@ class AuditLog(db.Model):
             "ip_address": self.ip_address,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class ModelArtifact(db.Model):
+    """Persistent versioned ML artifact store (survives ephemeral container restarts on Render)."""
+    __tablename__ = "model_artifacts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.String(20), nullable=False, index=True)
+    sha256_checksum = db.Column(db.String(64), nullable=False)
+    metadata_json = db.Column(db.Text, nullable=False)
+    artifact_blob = db.Column(db.LargeBinary, nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)

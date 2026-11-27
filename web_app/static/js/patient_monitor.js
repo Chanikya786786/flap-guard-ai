@@ -235,6 +235,10 @@
 
         const formData = new FormData();
         formData.append("image", file);
+        const ctrlInput = document.getElementById("control-image-upload");
+        if (ctrlInput && ctrlInput.files && ctrlInput.files[0]) {
+          formData.append("control_image", ctrlInput.files[0]);
+        }
         const resp = await fetch("/analyze-image", { method: "POST", headers: { "X-CSRF-Token": getCsrfToken() }, body: formData });
         const data = await resp.json();
         if (resp.ok) {

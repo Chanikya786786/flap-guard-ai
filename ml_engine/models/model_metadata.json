@@ -1,7 +1,8 @@
 {
-  "version": "v1.0",
-  "trained_at_utc": "2026-11-24T09:12:04.302621+00:00",
-  "algorithm": "RandomForestClassifier (Multisensor Fusion)",
+  "version": "v2.0",
+  "trained_at_utc": "2026-11-27T12:11:39.979895+00:00",
+  "algorithm": "CalibratedRandomForest (Platt Sigmoid + Multisensor Fusion)",
+  "calibration_method": "sigmoid (3-fold Platt scaling)",
   "base_samples": 1500,
   "postop_outcomes_added": 0,
   "total_samples": 1500,
@@ -10,6 +11,7 @@
   "macro_precision": 1.0,
   "macro_recall": 1.0,
   "macro_f1": 1.0,
+  "brier_score": 0.0001,
   "confusion_matrix": [
     [
       100,
@@ -33,16 +35,85 @@
     "Arterial Compromise"
   ],
   "feature_importances": {
-    "perfusion_fusion_index": 0.2351,
-    "visual_pallor_index": 0.2011,
-    "visual_cyanosis_index": 0.1922,
-    "visual_perfusion_score": 0.1395,
-    "spo2_pct": 0.0769,
-    "visual_redness_index": 0.0574,
+    "perfusion_fusion_index": 0.229,
+    "visual_pallor_index": 0.2078,
+    "visual_cyanosis_index": 0.1839,
+    "visual_perfusion_score": 0.1377,
+    "spo2_pct": 0.0848,
+    "visual_redness_index": 0.0501,
     "doppler_flow_cm_s": 0.0445,
-    "temp_delta_c": 0.0402,
-    "ir_flap_temp_c": 0.0129,
-    "control_skin_temp_c": 0.0001,
-    "hours_post_op": 0.0001
-  }
+    "temp_delta_c": 0.0395,
+    "ir_flap_temp_c": 0.0225,
+    "hours_post_op": 0.0002,
+    "control_skin_temp_c": 0.0001
+  },
+  "feature_stats": {
+    "ir_flap_temp_c": {
+      "mean": 34.992,
+      "std": 1.1928,
+      "p01": 32.2299,
+      "p99": 36.9602
+    },
+    "control_skin_temp_c": {
+      "mean": 36.7031,
+      "std": 0.2487,
+      "p01": 36.1,
+      "p99": 37.26
+    },
+    "temp_delta_c": {
+      "mean": 1.7109,
+      "std": 1.1652,
+      "p01": 0.0,
+      "p99": 4.3572
+    },
+    "spo2_pct": {
+      "mean": 83.5963,
+      "std": 11.4113,
+      "p01": 60.6491,
+      "p99": 100.0
+    },
+    "doppler_flow_cm_s": {
+      "mean": 11.6754,
+      "std": 7.9186,
+      "p01": 0.0,
+      "p99": 28.1405
+    },
+    "visual_redness_index": {
+      "mean": 0.0919,
+      "std": 0.0586,
+      "p01": 0.0,
+      "p99": 0.2139
+    },
+    "visual_cyanosis_index": {
+      "mean": 0.1863,
+      "std": 0.2298,
+      "p01": 0.0,
+      "p99": 0.7885
+    },
+    "visual_pallor_index": {
+      "mean": 0.4858,
+      "std": 0.2244,
+      "p01": 0.1102,
+      "p99": 0.9488
+    },
+    "visual_perfusion_score": {
+      "mean": 49.6347,
+      "std": 30.4639,
+      "p01": 1.9788,
+      "p99": 99.4705
+    },
+    "perfusion_fusion_index": {
+      "mean": 55.7651,
+      "std": 26.5874,
+      "p01": 12.9584,
+      "p99": 96.2811
+    },
+    "hours_post_op": {
+      "mean": 36.1889,
+      "std": 20.5024,
+      "p01": 1.6,
+      "p99": 71.6
+    }
+  },
+  "data_provenance": "Research prototype trained on physiological simulation baseline + clinician-logged outcomes; requires prospective clinical validation before autonomous diagnostic use."
 }

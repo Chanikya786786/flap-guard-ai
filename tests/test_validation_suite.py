@@ -137,6 +137,128 @@ def run_validation_suite() -> str:
         ))
         idx += 1
 
+    # Track 2 Clinical ML: Calibration, Temporal Trends, Missing Modalities, OOD, Holdout Gate, DB Persistence, Paired Vision
+    import cv2 as _cv2
+    import numpy as _np
+    import ml_engine.model_service as _ms
+    from ml_engine.vision_analyzer import analyze_flap_image_bytes as _analyze_img
+    from web_app import create_app as _create_app
+    from web_app.model_store import (
+        persist_active_model_to_db as _persist_model,
+        restore_active_model_from_db as _restore_model,
+    )
+
+    # 2a. Calibrated model metadata has Brier score & Platt calibration
+    t0 = time.perf_counter()
+    cal_model, cal_meta = _ms.load_model_and_metadata(force_reload=True)
+    brier_ok = "brier_score" in cal_meta and float(cal_meta["brier_score"]) < 0.15
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Clinical ML (Calibration)", "Platt-calibrated probabilities & low Brier score",
+        "load_model_and_metadata()", "brier_score < 0.15 & sigmoid calibration",
+        f"brier={cal_meta.get('brier_score')}, method={cal_meta.get('calibration_method')}",
+        (time.perf_counter() - t0) * 1000, brier_ok,
+    ))
+    idx += 1
+
+    # 2b. Temporal trend escalation catches rapid drop from patient baseline
+    t0 = time.perf_counter()
+    hist = [
+        {"temp_delta_c": 0.3, "spo2_pct": 98.0, "doppler_flow_cm_s": 22.0, "visual_perfusion_score": 86.0, "hours_post_op": 2.0},
+        {"temp_delta_c": 0.9, "spo2_pct": 95.0, "doppler_flow_cm_s": 18.0, "visual_perfusion_score": 80.0, "hours_post_op": 3.0},
+    ]
+    trend_pred = _ms.predict_flap_status(
+        ir_flap_temp_c=34.7, control_skin_temp_c=36.7, spo2_pct=83.0, doppler_flow_cm_s=11.0,
+        hours_post_op=4.0, history=hist,
+    )
+    t_ok = trend_pred["risk_tier"] == "Critical" and "Deteriorat" in trend_pred["trend_status"]
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Clinical ML (Trends)", "Temporal rapid deterioration escalates risk tier",
+        "Baseline SpO2=98% -> 83% in 2h", "risk_tier=Critical & trend_status Deteriorating",
+        f"tier={trend_pred['risk_tier']}, trend={trend_pred['trend_status']}",
+        (time.perf_counter() - t0) * 1000, t_ok,
+    ))
+    idx += 1
+
+    # 2c. Missing-modality graceful handling flags absent sensor & downgrades confidence
+    t0 = time.perf_counter()
+    miss_pred = _ms.predict_flap_status(
+        ir_flap_temp_c=36.2, control_skin_temp_c=36.6, spo2_pct=None, doppler_flow_cm_s=None,
+    )
+    m_ok = len(miss_pred["missing_modalities"]) == 2 and "Low" in miss_pred["confidence_label"]
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Clinical ML (Missing Sensor)", "Graceful partial-modality inference with uncertainty warning",
+        "spo2=None, doppler=None", "2 missing_modalities & Low confidence warning",
+        f"missing={miss_pred['missing_modalities']}, conf={miss_pred['confidence_label']}",
+        (time.perf_counter() - t0) * 1000, m_ok,
+    ))
+    idx += 1
+
+    # 2d. Out-of-Distribution (OOD) detection flags extreme non-physiological readings
+    t0 = time.perf_counter()
+    ood_pred = _ms.predict_flap_status(
+        ir_flap_temp_c=23.0, control_skin_temp_c=36.6, spo2_pct=96.0, doppler_flow_cm_s=52.0,
+    )
+    o_ok = bool(ood_pred["ood_flag"]) and len(ood_pred["ood_reasons"]) >= 1
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Clinical ML (OOD Guard)", "Flag out-of-distribution sensor inputs",
+        "ir_temp=23.0C, doppler=52.0 cm/s", "ood_flag=True & warning generated",
+        f"ood={ood_pred['ood_flag']}, z_max={ood_pred['ood_z_max']}",
+        (time.perf_counter() - t0) * 1000, o_ok,
+    ))
+    idx += 1
+
+    # 2e. Holdout F1 safety gate blocks heavily poisoned outcome batches
+    t0 = time.perf_counter()
+    poisoned = [
+        {
+            "ir_flap_temp_c": 36.3, "control_skin_temp_c": 36.7, "spo2_pct": 98.0,
+            "doppler_flow_cm_s": 22.0, "visual_redness_index": 0.16,
+            "visual_cyanosis_index": 0.02, "visual_pallor_index": 0.40,
+            "hours_post_op": 8.0, "label": "Arterial Compromise",
+        }
+        for _ in range(900)
+    ]
+    gate_res = _ms.retrain_from_postop_outcomes(poisoned)
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Clinical ML (Safety Gate)", "Holdout Macro-F1 gate blocks poisoned retraining batch",
+        "900 mislabeled healthy->Arterial rows", "promoted=False",
+        f"promoted={gate_res['promoted']}, cand_f1={gate_res.get('candidate_macro_f1')}",
+        (time.perf_counter() - t0) * 1000, gate_res["promoted"] is False,
+    ))
+    idx += 1
+
+    # 2f. Persistent DB ModelArtifact survives disk wipe & verifies SHA-256
+    t0 = time.perf_counter()
+    db_app = _create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "SKIP_SEED": True})
+    with db_app.app_context():
+        test_meta = dict(cal_meta, version="v2.99")
+        _persist_model(cal_model, test_meta)
+        restored_ver = _restore_model()
+    _ms.train_and_save_model(version="v2.0")
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Persistence (ModelArtifact)", "Persist & SHA-256 restore model from database",
+        "persist_active_model_to_db -> restore_active_model_from_db", "restored_version=v2.99",
+        f"restored_version={restored_ver}",
+        (time.perf_counter() - t0) * 1000, restored_ver == "v2.99",
+    ))
+    idx += 1
+
+    # 2g. Paired flap-vs-control-skin CIE-LAB normalization
+    t0 = time.perf_counter()
+    flap_img = _np.full((120, 160, 3), (140, 130, 195), dtype=_np.uint8)
+    ctrl_img = _np.full((120, 160, 3), (142, 148, 200), dtype=_np.uint8)
+    _, f_buf = _cv2.imencode(".png", flap_img)
+    _, c_buf = _cv2.imencode(".png", ctrl_img)
+    paired_res = _analyze_img(f_buf.tobytes(), control_image_bytes=c_buf.tobytes())
+    p_ok = paired_res.get("calibrated_with_control") is True and paired_res.get("control_delta_lab") is not None
+    rows.append(make_row(
+        "VAL", idx, "Track 2 Vision (Paired Calibration)", "Normalize flap ROI against adjacent control skin photo",
+        "Flap + Control skin BGR images", "calibrated_with_control=True & control_delta_lab present",
+        f"calibrated={paired_res.get('calibrated_with_control')}, delta={paired_res.get('control_delta_lab')}",
+        (time.perf_counter() - t0) * 1000, p_ok,
+    ))
+    idx += 1
+
     return write_excel_report("validation-test-report.xlsx", "Validation Test Report", rows)
 
 

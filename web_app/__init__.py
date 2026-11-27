@@ -15,6 +15,7 @@ from sqlalchemy import inspect, text
 from ml_engine.model_service import load_model_and_metadata
 from web_app.models import ModelVersionLog, User, db
 from web_app.security import get_csrf_token, is_csrf_enabled, log_audit, validate_csrf_request
+from web_app.model_store import restore_active_model_from_db
 from web_app.ward_service import load_sample_ward_cases
 
 
@@ -97,6 +98,34 @@ def _run_safe_schema_migrations() -> None:
                 db.session.commit()
             if "archived_by_id" not in patient_cols:
                 db.session.execute(text("ALTER TABLE patients ADD COLUMN archived_by_id INTEGER"))
+                db.session.commit()
+
+        if "sensor_readings" in tables:
+            sr_cols = {c["name"] for c in inspector.get_columns("sensor_readings")}
+            if "trend_status" not in sr_cols:
+                db.session.execute(
+                    text("ALTER TABLE sensor_readings ADD COLUMN trend_status VARCHAR(40) NOT NULL DEFAULT 'Baseline Established'")
+                )
+                db.session.commit()
+            if "ood_flag" not in sr_cols:
+                if dialect == "postgresql":
+                    db.session.execute(
+                        text("ALTER TABLE sensor_readings ADD COLUMN ood_flag BOOLEAN NOT NULL DEFAULT FALSE")
+                    )
+                else:
+                    db.session.execute(
+                        text("ALTER TABLE sensor_readings ADD COLUMN ood_flag BOOLEAN NOT NULL DEFAULT 0")
+                    )
+                db.session.commit()
+            if "confidence_label" not in sr_cols:
+                db.session.execute(
+                    text("ALTER TABLE sensor_readings ADD COLUMN confidence_label VARCHAR(40) NOT NULL DEFAULT 'High'")
+                )
+                db.session.commit()
+            if "trend_json" not in sr_cols:
+                db.session.execute(
+                    text("ALTER TABLE sensor_readings ADD COLUMN trend_json TEXT NOT NULL DEFAULT '{}'")
+                )
                 db.session.commit()
 
         if "sensor_readings" in tables and dialect == "postgresql":
@@ -245,6 +274,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:
     with app.app_context():
         db.create_all()
         _run_safe_schema_migrations()
+        restore_active_model_from_db()
         if not app.config.get("SKIP_SEED"):
             seed_patients = bool(
                 app.config.get("SEED_SAMPLE_PATIENTS")

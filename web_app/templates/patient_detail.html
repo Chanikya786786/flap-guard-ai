@@ -22,6 +22,15 @@
       </form>
     </div>
   </div>
+  {% if latest %}
+  <div id="trend-meta-strip" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:0.82rem;">
+    <span class="badge badge-moderate">Trajectory: {{ latest.trend_status }}</span>
+    <span class="badge badge-low">Reliability: {{ latest.confidence_label }}</span>
+    {% if latest.ood_flag %}
+      <span class="badge badge-critical">OOD Sensor Warning — Verify Probe</span>
+    {% endif %}
+  </div>
+  {% endif %}
   {% if latest and latest.clinical_notes %}
   <ul class="notes-list">
     {% for note in latest.clinical_notes %}
@@ -53,6 +62,10 @@
     </div>
     <div class="form-group" style="margin-bottom:8px;">
       <label for="flap-image-upload">Or Upload Flap Image (PNG / JPG)</label>
+      <div style="margin-bottom:6px;">
+        <label for="control-image-upload" class="muted" style="font-size:0.78rem;">Optional Adjacent Healthy Skin Photo (for Lighting &amp; Skin-Tone Calibration)</label>
+        <input id="control-image-upload" type="file" accept="image/*" style="width:100%;">
+      </div>
       <div class="btn-row">
         <input id="flap-image-upload" type="file" accept="image/*" style="flex:1;">
         <button id="analyze-upload-btn" type="button" class="btn btn-sm">Analyze Photo</button>

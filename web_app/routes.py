@@ -60,6 +60,7 @@ from web_app.security import (
     verify_mobile_token_with_meta,
     web_roles_required,
 )
+from web_app.model_store import persist_active_model_to_db
 from web_app.ward_service import (
     clear_all_ward_patients,
     fetch_patients_with_latest_readings,
@@ -118,6 +119,16 @@ def validate_sensor_inputs(
     return True, ""
 
 
+def _recent_patient_history(patient: Patient, limit: int = 10) -> list:
+    recent_desc = (
+        SensorReading.query.filter_by(patient_id=patient.id)
+        .order_by(SensorReading.created_at.desc(), SensorReading.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return list(reversed(recent_desc))
+
+
 def _save_prediction_reading(
     patient: Patient,
     recorded_by_id: Optional[int],
@@ -153,6 +164,10 @@ def _save_prediction_reading(
         alert_required=pred["alert_required"],
         alert_message=pred["alert_message"],
         clinical_notes_json=json.dumps(pred["clinical_notes"]),
+        trend_status=str(pred.get("trend_status", "Baseline Established"))[:40],
+        ood_flag=bool(pred.get("ood_flag", False)),
+        confidence_label=str(pred.get("confidence_label", "High"))[:40],
+        trend_json=json.dumps(pred.get("trend_summary", {})),
         source_mode=str(source_mode or "Bedside + Camera")[:80],
         model_version=pred["model_version"],
     )
@@ -229,6 +244,8 @@ def health():
                 "database": "connected",
                 "model_version": meta["version"],
                 "model_accuracy": meta["accuracy"],
+                "model_brier_score": meta.get("brier_score"),
+                "calibration": meta.get("calibration_method", "sigmoid"),
                 "patients_count": int(patients_count),
             }
         )
@@ -608,6 +625,7 @@ def add_reading(patient_id: int):
         visual_cyanosis_index=cyanosis,
         visual_pallor_index=pallor,
         hours_post_op=hours_post_op,
+        history=_recent_patient_history(patient),
     )
     reading = _save_prediction_reading(patient, current_user.id, pred, source_mode)
     log_audit(
@@ -648,8 +666,21 @@ def analyze_image():
     if not image_bytes:
         return jsonify({"error": "No image provided."}), 400
 
+    control_bytes = None
+    if "control_image" in request.files and request.files["control_image"].filename:
+        control_bytes = request.files["control_image"].read()
+    elif request.is_json:
+        ctrl_b64 = (request.get_json(silent=True) or {}).get("control_image_base64", "")
+        if "," in ctrl_b64:
+            ctrl_b64 = ctrl_b64.split(",", 1)[1]
+        if ctrl_b64:
+            try:
+                control_bytes = base64.b64decode(ctrl_b64)
+            except Exception:
+                return jsonify({"error": "Invalid base64 control image data."}), 400
+
     try:
-        result = analyze_flap_image_bytes(image_bytes)
+        result = analyze_flap_image_bytes(image_bytes, control_image_bytes=control_bytes)
         return jsonify(result)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
@@ -781,8 +812,14 @@ def log_outcome():
 def retrain_model():
     records = _collect_outcome_records_for_retraining()
     summary = retrain_from_postop_outcomes(records)
-    new_meta = summary["metadata"]
+    if not summary.get("promoted", True):
+        reason = summary.get("rejection_reason", "Holdout safety gate failed.")
+        log_audit("MODEL_RETRAIN_REJECTED", "model", str(summary["old_version"]), reason)
+        flash(f"Model promotion blocked: {reason}", "danger")
+        return redirect(url_for("main.learning_center"))
 
+    new_meta = summary["metadata"]
+    persist_active_model_to_db(summary["model"], new_meta)
     db.session.add(
         ModelVersionLog(
             version=new_meta["version"],
@@ -791,14 +828,23 @@ def retrain_model():
             total_samples=new_meta["total_samples"],
             postop_outcomes_added=new_meta["postop_outcomes_added"],
             trained_at_utc=new_meta["trained_at_utc"],
-            notes=f"Retrained by {current_user.full_name} with {len(records)} postoperative outcomes",
+            notes=(
+                f"Calibrated retrain by {current_user.full_name} "
+                f"(Outcomes={len(records)}, Brier={new_meta.get('brier_score', '-')}, Persisted=DB)"
+            ),
         )
     )
     db.session.commit()
-    log_audit("MODEL_RETRAINED", "model", str(new_meta["version"]), f"Outcomes={len(records)}")
+    log_audit(
+        "MODEL_RETRAINED",
+        "model",
+        str(new_meta["version"]),
+        f"Outcomes={len(records)}, MacroF1={new_meta['macro_f1']}, Persisted=PostgreSQL/DB",
+    )
     flash(
         f"Continuous learning complete: AI model upgraded to {new_meta['version']} "
-        f"(Accuracy: {new_meta['accuracy'] * 100:.2f}%, Outcomes included: {len(records)}).",
+        f"(Accuracy: {new_meta['accuracy'] * 100:.2f}%, Holdout F1: {new_meta['macro_f1'] * 100:.1f}%, "
+        f"Outcomes included: {len(records)}, Saved to DB).",
         "success",
     )
     return redirect(url_for("main.learning_center"))
@@ -962,8 +1008,20 @@ def mobile_analyze_image():
 
     if not image_bytes:
         return jsonify({"error": "No image uploaded."}), 400
+    control_bytes = None
+    if "control_image" in request.files and request.files["control_image"].filename:
+        control_bytes = request.files["control_image"].read()
+    elif request.is_json:
+        ctrl_b64 = (request.get_json(silent=True) or {}).get("control_image_base64", "")
+        if "," in ctrl_b64:
+            ctrl_b64 = ctrl_b64.split(",", 1)[1]
+        if ctrl_b64:
+            try:
+                control_bytes = base64.b64decode(ctrl_b64)
+            except Exception:
+                return jsonify({"error": "Invalid base64 control image."}), 400
     try:
-        return jsonify(analyze_flap_image_bytes(image_bytes))
+        return jsonify(analyze_flap_image_bytes(image_bytes, control_image_bytes=control_bytes))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
@@ -1002,6 +1060,7 @@ def mobile_add_reading(patient_id: int):
         visual_cyanosis_index=cyanosis,
         visual_pallor_index=pallor,
         hours_post_op=hours_post_op,
+        history=_recent_patient_history(patient),
     )
     reading = _save_prediction_reading(patient, request.mobile_user.id, pred, "Android Mobile App")
     log_audit("READING_LOGGED", "sensor_reading", str(reading.id), f"Mobile Patient={patient.mrn}")
