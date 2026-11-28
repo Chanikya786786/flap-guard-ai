@@ -40,5 +40,9 @@ data class ReadingPoint(
     val tempDeltaC: Double,
     val spo2Pct: Double,
     val dopplerCmS: Double,
-    val riskScorePct: Double
+    val riskScorePct: Double,
+    val riskTier: String = "",
+    val predictedClass: String = "",
+    val bedsideExam: String = "",
+    val oodFlag: Boolean = false
 )

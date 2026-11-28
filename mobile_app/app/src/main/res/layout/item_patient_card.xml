@@ -8,25 +8,25 @@
     android:clickable="true"
     android:focusable="true"
     app:cardBackgroundColor="@color/fg_surface"
-    app:cardCornerRadius="20dp"
+    app:cardCornerRadius="18dp"
     app:cardElevation="0dp"
-    app:strokeWidth="0dp">
+    app:strokeColor="@color/fg_border"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="14dp"
-        android:paddingTop="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="16dp">
+        android:paddingStart="12dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="14dp">
 
-        <!-- Subtle vertical risk accent indicator -->
         <View
             android:id="@+id/view_status_bar"
             android:layout_width="4dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="14dp"
+            android:layout_marginEnd="12dp"
             android:background="@drawable/bg_status_bar" />
 
         <LinearLayout
@@ -35,6 +35,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
+            <!-- Row 1: Patient Name + Risk Pill -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -45,6 +46,7 @@
                     android:id="@+id/tv_patient_name"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="sans-serif-medium"
@@ -68,34 +70,58 @@
                     android:textStyle="bold" />
             </LinearLayout>
 
+            <!-- Row 2: Untruncated MRN + Flap & Post-Op Hours -->
+            <TextView
+                android:id="@+id/tv_patient_mrn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="MRN-2026-101"
+                android:textColor="@color/fg_text_secondary"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/tv_patient_flap"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="2dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="Radial Forearm Flap  •  10h post-op"
+                android:text="Radial Forearm Flap  •  10.0h post-op"
                 android:textColor="@color/fg_text_muted"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
 
+            <!-- Row 3: Tinted Monitoring Schedule Pill -->
             <TextView
                 android:id="@+id/tv_check_schedule"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="7dp"
+                android:background="@drawable/bg_badge"
                 android:fontFamily="sans-serif-medium"
+                android:paddingStart="9dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="9dp"
+                android:paddingBottom="3dp"
                 android:text=""
-                android:textColor="@color/fg_text_muted"
+                android:textColor="@color/fg_accent"
                 android:textSize="11sp"
                 android:visibility="gone" />
 
-            <!-- Clean Borderless Inline Vitals (Zero Nested Boxes!) -->
+            <!-- Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="11dp"
+                android:layout_marginBottom="10dp"
+                android:background="@color/fg_divider" />
+
+            <!-- Row 4: Clean Inline Vitals + 1-Tap Assess Action -->
             <LinearLayout
                 android:id="@+id/layout_vitals_strip"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -110,16 +136,16 @@
                         android:layout_height="wrap_content"
                         android:text="ΔT"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="11sp" />
+                        android:textSize="10.5sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_delta"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:text="0.4°"
+                        android:text="0.4°C"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="15sp" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -133,16 +159,16 @@
                         android:layout_height="wrap_content"
                         android:text="SpO₂"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="11sp" />
+                        android:textSize="10.5sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_spo2"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:text="97%"
+                        android:text="97.4%"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="15sp" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -156,7 +182,7 @@
                         android:layout_height="wrap_content"
                         android:text="Doppler"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="11sp" />
+                        android:textSize="10.5sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_doppler"
@@ -165,22 +191,32 @@
                         android:fontFamily="sans-serif-medium"
                         android:text="21.0"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="15sp" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:contentDescription="Details"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="@color/fg_border_strong" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_card_assess"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="Assess"
+                    android:textAllCaps="false"
+                    android:textColor="@color/fg_primary_text"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/fg_primary_soft"
+                    app:cornerRadius="10dp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_patient_vitals"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:text="Tap to begin postoperative assessment"
                 android:textColor="@color/fg_text_muted"
                 android:textSize="12sp"

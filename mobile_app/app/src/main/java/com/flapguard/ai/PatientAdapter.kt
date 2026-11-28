@@ -1,18 +1,20 @@
 package com.flapguard.ai
 
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import java.util.Locale
 
 class PatientAdapter(
-    private val onCardClick: (PatientItem) -> Unit
+    private val onCardClick: (PatientItem) -> Unit,
+    private val onAssessClick: (PatientItem) -> Unit = {}
 ) : RecyclerView.Adapter<PatientAdapter.PatientViewHolder>() {
 
     private val items = mutableListOf<PatientItem>()
@@ -31,36 +33,57 @@ class PatientAdapter(
 
     override fun onBindViewHolder(holder: PatientViewHolder, position: Int) {
         val item = items[position]
-        holder.tvName.text = item.fullName
-        holder.tvFlap.text = String.format(
-            Locale.US,
-            "%s  •  %.1fh post-op",
-            item.flapType,
-            item.hoursPostOp
-        )
+        val ctx = holder.itemView.context
+        val density = ctx.resources.displayMetrics.density
 
-        val (badgeLabel, badgeBg, badgeFg, barColor) = when (item.riskTier) {
-            "Critical" -> Quad("Critical", "#FFF1F2", "#E11D48", "#E11D48")
-            "High" -> Quad("High Risk", "#FFFBEB", "#D97706", "#D97706")
-            "Moderate" -> Quad("Moderate", "#EFF6FF", "#2563EB", "#2563EB")
-            "Low" -> Quad("Healthy", "#ECFDF5", "#059669", "#059669")
-            else -> Quad("New", "#F1F5F9", "#64748B", "#CBD5E1")
+        holder.tvName.text = item.fullName
+        holder.tvMrn.text = String.format(Locale.US, "%s  •  %dy  •  %.1fh post-op", item.mrn, item.age, item.hoursPostOp)
+        holder.tvFlap.text = "${item.flapType} — ${item.surgerySite}"
+
+        val (badgeLabel, badgeBgRes, badgeFgRes, barRes) = when (item.riskTier) {
+            "Critical" -> Quad("Critical", R.color.fg_danger_bg, R.color.fg_danger, R.color.fg_danger)
+            "High" -> Quad("High Risk", R.color.fg_warning_bg, R.color.fg_warning, R.color.fg_warning)
+            "Moderate" -> Quad("Moderate", R.color.fg_info_bg, R.color.fg_info, R.color.fg_info)
+            "Low" -> Quad("Healthy", R.color.fg_success_bg, R.color.fg_success, R.color.fg_success)
+            else -> Quad("New", R.color.fg_surface_soft, R.color.fg_text_muted, R.color.fg_border_strong)
+        }
+
+        val badgeBg = ContextCompat.getColor(ctx, badgeBgRes)
+        val badgeFg = ContextCompat.getColor(ctx, badgeFgRes)
+        val barCol = ContextCompat.getColor(ctx, barRes)
+
+        holder.tvBadge.text = badgeLabel
+        holder.tvBadge.backgroundTintList = ColorStateList.valueOf(badgeBg)
+        holder.tvBadge.setTextColor(badgeFg)
+        holder.viewStatusBar.backgroundTintList = ColorStateList.valueOf(barCol)
+
+        if (item.riskTier == "Critical") {
+            holder.card.strokeColor = ContextCompat.getColor(ctx, R.color.fg_danger_border)
+            holder.card.strokeWidth = (1.5f * density).toInt()
+        } else {
+            holder.card.strokeColor = ContextCompat.getColor(ctx, R.color.fg_border)
+            holder.card.strokeWidth = (1f * density).toInt()
         }
 
         if (item.checkScheduleLabel.isNotBlank()) {
             holder.tvCheckSchedule.visibility = View.VISIBLE
             holder.tvCheckSchedule.text = item.checkScheduleLabel
-            holder.tvCheckSchedule.setTextColor(
-                Color.parseColor(if (item.checkOverdue) "#E11D48" else "#0D9488")
+            val schedBg = ContextCompat.getColor(
+                ctx,
+                if (item.checkOverdue) R.color.fg_danger_bg else R.color.fg_accent_soft
             )
+            val schedFg = ContextCompat.getColor(
+                ctx,
+                if (item.checkOverdue) R.color.fg_danger else R.color.fg_accent
+            )
+            holder.tvCheckSchedule.backgroundTintList = ColorStateList.valueOf(schedBg)
+            holder.tvCheckSchedule.setTextColor(schedFg)
         } else {
             holder.tvCheckSchedule.visibility = View.GONE
         }
 
-        holder.tvBadge.text = badgeLabel
-        holder.tvBadge.backgroundTintList = ColorStateList.valueOf(Color.parseColor(badgeBg))
-        holder.tvBadge.setTextColor(Color.parseColor(badgeFg))
-        holder.viewStatusBar.backgroundTintList = ColorStateList.valueOf(Color.parseColor(barColor))
+        val colNormal = ContextCompat.getColor(ctx, R.color.fg_text_primary)
+        val colDanger = ContextCompat.getColor(ctx, R.color.fg_danger)
 
         if (item.tempDeltaC != null && item.spo2Pct != null && item.dopplerCmS != null) {
             holder.layoutVitalsStrip.visibility = View.VISIBLE
@@ -69,32 +92,28 @@ class PatientAdapter(
             holder.tvMetricSpo2.text = String.format(Locale.US, "%.1f%%", item.spo2Pct)
             holder.tvMetricDoppler.text = String.format(Locale.US, "%.1f", item.dopplerCmS)
 
-            holder.tvMetricDelta.setTextColor(
-                Color.parseColor(if (item.tempDeltaC >= 1.8) "#E11D48" else "#0F172A")
-            )
-            holder.tvMetricSpo2.setTextColor(
-                Color.parseColor(if (item.spo2Pct < 90.0) "#E11D48" else "#0F172A")
-            )
-            holder.tvMetricDoppler.setTextColor(
-                Color.parseColor(if (item.dopplerCmS < 12.0) "#E11D48" else "#0F172A")
-            )
+            holder.tvMetricDelta.setTextColor(if (item.tempDeltaC >= 1.8) colDanger else colNormal)
+            holder.tvMetricSpo2.setTextColor(if (item.spo2Pct < 90.0) colDanger else colNormal)
+            holder.tvMetricDoppler.setTextColor(if (item.dopplerCmS < 12.0) colDanger else colNormal)
         } else {
             holder.layoutVitalsStrip.visibility = View.GONE
             holder.tvVitals.visibility = View.VISIBLE
-            holder.tvVitals.text = "Tap to start first flap assessment"
+            holder.tvVitals.text = "Awaiting initial flap assessment — tap card to open chart"
         }
 
+        holder.btnCardAssess.setOnClickListener { onAssessClick(item) }
         holder.card.setOnClickListener { onCardClick(item) }
     }
 
     override fun getItemCount(): Int = items.size
 
-    private data class Quad(val a: String, val b: String, val c: String, val d: String)
+    private data class Quad(val a: String, val b: Int, val c: Int, val d: Int)
 
     class PatientViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val card: MaterialCardView = view.findViewById(R.id.card_patient)
         val viewStatusBar: View = view.findViewById(R.id.view_status_bar)
         val tvName: TextView = view.findViewById(R.id.tv_patient_name)
+        val tvMrn: TextView = view.findViewById(R.id.tv_patient_mrn)
         val tvBadge: TextView = view.findViewById(R.id.tv_risk_badge)
         val tvFlap: TextView = view.findViewById(R.id.tv_patient_flap)
         val tvCheckSchedule: TextView = view.findViewById(R.id.tv_check_schedule)
@@ -102,6 +121,7 @@ class PatientAdapter(
         val tvMetricDelta: TextView = view.findViewById(R.id.tv_metric_delta)
         val tvMetricSpo2: TextView = view.findViewById(R.id.tv_metric_spo2)
         val tvMetricDoppler: TextView = view.findViewById(R.id.tv_metric_doppler)
+        val btnCardAssess: MaterialButton = view.findViewById(R.id.btn_card_assess)
         val tvVitals: TextView = view.findViewById(R.id.tv_patient_vitals)
     }
 }

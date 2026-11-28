@@ -20,6 +20,9 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.EditText
+import android.text.TextWatcher
+import android.text.Editable
 import android.os.Handler
 import android.os.Looper
 import android.app.KeyguardManager
@@ -152,6 +155,49 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var cardEmptyWard: MaterialCardView
     private lateinit var rvPatients: RecyclerView
     private lateinit var patientAdapter: PatientAdapter
+    private lateinit var etWardSearch: EditText
+    private lateinit var btnClearWardSearch: ImageButton
+    private lateinit var tvWardFilterEmpty: TextView
+    private lateinit var chipFilterAll: TextView
+    private lateinit var chipFilterCritical: TextView
+    private lateinit var chipFilterOverdue: TextView
+    private lateinit var chipFilterHealthy: TextView
+    private var wardSearchQuery: String = ""
+    private var wardFilterMode: String = "ALL"
+
+    private val patientChartLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val action = result.data!!.getStringExtra("action").orEmpty()
+            val pid = result.data!!.getIntExtra("patient_id", -1)
+            val match = patientsList.firstOrNull { it.id == pid } ?: return@registerForActivityResult
+            when (action) {
+                "assess" -> openAssessForPatient(match)
+                "archive" -> confirmDeletePatient(match)
+                "outcome" -> {
+                    val idx = patientsList.indexOfFirst { it.id == match.id }
+                    if (idx >= 0) {
+                        selectedPatientIndex = idx
+                        refreshSelectedPatientLabel()
+                    }
+                    showLogOutcomeSheet()
+                }
+            }
+        }
+    }
+
+    private val sbarHandoffLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && result.data != null) {
+            val pid = result.data!!.getIntExtra("open_patient_id", -1)
+            val match = patientsList.firstOrNull { it.id == pid }
+            if (match != null) {
+                showPatientDetailSheet(match)
+            }
+        }
+    }
 
     // Assess views
     private lateinit var cardSelectPatient: MaterialCardView
@@ -397,6 +443,13 @@ class DashboardActivity : AppCompatActivity() {
         tvKpiTotal = findViewById(R.id.tv_kpi_total)
         cardEmptyWard = findViewById(R.id.card_empty_ward)
         rvPatients = findViewById(R.id.rv_patients)
+        etWardSearch = findViewById(R.id.et_ward_search)
+        btnClearWardSearch = findViewById(R.id.btn_clear_ward_search)
+        tvWardFilterEmpty = findViewById(R.id.tv_ward_filter_empty)
+        chipFilterAll = findViewById(R.id.chip_filter_all)
+        chipFilterCritical = findViewById(R.id.chip_filter_critical)
+        chipFilterOverdue = findViewById(R.id.chip_filter_overdue)
+        chipFilterHealthy = findViewById(R.id.chip_filter_healthy)
 
         cardSelectPatient = findViewById(R.id.card_select_patient)
         tvSelectedAvatar = findViewById(R.id.tv_selected_avatar)
@@ -434,7 +487,8 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun setupAdapters() {
         patientAdapter = PatientAdapter(
-            onCardClick = { patient -> showPatientDetailSheet(patient) }
+            onCardClick = { patient -> showPatientDetailSheet(patient) },
+            onAssessClick = { patient -> openAssessForPatient(patient) }
         )
         rvPatients.layoutManager = LinearLayoutManager(this)
         rvPatients.adapter = patientAdapter
@@ -547,6 +601,7 @@ class DashboardActivity : AppCompatActivity() {
             confirmSignOutOtherDevices()
         }
         btnWardHandoff.setOnClickListener { showSbarHandoffSheet() }
+        setupWardTriageControls()
         findViewById<LinearLayout>(R.id.row_sbar_handoff).setOnClickListener { showSbarHandoffSheet() }
         findViewById<LinearLayout>(R.id.row_toggle_exam).setOnClickListener {
             val expand = layoutExamFields.visibility != View.VISIBLE
@@ -769,13 +824,83 @@ class DashboardActivity : AppCompatActivity() {
         tvKpiTotal.text = patientsList.size.toString()
         tvStatPatients.text = patientsList.size.toString()
 
-        cardEmptyWard.visibility = if (patientsList.isEmpty()) View.VISIBLE else View.GONE
-        rvPatients.visibility = if (patientsList.isEmpty()) View.GONE else View.VISIBLE
-        patientAdapter.submitList(patientsList)
+        applyWardFilter()
 
         val restoredIdx = if (prevId != null) patientsList.indexOfFirst { it.id == prevId } else -1
         selectedPatientIndex = if (restoredIdx >= 0) restoredIdx else 0
         refreshSelectedPatientLabel()
+    }
+
+    private fun setupWardTriageControls() {
+        etWardSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                wardSearchQuery = s?.toString()?.trim().orEmpty()
+                btnClearWardSearch.visibility = if (wardSearchQuery.isNotEmpty()) View.VISIBLE else View.GONE
+                applyWardFilter()
+            }
+        })
+        btnClearWardSearch.setOnClickListener {
+            etWardSearch.setText("")
+        }
+        chipFilterAll.setOnClickListener { setWardFilter("ALL") }
+        chipFilterCritical.setOnClickListener { setWardFilter("CRITICAL") }
+        chipFilterOverdue.setOnClickListener { setWardFilter("OVERDUE") }
+        chipFilterHealthy.setOnClickListener { setWardFilter("HEALTHY") }
+        updateWardFilterChipStyles()
+    }
+
+    private fun setWardFilter(mode: String) {
+        wardFilterMode = if (wardFilterMode == mode && mode != "ALL") "ALL" else mode
+        updateWardFilterChipStyles()
+        applyWardFilter()
+    }
+
+    private fun updateWardFilterChipStyles() {
+        val activeBg = ContextCompat.getColor(this, R.color.fg_primary)
+        val activeFg = ContextCompat.getColor(this, R.color.white)
+        val idleBg = ContextCompat.getColor(this, R.color.fg_surface)
+        val idleFg = ContextCompat.getColor(this, R.color.fg_text_secondary)
+        val pairs = listOf(
+            chipFilterAll to "ALL",
+            chipFilterCritical to "CRITICAL",
+            chipFilterOverdue to "OVERDUE",
+            chipFilterHealthy to "HEALTHY"
+        )
+        for ((tv, mode) in pairs) {
+            val active = (wardFilterMode == mode)
+            tv.backgroundTintList = ColorStateList.valueOf(if (active) activeBg else idleBg)
+            tv.setTextColor(if (active) activeFg else idleFg)
+        }
+    }
+
+    private fun applyWardFilter() {
+        if (patientsList.isEmpty()) {
+            cardEmptyWard.visibility = View.VISIBLE
+            rvPatients.visibility = View.GONE
+            tvWardFilterEmpty.visibility = View.GONE
+            patientAdapter.submitList(emptyList())
+            return
+        }
+        cardEmptyWard.visibility = View.GONE
+        val q = wardSearchQuery.lowercase(Locale.US)
+        val filtered = patientsList.filter { p ->
+            val matchFilter = when (wardFilterMode) {
+                "CRITICAL" -> p.riskTier == "Critical" || p.riskTier == "High"
+                "OVERDUE" -> p.checkOverdue
+                "HEALTHY" -> p.riskTier == "Low"
+                else -> true
+            }
+            val matchQuery = q.isEmpty() ||
+                p.fullName.lowercase(Locale.US).contains(q) ||
+                p.mrn.lowercase(Locale.US).contains(q) ||
+                p.flapType.lowercase(Locale.US).contains(q)
+            matchFilter && matchQuery
+        }
+        tvWardFilterEmpty.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+        rvPatients.visibility = if (filtered.isEmpty()) View.GONE else View.VISIBLE
+        patientAdapter.submitList(filtered)
     }
 
     private fun selectedPatient(): PatientItem? {
@@ -819,95 +944,39 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun showPatientDetailSheet(patient: PatientItem) {
-        val sheet = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.sheet_patient_detail, null)
-        sheet.setContentView(view)
-        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        sheet.behavior.skipCollapsed = true
-
-        view.findViewById<TextView>(R.id.tv_sheet_patient_name).text = patient.fullName
-        view.findViewById<TextView>(R.id.tv_sheet_patient_meta).text = String.format(
-            Locale.US,
-            "%s  •  %dy  •  %.1fh post-op",
-            patient.mrn, patient.age, patient.hoursPostOp
-        )
-        view.findViewById<TextView>(R.id.tv_sheet_flap_info).text =
-            "${patient.flapType}  —  ${patient.surgerySite}"
-
-        val badge = view.findViewById<TextView>(R.id.tv_sheet_risk_badge)
-        badge.text = if (patient.riskTier == "Low") "Healthy" else patient.riskTier
-        val (bg, fg) = when (patient.riskTier) {
-            "Critical" -> "#FFF1F2" to "#E11D48"
-            "High" -> "#FFFBEB" to "#D97706"
-            "Moderate" -> "#EFF6FF" to "#2563EB"
-            "Low" -> "#ECFDF5" to "#059669"
-            else -> "#F1F5F9" to "#64748B"
+        suppressNextAppLock = true
+        val isSecure = (window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+        val intent = Intent(this, PatientChartActivity::class.java).apply {
+            putExtra("patient_id", patient.id)
+            putExtra("mrn", patient.mrn)
+            putExtra("full_name", patient.fullName)
+            putExtra("age", patient.age)
+            putExtra("flap_type", patient.flapType)
+            putExtra("surgery_site", patient.surgerySite)
+            putExtra("hours_post_op", patient.hoursPostOp)
+            putExtra("risk_tier", patient.riskTier)
+            putExtra("predicted_class", patient.predictedClass)
+            putExtra("risk_score_pct", patient.riskScorePct)
+            putExtra("has_delta", patient.tempDeltaC != null)
+            putExtra("temp_delta_c", patient.tempDeltaC ?: 0.0)
+            putExtra("has_spo2", patient.spo2Pct != null)
+            putExtra("spo2_pct", patient.spo2Pct ?: 0.0)
+            putExtra("has_doppler", patient.dopplerCmS != null)
+            putExtra("doppler_cm_s", patient.dopplerCmS ?: 0.0)
+            putExtra("has_visual", patient.visualScore != null)
+            putExtra("visual_score", patient.visualScore ?: 0.0)
+            putExtra("alert_message", patient.alertMessage)
+            putExtra("trend_status", patient.trendStatus)
+            putExtra("confidence_label", patient.confidenceLabel)
+            putExtra("ood_flag", patient.oodFlag)
+            putExtra("check_schedule_label", patient.checkScheduleLabel)
+            putExtra("check_overdue", patient.checkOverdue)
+            putExtra("bedside_exam_summary", patient.bedsideExamSummary)
+            putExtra("server_url", serverUrl())
+            putExtra("auth_token", authToken)
+            putExtra("flag_secure", isSecure)
         }
-        badge.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
-        badge.setTextColor(Color.parseColor(fg))
-
-        view.findViewById<TextView>(R.id.tv_detail_delta).text =
-            patient.tempDeltaC?.let { String.format(Locale.US, "%.2f °C", it) } ?: "--"
-        view.findViewById<TextView>(R.id.tv_detail_spo2).text =
-            patient.spo2Pct?.let { String.format(Locale.US, "%.1f%%", it) } ?: "--"
-        view.findViewById<TextView>(R.id.tv_detail_doppler).text =
-            patient.dopplerCmS?.let { String.format(Locale.US, "%.1f cm/s", it) } ?: "--"
-        view.findViewById<TextView>(R.id.tv_detail_visual).text =
-            patient.visualScore?.let { String.format(Locale.US, "%.0f / 100", it) } ?: "--"
-        view.findViewById<TextView>(R.id.tv_detail_summary).text =
-            patient.alertMessage.ifBlank { "No sensor assessments logged yet for this patient." }
-        view.findViewById<TextView>(R.id.tv_detail_trend_badge).text = "Trend: ${patient.trendStatus}"
-        view.findViewById<TextView>(R.id.tv_detail_conf_badge).text = "Reliability: ${patient.confidenceLabel}"
-        view.findViewById<TextView>(R.id.tv_detail_ood_warning).visibility =
-            if (patient.oodFlag) View.VISIBLE else View.GONE
-        val tvSched = view.findViewById<TextView>(R.id.tv_detail_schedule)
-        if (patient.checkScheduleLabel.isNotBlank()) {
-            tvSched.visibility = View.VISIBLE
-            tvSched.text = "Monitoring Protocol: ${patient.checkScheduleLabel}"
-            tvSched.setTextColor(Color.parseColor(if (patient.checkOverdue) "#E11D48" else "#0D9488"))
-        } else {
-            tvSched.visibility = View.GONE
-        }
-        val tvExam = view.findViewById<TextView>(R.id.tv_detail_bedside_exam)
-        if (patient.bedsideExamSummary.isNotBlank()) {
-            tvExam.visibility = View.VISIBLE
-            tvExam.text = "Bedside Exam: ${patient.bedsideExamSummary}"
-        } else {
-            tvExam.visibility = View.GONE
-        }
-
-        val chartView = view.findViewById<TrendChartView>(R.id.view_trend_chart)
-        executor.execute {
-            val res = ApiClient.request(serverUrl(), "/mobile/patients/${patient.id}/readings", "GET", null, authToken)
-            if (res.ok) {
-                val arr = res.json.optJSONArray("readings") ?: JSONArray()
-                val pts = mutableListOf<ReadingPoint>()
-                for (i in arr.length() - 1 downTo 0) {
-                    val r = arr.getJSONObject(i)
-                    val hrs = r.optDouble("hours_post_op", 0.0)
-                    pts.add(
-                        ReadingPoint(
-                            label = String.format(Locale.US, "%.0fh", hrs),
-                            tempDeltaC = r.optDouble("temp_delta_c", 0.0),
-                            spo2Pct = r.optDouble("spo2_pct", 0.0),
-                            dopplerCmS = r.optDouble("doppler_flow_cm_s", 0.0),
-                            riskScorePct = r.optDouble("risk_score_pct", 0.0)
-                        )
-                    )
-                }
-                mainHandler.post { chartView.setReadings(pts) }
-            }
-        }
-
-        view.findViewById<MaterialButton>(R.id.btn_sheet_assess).setOnClickListener {
-            sheet.dismiss()
-            openAssessForPatient(patient)
-        }
-        view.findViewById<MaterialButton>(R.id.btn_sheet_remove).setOnClickListener {
-            sheet.dismiss()
-            confirmDeletePatient(patient)
-        }
-        sheet.show()
+        patientChartLauncher.launch(intent)
     }
 
     private fun showAddPatientSheet() {
@@ -1234,14 +1303,14 @@ class DashboardActivity : AppCompatActivity() {
         val msg = r.optString("alert_message")
 
         cardPredictionResult.visibility = View.VISIBLE
-        val (bg, titleColor) = when (tier) {
-            "Critical" -> "#FFF1F2" to "#E11D48"
-            "High" -> "#FFFBEB" to "#D97706"
-            "Moderate" -> "#EFF6FF" to "#2563EB"
-            else -> "#ECFDF5" to "#059669"
+        val (bgRes, titleRes) = when (tier) {
+            "Critical" -> R.color.fg_danger_bg to R.color.fg_danger
+            "High" -> R.color.fg_warning_bg to R.color.fg_warning
+            "Moderate" -> R.color.fg_info_bg to R.color.fg_info
+            else -> R.color.fg_success_bg to R.color.fg_success
         }
-        cardPredictionResult.setCardBackgroundColor(Color.parseColor(bg))
-        tvPredictionTitle.setTextColor(Color.parseColor(titleColor))
+        cardPredictionResult.setCardBackgroundColor(ContextCompat.getColor(this, bgRes))
+        tvPredictionTitle.setTextColor(ContextCompat.getColor(this, titleRes))
         val cleanMsg = msg
             .replace(Regex("""^(URGENT|WARNING|WATCH|MONITOR)\s*\[[^\]]+\]:\s*""", RegexOption.IGNORE_CASE), "")
             .trim()
@@ -1588,56 +1657,14 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun showSbarHandoffSheet() {
-        val sheet = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.sheet_sbar_handoff, null)
-        sheet.setContentView(view)
-        sheet.behavior.state = BottomSheetBehavior.STATE_EXPANDED
-        sheet.behavior.skipCollapsed = true
-
-        val tvMeta = view.findViewById<TextView>(R.id.tv_sbar_meta)
-        val tvBody = view.findViewById<TextView>(R.id.tv_sbar_body)
-        val btnCopy = view.findViewById<MaterialButton>(R.id.btn_copy_sbar)
-        val btnShare = view.findViewById<MaterialButton>(R.id.btn_share_sbar)
-        btnCopy.isEnabled = false
-        btnShare.isEnabled = false
-
-        var fullReport = ""
-        executor.execute {
-            val res = ApiClient.request(serverUrl(), "/mobile/handoff", "GET", null, authToken)
-            mainHandler.post {
-                if (res.ok) {
-                    val total = res.json.optInt("total_patients", 0)
-                    val crit = res.json.optInt("critical_high_count", 0)
-                    val overdue = res.json.optInt("overdue_count", 0)
-                    tvMeta.text = "$total patients · $crit Critical/High · $overdue Overdue checks"
-                    fullReport = res.json.optString("sbar_text", "")
-                    tvBody.text = fullReport.ifBlank { "No active ward cases." }
-                    btnCopy.isEnabled = fullReport.isNotBlank()
-                    btnShare.isEnabled = fullReport.isNotBlank()
-                } else {
-                    tvMeta.text = "Could not load handoff report"
-                    tvBody.text = res.errorMessage
-                }
-            }
+        suppressNextAppLock = true
+        val isSecure = (window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+        val intent = Intent(this, SbarHandoffActivity::class.java).apply {
+            putExtra("server_url", serverUrl())
+            putExtra("auth_token", authToken)
+            putExtra("flag_secure", isSecure)
         }
-
-        btnCopy.setOnClickListener {
-            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("FlapGuard SBAR Handoff", fullReport))
-            showNotice("SBAR shift handoff copied to clipboard.")
-        }
-
-        btnShare.setOnClickListener {
-            suppressNextAppLock = true
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "FlapGuard AI — Shift Handoff (SBAR)")
-                putExtra(Intent.EXTRA_TEXT, fullReport)
-            }
-            startActivity(Intent.createChooser(shareIntent, "Share Shift Handoff"))
-        }
-
-        sheet.show()
+        sbarHandoffLauncher.launch(intent)
     }
 
     private fun openPatientFromAlert(alert: AlertItem) {

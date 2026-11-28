@@ -3,7 +3,7 @@
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingTop="14dp" android:paddingEnd="16dp" android:paddingBottom="10dp">
         <ImageView android:layout_width="30dp" android:layout_height="30dp" android:contentDescription="FlapGuard AI" android:src="@drawable/ic_brand_logo" />
         <TextView android:id="@+id/tv_toolbar_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Ward" android:textColor="@color/fg_text_primary" android:textSize="22sp" />
-        <com.google.android.material.button.MaterialButton style="@style/Widget.Material3.Button.TextButton" android:id="@+id/btn_ward_handoff" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="4dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="SBAR" android:textAllCaps="false" android:textColor="@color/fg_primary" android:textSize="13sp" android:textStyle="bold" android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/btn_ward_handoff" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="6dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="11dp" android:paddingEnd="12dp" android:text="SBAR" android:textAllCaps="false" android:textColor="@color/fg_primary_text" android:textSize="12.5sp" android:textStyle="bold" android:visibility="gone" app:backgroundTint="@color/fg_primary_soft" app:cornerRadius="12dp" app:icon="@drawable/ic_handoff" app:iconSize="15dp" app:iconTint="@color/fg_primary_text" />
         <com.google.android.material.button.MaterialButton android:id="@+id/btn_ack_all" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="4dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="Review All" android:textAllCaps="false" android:textColor="@color/fg_primary" android:textSize="13sp" android:visibility="gone" />
         <FrameLayout android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_white">
             <ImageButton android:id="@+id/btn_refresh_all" android:layout_width="match_parent" android:layout_height="match_parent" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Refresh" android:padding="9dp" android:scaleType="fitCenter" android:src="@drawable/ic_refresh" app:tint="@color/fg_text_secondary" />
@@ -41,6 +41,132 @@
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+                                <!-- v4.0 Clinical Ward Search & Triage Filter Bar -->
+                <LinearLayout
+                    android:id="@+id/layout_ward_triage_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:background="@drawable/bg_search_box"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="8dp">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="Search"
+                            android:src="@drawable/ic_search"
+                            app:tint="@color/fg_text_muted" />
+
+                        <EditText
+                            android:id="@+id/et_ward_search"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:background="@null"
+                            android:hint="Search patient name, MRN, or flap..."
+                            android:imeOptions="actionSearch"
+                            android:inputType="text"
+                            android:maxLines="1"
+                            android:textColor="@color/fg_text_primary"
+                            android:textColorHint="@color/fg_text_muted"
+                            android:textSize="13.5sp" />
+
+                        <ImageButton
+                            android:id="@+id/btn_clear_ward_search"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="Clear search"
+                            android:padding="6dp"
+                            android:src="@drawable/ic_close"
+                            android:visibility="gone"
+                            app:tint="@color/fg_text_muted" />
+                    </LinearLayout>
+
+                    <HorizontalScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="9dp"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/chip_filter_all"
+                                android:layout_width="wrap_content"
+                                android:layout_height="30dp"
+                                android:layout_marginEnd="7dp"
+                                android:background="@drawable/bg_pill_outline"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:paddingStart="13dp"
+                                android:paddingEnd="13dp"
+                                android:text="All"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/chip_filter_critical"
+                                android:layout_width="wrap_content"
+                                android:layout_height="30dp"
+                                android:layout_marginEnd="7dp"
+                                android:background="@drawable/bg_pill_outline"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:paddingStart="13dp"
+                                android:paddingEnd="13dp"
+                                android:text="Critical"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/chip_filter_overdue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="30dp"
+                                android:layout_marginEnd="7dp"
+                                android:background="@drawable/bg_pill_outline"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:paddingStart="13dp"
+                                android:paddingEnd="13dp"
+                                android:text="Overdue"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/chip_filter_healthy"
+                                android:layout_width="wrap_content"
+                                android:layout_height="30dp"
+                                android:background="@drawable/bg_pill_outline"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:paddingStart="13dp"
+                                android:paddingEnd="13dp"
+                                android:text="Healthy"
+                                android:textSize="12sp" />
+                        </LinearLayout>
+                    </HorizontalScrollView>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_ward_filter_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:padding="20dp"
+                    android:text="No patients match the current search or filter."
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
                 <com.google.android.material.card.MaterialCardView android:id="@+id/card_empty_ward" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="22dp" app:cardElevation="0dp" app:strokeWidth="0dp">
                     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="vertical" android:padding="32dp">
                         <ImageView android:layout_width="44dp" android:layout_height="44dp" android:alpha="0.85" android:contentDescription="Empty Ward" android:src="@drawable/ic_brand_logo" />

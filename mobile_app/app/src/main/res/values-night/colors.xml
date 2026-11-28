@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Surgical Blue & Desaturated Clinical Teal (ICU Night — Zero Halation) -->
+    <color name="fg_primary">#1F6CA3</color>
+    <color name="fg_primary_dark">#155280</color>
+    <color name="fg_primary_text">#60B2F5</color>
+    <color name="fg_primary_soft">#162B40</color>
+    <color name="fg_accent">#2DD4BF</color>
+    <color name="fg_accent_soft">#112E2E</color>
+
+    <!-- OLED-Safe Deep Slate Canvas (Never Pure Black) -->
+    <color name="fg_bg">#0C131B</color>
+    <color name="fg_surface">#151F2B</color>
+    <color name="fg_surface_soft">#1C2938</color>
+    <color name="fg_input_bg">#1A2635</color>
+
+    <!-- Soft Off-White Typography (Eliminates Astigmatic Halation) -->
+    <color name="fg_text_primary">#EDF2F7</color>
+    <color name="fg_text_secondary">#CBD5E1</color>
+    <color name="fg_text_muted">#94A3B8</color>
+
+    <!-- Subtle Night Borders -->
+    <color name="fg_divider">#223040</color>
+    <color name="fg_border">#263547</color>
+    <color name="fg_border_strong">#3B4F66</color>
+
+    <!-- Desaturated Night Clinical Semantics -->
+    <color name="fg_danger">#FB7185</color>
+    <color name="fg_danger_bg">#2E151D</color>
+    <color name="fg_danger_border">#5B2332</color>
+    <color name="fg_warning">#FBBF24</color>
+    <color name="fg_warning_bg">#2D2212</color>
+    <color name="fg_info">#60A5FA</color>
+    <color name="fg_info_bg">#14253B</color>
+    <color name="fg_success">#34D399</color>
+    <color name="fg_success_bg">#102B24</color>
+
+    <!-- Native-Scale Chart Bands -->
+    <color name="fg_chart_grid">#243447</color>
+    <color name="fg_chart_safe_band">#1E34D399</color>
+    <color name="fg_chart_danger_band">#22FB7185</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

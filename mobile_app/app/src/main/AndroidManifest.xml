@@ -33,6 +33,14 @@
         </provider>
 
         <activity
+            android:name=".PatientChartActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".SbarHandoffActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".DashboardActivity"
             android:launchMode="singleTop"
             android:exported="false"
