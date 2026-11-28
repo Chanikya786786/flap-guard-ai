@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import org.json.JSONArray
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class SbarHandoffActivity : AppCompatActivity() {
@@ -110,9 +111,10 @@ class SbarHandoffActivity : AppCompatActivity() {
                 }
                 val h = res.json.optJSONObject("handoff") ?: res.json
                 latestSbarText = h.optString("sbar_text", "")
-                val genAt = h.optString("generated_at_utc", "")
+                val genLocal = h.optString("generated_at_local", "")
+                    .ifBlank { h.optString("generated_at_utc", "").substringBefore(" (") }
                 val genBy = h.optString("generated_by", "")
-                tvMeta.text = if (genBy.isNotBlank()) "$genAt  •  $genBy" else genAt
+                tvMeta.text = if (genBy.isNotBlank()) "$genLocal  •  $genBy" else genLocal
 
                 tvKpiTotal.text = h.optInt("total_patients", 0).toString()
                 tvKpiCrit.text = h.optInt("critical_high_count", 0).toString()
@@ -135,6 +137,9 @@ class SbarHandoffActivity : AppCompatActivity() {
         tvEmpty.visibility = View.GONE
         val inflater = LayoutInflater.from(this)
         val density = resources.displayMetrics.density
+        val colNormal = ContextCompat.getColor(this, R.color.fg_text_primary)
+        val colDanger = ContextCompat.getColor(this, R.color.fg_danger)
+        val colWarning = ContextCompat.getColor(this, R.color.fg_warning)
 
         for (i in 0 until patients.length()) {
             val p = patients.getJSONObject(i)
@@ -144,6 +149,7 @@ class SbarHandoffActivity : AppCompatActivity() {
             val schedObj = p.optJSONObject("schedule")
             val schedLbl = schedObj?.optString("status_label").orEmpty()
             val overdue = schedObj?.optBoolean("overdue", false) ?: false
+            val oodFlag = p.optBoolean("ood_flag", false)
             val pid = p.optInt("patient_id", -1)
 
             cardView.findViewById<TextView>(R.id.tv_sbar_rank).text = (i + 1).toString()
@@ -153,8 +159,8 @@ class SbarHandoffActivity : AppCompatActivity() {
             val tvTier = cardView.findViewById<TextView>(R.id.tv_sbar_tier)
             tvTier.text = if (tier == "Low") "Healthy" else tier
             val (tBg, tFg) = when (tier) {
-                "Critical" -> ContextCompat.getColor(this, R.color.fg_danger_bg) to ContextCompat.getColor(this, R.color.fg_danger)
-                "High" -> ContextCompat.getColor(this, R.color.fg_warning_bg) to ContextCompat.getColor(this, R.color.fg_warning)
+                "Critical" -> ContextCompat.getColor(this, R.color.fg_danger_bg) to colDanger
+                "High" -> ContextCompat.getColor(this, R.color.fg_warning_bg) to colWarning
                 "Moderate" -> ContextCompat.getColor(this, R.color.fg_info_bg) to ContextCompat.getColor(this, R.color.fg_info)
                 "Low" -> ContextCompat.getColor(this, R.color.fg_success_bg) to ContextCompat.getColor(this, R.color.fg_success)
                 else -> ContextCompat.getColor(this, R.color.fg_surface_soft) to ContextCompat.getColor(this, R.color.fg_text_muted)
@@ -181,16 +187,68 @@ class SbarHandoffActivity : AppCompatActivity() {
                 tvSched.visibility = View.GONE
             }
 
+            cardView.findViewById<TextView>(R.id.tv_sbar_ood).visibility = if (oodFlag) View.VISIBLE else View.GONE
+
             cardView.findViewById<TextView>(R.id.tv_sbar_s).text = p.optString("situation")
             cardView.findViewById<TextView>(R.id.tv_sbar_b).text = p.optString("background")
-            cardView.findViewById<TextView>(R.id.tv_sbar_a).text = p.optString("assessment")
+
+            // Structured 4-column tabular vitals inside A (no clipped pipe-wall)
+            val vitals = p.optJSONObject("vitals")
+            val llGrid = cardView.findViewById<LinearLayout>(R.id.ll_sbar_vitals_grid)
+            val tvA = cardView.findViewById<TextView>(R.id.tv_sbar_a)
+            if (vitals != null) {
+                llGrid.visibility = View.VISIBLE
+                val dt = vitals.optDouble("temp_delta_c", 0.0)
+                val sp = vitals.optDouble("spo2_pct", 0.0)
+                val dp = vitals.optDouble("doppler_flow_cm_s", 0.0)
+                val vis = vitals.optDouble("visual_perfusion_score", 0.0)
+
+                val tvDt = cardView.findViewById<TextView>(R.id.tv_sbar_v_delta)
+                tvDt.text = String.format(Locale.US, "%.1f°C", dt)
+                tvDt.setTextColor(if (dt >= 1.8) colDanger else colNormal)
+
+                val tvSp = cardView.findViewById<TextView>(R.id.tv_sbar_v_spo2)
+                tvSp.text = String.format(Locale.US, "%.1f%%", sp)
+                tvSp.setTextColor(if (sp < 90.0) colDanger else colNormal)
+
+                val tvDp = cardView.findViewById<TextView>(R.id.tv_sbar_v_doppler)
+                tvDp.text = String.format(Locale.US, "%.1f cm/s", dp)
+                tvDp.setTextColor(if (dp < 12.0) colDanger else colNormal)
+
+                val tvVis = cardView.findViewById<TextView>(R.id.tv_sbar_v_visual)
+                tvVis.text = String.format(Locale.US, "%.0f/100", vis)
+                tvVis.setTextColor(
+                    when {
+                        vis < 50.0 -> colDanger
+                        vis < 70.0 -> colWarning
+                        else -> colNormal
+                    }
+                )
+
+                val exam = p.optString("bedside_exam", "")
+                val conf = p.optString("confidence_label", "")
+                val subParts = mutableListOf<String>()
+                if (conf.isNotBlank()) subParts.add("Reliability: $conf")
+                if (exam.isNotBlank()) subParts.add(exam)
+                if (subParts.isNotEmpty()) {
+                    tvA.visibility = View.VISIBLE
+                    tvA.text = subParts.joinToString("  •  ")
+                } else {
+                    tvA.visibility = View.GONE
+                }
+            } else {
+                llGrid.visibility = View.GONE
+                tvA.visibility = View.VISIBLE
+                tvA.text = p.optString("assessment")
+            }
+
             cardView.findViewById<TextView>(R.id.tv_sbar_r).text = p.optString("recommendation")
 
             val boxR = cardView.findViewById<LinearLayout>(R.id.box_sbar_r)
             val badgeR = cardView.findViewById<TextView>(R.id.tv_sbar_r_badge)
             val (rBg, rFg) = when {
-                tier == "Critical" -> ContextCompat.getColor(this, R.color.fg_danger_bg) to ContextCompat.getColor(this, R.color.fg_danger)
-                tier == "High" || overdue -> ContextCompat.getColor(this, R.color.fg_warning_bg) to ContextCompat.getColor(this, R.color.fg_warning)
+                tier == "Critical" -> ContextCompat.getColor(this, R.color.fg_danger_bg) to colDanger
+                tier == "High" || overdue || oodFlag -> ContextCompat.getColor(this, R.color.fg_warning_bg) to colWarning
                 else -> ContextCompat.getColor(this, R.color.fg_success_bg) to ContextCompat.getColor(this, R.color.fg_success)
             }
             boxR.backgroundTintList = ColorStateList.valueOf(rBg)
@@ -206,7 +264,6 @@ class SbarHandoffActivity : AppCompatActivity() {
             llCards.addView(cardView)
         }
     }
-
 
     override fun onStop() {
         super.onStop()

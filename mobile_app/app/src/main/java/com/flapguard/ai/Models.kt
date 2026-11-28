@@ -45,5 +45,6 @@ data class ReadingPoint(
     val riskTier: String = "",
     val predictedClass: String = "",
     val bedsideExam: String = "",
-    val oodFlag: Boolean = false
+    val oodFlag: Boolean = false,
+    val createdAtIso: String = ""
 )

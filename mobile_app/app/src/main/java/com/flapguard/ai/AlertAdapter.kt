@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -19,14 +21,10 @@ import java.util.Locale
 class AlertAdapter(
     private val onAcknowledge: (AlertItem) -> Unit,
     private val onCardClick: (AlertItem) -> Unit = {}
-) : RecyclerView.Adapter<AlertAdapter.AlertViewHolder>() {
+) : ListAdapter<AlertItem, AlertAdapter.AlertViewHolder>(DIFF) {
 
-    private val items = mutableListOf<AlertItem>()
-
-    fun submitList(newItems: List<AlertItem>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+    override fun submitList(list: List<AlertItem>?) {
+        super.submitList(list?.toList())
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AlertViewHolder {
@@ -60,7 +58,7 @@ class AlertAdapter(
     }
 
     override fun onBindViewHolder(holder: AlertViewHolder, position: Int) {
-        val item = items[position]
+        val item = getItem(position)
         val ctx = holder.itemView.context
         val density = ctx.resources.displayMetrics.density
 
@@ -69,9 +67,9 @@ class AlertAdapter(
         val formattedTime = formatTimestamp(item.createdAtIso)
         holder.tvTime.visibility = View.VISIBLE
         holder.tvTime.text = if (formattedTime.isNotBlank()) {
-            "$formattedTime  ·  Tap to open chart"
+            "$formattedTime  ·  Open chart"
         } else {
-            "Tap to open patient chart"
+            "Open patient chart"
         }
 
         val cleanMsg = item.message
@@ -118,7 +116,15 @@ class AlertAdapter(
         }
     }
 
-    override fun getItemCount(): Int = items.size
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<AlertItem>() {
+            override fun areItemsTheSame(oldItem: AlertItem, newItem: AlertItem): Boolean =
+                oldItem.id == newItem.id && oldItem.acknowledged == newItem.acknowledged
+
+            override fun areContentsTheSame(oldItem: AlertItem, newItem: AlertItem): Boolean =
+                oldItem == newItem
+        }
+    }
 
     class AlertViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val card: MaterialCardView = view.findViewById(R.id.card_alert)

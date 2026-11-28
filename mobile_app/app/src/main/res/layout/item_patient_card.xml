@@ -4,11 +4,12 @@
     android:id="@+id/card_patient"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:layout_marginBottom="10dp"
     android:clickable="true"
     android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/fg_surface"
-    app:cardCornerRadius="18dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/fg_border"
     app:strokeWidth="1dp">
@@ -17,16 +18,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingTop="14dp"
+        android:paddingStart="10dp"
+        android:paddingTop="12dp"
         android:paddingEnd="14dp"
-        android:paddingBottom="14dp">
+        android:paddingBottom="12dp">
 
         <View
             android:id="@+id/view_status_bar"
-            android:layout_width="4dp"
+            android:layout_width="3.5dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="11dp"
             android:background="@drawable/bg_status_bar" />
 
         <LinearLayout
@@ -35,7 +36,7 @@
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <!-- Row 1: Patient Name + Risk Pill -->
+            <!-- Row 1: Patient Name + Risk Tier Pill -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -53,71 +54,95 @@
                     android:maxLines="1"
                     android:text="Patient Name"
                     android:textColor="@color/fg_text_primary"
-                    android:textSize="16sp" />
+                    android:textSize="15.5sp" />
 
                 <TextView
                     android:id="@+id/tv_risk_badge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_badge"
-                    android:paddingStart="10dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="3dp"
+                    android:paddingStart="9dp"
+                    android:paddingTop="2.5dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="2.5dp"
                     android:text="Healthy"
                     android:textColor="@color/fg_success"
                     android:textSize="11sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- Row 2: Untruncated MRN + Flap & Post-Op Hours -->
+            <!-- Row 2: MRN, Age & Live Post-Op Hours + Flap Site -->
             <TextView
                 android:id="@+id/tv_patient_mrn"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="MRN-2026-101"
+                android:fontFeatureSettings="tnum"
+                android:text="MRN-2026-101 • 54y • 10.0h post-op"
                 android:textColor="@color/fg_text_secondary"
-                android:textSize="12sp" />
+                android:textSize="11.5sp" />
 
             <TextView
                 android:id="@+id/tv_patient_flap"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="Radial Forearm Flap  •  10.0h post-op"
+                android:text="Radial Forearm Free Flap — Left Buccal Mucosa"
                 android:textColor="@color/fg_text_muted"
-                android:textSize="12sp" />
+                android:textSize="11.5sp" />
 
-            <!-- Row 3: Tinted Monitoring Schedule Pill -->
-            <TextView
-                android:id="@+id/tv_check_schedule"
-                android:layout_width="wrap_content"
+            <!-- Row 3: Protocol Schedule + OOD Probe Warning Strip -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:background="@drawable/bg_badge"
-                android:fontFamily="sans-serif-medium"
-                android:paddingStart="9dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="9dp"
-                android:paddingBottom="3dp"
-                android:text=""
-                android:textColor="@color/fg_accent"
-                android:textSize="11sp"
-                android:visibility="gone" />
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <!-- Divider -->
+                <TextView
+                    android:id="@+id/tv_check_schedule"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_badge"
+                    android:fontFamily="sans-serif-medium"
+                    android:fontFeatureSettings="tnum"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2.5dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2.5dp"
+                    android:text=""
+                    android:textColor="@color/fg_accent"
+                    android:textSize="10.5sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_card_ood_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_badge"
+                    android:backgroundTint="@color/fg_warning_bg"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="8dp"
+                    android:paddingTop="2.5dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="2.5dp"
+                    android:text="Verify Probe"
+                    android:textColor="@color/fg_warning"
+                    android:textSize="10.5sp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="11dp"
-                android:layout_marginBottom="10dp"
+                android:layout_marginTop="9dp"
+                android:layout_marginBottom="8dp"
                 android:background="@color/fg_divider" />
 
-            <!-- Row 4: Clean Inline Vitals + 1-Tap Assess Action -->
+            <!-- Row 4: Tabular Clinical Vitals with Units + Compact Assess CTA -->
             <LinearLayout
                 android:id="@+id/layout_vitals_strip"
                 android:layout_width="match_parent"
@@ -128,7 +153,7 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="0.9"
                     android:orientation="vertical">
 
                     <TextView
@@ -136,22 +161,23 @@
                         android:layout_height="wrap_content"
                         android:text="ΔT"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="10.5sp" />
+                        android:textSize="10sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_delta"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
+                        android:fontFeatureSettings="tnum"
                         android:text="0.4°C"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
+                        android:textSize="13.5sp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="0.95"
                     android:orientation="vertical">
 
                     <TextView
@@ -159,22 +185,23 @@
                         android:layout_height="wrap_content"
                         android:text="SpO₂"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="10.5sp" />
+                        android:textSize="10sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_spo2"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
+                        android:fontFeatureSettings="tnum"
                         android:text="97.4%"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
+                        android:textSize="13.5sp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_weight="1.2"
                     android:orientation="vertical">
 
                     <TextView
@@ -182,23 +209,24 @@
                         android:layout_height="wrap_content"
                         android:text="Doppler"
                         android:textColor="@color/fg_text_muted"
-                        android:textSize="10.5sp" />
+                        android:textSize="10sp" />
 
                     <TextView
                         android:id="@+id/tv_metric_doppler"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:text="21.0"
+                        android:fontFeatureSettings="tnum"
+                        android:text="21.0 cm/s"
                         android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
+                        android:textSize="13.5sp" />
                 </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_card_assess"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="34dp"
+                    android:layout_height="32dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
                     android:minWidth="0dp"
@@ -210,14 +238,14 @@
                     android:textSize="12sp"
                     android:textStyle="bold"
                     app:backgroundTint="@color/fg_primary_soft"
-                    app:cornerRadius="10dp" />
+                    app:cornerRadius="8dp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_patient_vitals"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Tap to begin postoperative assessment"
+                android:text="Awaiting initial assessment — tap to open chart"
                 android:textColor="@color/fg_text_muted"
                 android:textSize="12sp"
                 android:visibility="gone" />

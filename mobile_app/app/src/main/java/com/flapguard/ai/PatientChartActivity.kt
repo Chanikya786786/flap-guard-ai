@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -17,6 +18,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import org.json.JSONArray
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.Executors
@@ -36,6 +38,9 @@ class PatientChartActivity : AppCompatActivity() {
     private lateinit var tabRisk: TextView
     private lateinit var llRecentReadings: LinearLayout
     private lateinit var tvRecentEmpty: TextView
+    private lateinit var tvTrendBadge: TextView
+    private lateinit var tvConfBadge: TextView
+    private lateinit var tvOodWarning: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         SecurePrefs.applySavedTheme(this)
@@ -65,24 +70,35 @@ class PatientChartActivity : AppCompatActivity() {
 
         findViewById<ImageButton>(R.id.btn_chart_back).setOnClickListener { finish() }
 
+        // Safe overflow menu for Archive (never beside Assess thumb CTA)
+        findViewById<ImageButton>(R.id.btn_chart_more).setOnClickListener { anchor ->
+            val popup = PopupMenu(this, anchor)
+            popup.menu.add(0, 1, 0, "Archive Patient")
+            popup.setOnMenuItemClickListener { item ->
+                if (item.itemId == 1) {
+                    returnAction("archive", patientId)
+                    true
+                } else false
+            }
+            popup.show()
+        }
+
         findViewById<TextView>(R.id.tv_sheet_patient_name).text = fullName
         findViewById<TextView>(R.id.tv_sheet_patient_meta).text = String.format(
             Locale.US, "%s  •  %dy  •  %.1fh post-op", mrn, age, hoursPostOp
         )
         findViewById<TextView>(R.id.tv_sheet_flap_info).text = "$flapType — $surgerySite"
 
-        // Risk Badge
         val tvBadge = findViewById<TextView>(R.id.tv_sheet_risk_badge)
         tvBadge.text = if (riskTier == "Low") "Healthy" else riskTier.ifBlank { "New" }
         val (badgeBg, badgeFg) = tierColors(riskTier)
         tvBadge.backgroundTintList = ColorStateList.valueOf(badgeBg)
         tvBadge.setTextColor(badgeFg)
 
-        // Schedule Pill
         val tvSched = findViewById<TextView>(R.id.tv_detail_schedule)
         if (schedLabel.isNotBlank()) {
             tvSched.visibility = View.VISIBLE
-            tvSched.text = "Protocol: $schedLabel"
+            tvSched.text = schedLabel
             tvSched.backgroundTintList = ColorStateList.valueOf(
                 ContextCompat.getColor(this, if (schedOverdue) R.color.fg_danger_bg else R.color.fg_accent_soft)
             )
@@ -91,18 +107,19 @@ class PatientChartActivity : AppCompatActivity() {
             )
         }
 
-        findViewById<TextView>(R.id.tv_detail_trend_badge).text = "Trend: $trendStatus"
-        findViewById<TextView>(R.id.tv_detail_conf_badge).text = "Reliability: $confidenceLabel"
-        findViewById<TextView>(R.id.tv_detail_ood_warning).visibility = if (oodFlag) View.VISIBLE else View.GONE
+        tvTrendBadge = findViewById(R.id.tv_detail_trend_badge)
+        tvConfBadge = findViewById(R.id.tv_detail_conf_badge)
+        tvOodWarning = findViewById(R.id.tv_detail_ood_warning)
+        applyTrendAndConfidence(trendStatus, confidenceLabel, oodFlag)
 
-        // Latest Vitals Tiles
         val colNormal = ContextCompat.getColor(this, R.color.fg_text_primary)
         val colDanger = ContextCompat.getColor(this, R.color.fg_danger)
+        val colWarning = ContextCompat.getColor(this, R.color.fg_warning)
 
         val tvDelta = findViewById<TextView>(R.id.tv_detail_delta)
         if (intent.getBooleanExtra("has_delta", false)) {
             val v = intent.getDoubleExtra("temp_delta_c", 0.0)
-            tvDelta.text = String.format(Locale.US, "%.2f °C", v)
+            tvDelta.text = String.format(Locale.US, "%.1f°C", v)
             tvDelta.setTextColor(if (v >= 1.8) colDanger else colNormal)
         }
 
@@ -123,10 +140,16 @@ class PatientChartActivity : AppCompatActivity() {
         val tvVisual = findViewById<TextView>(R.id.tv_detail_visual)
         if (intent.getBooleanExtra("has_visual", false)) {
             val v = intent.getDoubleExtra("visual_score", 0.0)
-            tvVisual.text = String.format(Locale.US, "%.0f / 100", v)
+            tvVisual.text = String.format(Locale.US, "%.0f", v)
+            tvVisual.setTextColor(
+                when {
+                    v < 50.0 -> colDanger
+                    v < 70.0 -> colWarning
+                    else -> colNormal
+                }
+            )
         }
 
-        // Clinical Guidance (strip raw engineering URGENT [Critical]: prefixes)
         val cleanGuidance = alertMessage
             .replace(Regex("""^(URGENT|WARNING|WATCH|MONITOR)\s*\[[^\]]+\]:\s*""", RegexOption.IGNORE_CASE), "")
             .trim()
@@ -134,11 +157,10 @@ class PatientChartActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tv_detail_summary).text = cleanGuidance
         val guidanceCard = findViewById<MaterialCardView>(R.id.card_chart_guidance)
         if (riskTier == "Critical") {
-            guidanceCard.setCardBackgroundColor(ContextCompat.getColor(this, R.color.fg_danger_bg))
             guidanceCard.strokeColor = ContextCompat.getColor(this, R.color.fg_danger_border)
+            guidanceCard.strokeWidth = dp(1) + 1
         }
 
-        // Structured Bedside Exam Rows
         if (bedsideExam.isNotBlank()) {
             findViewById<MaterialCardView>(R.id.card_chart_exam).visibility = View.VISIBLE
             val llExam = findViewById<LinearLayout>(R.id.ll_chart_exam_rows)
@@ -147,12 +169,12 @@ class PatientChartActivity : AppCompatActivity() {
                 val kv = part.split(":", limit = 2)
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    setPadding(0, dp(4), 0, dp(4))
+                    setPadding(0, dp(3), 0, dp(3))
                 }
                 val tvKey = TextView(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.42f)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.40f)
                     text = kv.getOrNull(0)?.trim().orEmpty()
-                    textSize = 12.5f
+                    textSize = 12f
                     setTextColor(ContextCompat.getColor(this@PatientChartActivity, R.color.fg_text_muted))
                 }
                 val valStr = kv.getOrNull(1)?.trim().orEmpty()
@@ -160,9 +182,9 @@ class PatientChartActivity : AppCompatActivity() {
                     valStr.contains("Absent", true) || valStr.contains("Tense", true) ||
                     valStr.contains("Weak", true) || valStr.contains("Flaccid", true)
                 val tvVal = TextView(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.58f)
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.60f)
                     text = valStr
-                    textSize = 12.5f
+                    textSize = 12f
                     setTextColor(
                         ContextCompat.getColor(
                             this@PatientChartActivity,
@@ -176,7 +198,6 @@ class PatientChartActivity : AppCompatActivity() {
             }
         }
 
-        // Interactive Native-Scale Trend Chart Tabs
         chartView = findViewById(R.id.view_trend_chart)
         tvThresholdHint = findViewById(R.id.tv_chart_threshold_hint)
         tabSpo2 = findViewById(R.id.tab_metric_spo2)
@@ -192,15 +213,11 @@ class PatientChartActivity : AppCompatActivity() {
         tabRisk.setOnClickListener { selectMetricTab(TrendChartView.MetricMode.RISK) }
         selectMetricTab(TrendChartView.MetricMode.SPO2)
 
-        // Sticky Footer Actions
         findViewById<MaterialButton>(R.id.btn_sheet_assess).setOnClickListener {
             returnAction("assess", patientId)
         }
         findViewById<MaterialButton>(R.id.btn_chart_outcome).setOnClickListener {
             returnAction("outcome", patientId)
-        }
-        findViewById<MaterialButton>(R.id.btn_sheet_remove).setOnClickListener {
-            returnAction("archive", patientId)
         }
 
         if (patientId > 0 && serverUrl.isNotBlank()) {
@@ -208,6 +225,22 @@ class PatientChartActivity : AppCompatActivity() {
         } else {
             tvRecentEmpty.text = "No trend history available."
         }
+    }
+
+    private fun applyTrendAndConfidence(trend: String, conf: String, ood: Boolean) {
+        tvTrendBadge.text = trend
+        val isWorsening = trend.contains("Deteriorat", true) || trend.contains("Compromise", true)
+        val isImproving = trend.contains("Improv", true)
+        val (tBg, tFg) = when {
+            isWorsening -> R.color.fg_danger_bg to R.color.fg_danger
+            isImproving -> R.color.fg_success_bg to R.color.fg_success
+            else -> R.color.fg_primary_soft to R.color.fg_primary_text
+        }
+        tvTrendBadge.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, tBg))
+        tvTrendBadge.setTextColor(ContextCompat.getColor(this, tFg))
+
+        tvConfBadge.text = "Rel: ${conf.substringBefore(" —")}"
+        tvOodWarning.visibility = if (ood) View.VISIBLE else View.GONE
     }
 
     private fun selectMetricTab(mode: TrendChartView.MetricMode) {
@@ -239,33 +272,58 @@ class PatientChartActivity : AppCompatActivity() {
     private fun loadReadings(serverUrl: String, authToken: String, patientId: Int) {
         executor.execute {
             val res = ApiClient.request(serverUrl, "/mobile/patients/$patientId/readings", "GET", null, authToken)
-            val pts = mutableListOf<ReadingPoint>()
+            val rawDates = mutableListOf<Date?>()
+            val rawObjs = mutableListOf<org.json.JSONObject>()
             if (res.ok) {
                 val arr = res.json.optJSONArray("readings") ?: JSONArray()
-                // API returns newest-first -> reverse for true chronological left-to-right trajectory
                 for (i in arr.length() - 1 downTo 0) {
-                    val r = arr.getJSONObject(i)
-                    val hrs = r.optDouble("hours_post_op", 0.0)
-                    val timeLbl = formatLocalTime(r.optString("created_at", ""))
-                        ?: String.format(Locale.US, "%.0fh", hrs)
-                    pts.add(
-                        ReadingPoint(
-                            label = timeLbl,
-                            tempDeltaC = r.optDouble("temp_delta_c", 0.0),
-                            spo2Pct = r.optDouble("spo2_pct", 0.0),
-                            dopplerCmS = r.optDouble("doppler_flow_cm_s", 0.0),
-                            riskScorePct = r.optDouble("risk_score_pct", 0.0),
-                            riskTier = r.optString("risk_tier", ""),
-                            predictedClass = r.optString("predicted_class", ""),
-                            bedsideExam = r.optString("bedside_exam_summary", ""),
-                            oodFlag = r.optBoolean("ood_flag", false)
-                        )
-                    )
+                    val obj = arr.getJSONObject(i)
+                    rawObjs.add(obj)
+                    rawDates.add(parseUtcIso(obj.optString("created_at", "")))
                 }
             }
+
+            // Show date prefix whenever readings span multiple calendar days so X-axis never looks reversed
+            val dayFmt = SimpleDateFormat("yyyyMMdd", Locale.US)
+            val uniqueDays = rawDates.filterNotNull().map { dayFmt.format(it) }.toSet()
+            val multiDay = uniqueDays.size > 1
+            val chartFmt = SimpleDateFormat(if (multiDay) "dd MMM HH:mm" else "HH:mm", Locale.getDefault())
+            val logFmt = SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault())
+
+            val pts = mutableListOf<ReadingPoint>()
+            for (i in rawObjs.indices) {
+                val r = rawObjs[i]
+                val d = rawDates[i]
+                val hrs = r.optDouble("hours_post_op", 0.0)
+                val chartLbl = d?.let { chartFmt.format(it) } ?: String.format(Locale.US, "%.0fh", hrs)
+                val logLbl = d?.let { logFmt.format(it) } ?: chartLbl
+                pts.add(
+                    ReadingPoint(
+                        label = chartLbl,
+                        tempDeltaC = r.optDouble("temp_delta_c", 0.0),
+                        spo2Pct = r.optDouble("spo2_pct", 0.0),
+                        dopplerCmS = r.optDouble("doppler_flow_cm_s", 0.0),
+                        riskScorePct = r.optDouble("risk_score_pct", 0.0),
+                        riskTier = r.optString("risk_tier", ""),
+                        predictedClass = r.optString("predicted_class", ""),
+                        bedsideExam = r.optString("bedside_exam_summary", ""),
+                        oodFlag = r.optBoolean("ood_flag", false),
+                        createdAtIso = logLbl
+                    )
+                )
+            }
+
+            val latestObj = rawObjs.lastOrNull()
             mainHandler.post {
+                if (latestObj != null) {
+                    applyTrendAndConfidence(
+                        latestObj.optString("trend_status", "Baseline Established"),
+                        latestObj.optString("confidence_label", "High"),
+                        latestObj.optBoolean("ood_flag", false)
+                    )
+                }
                 chartView.setReadings(pts)
-                renderRecentLog(pts.asReversed().take(6))
+                renderRecentLog(pts.asReversed().take(8))
             }
         }
     }
@@ -288,22 +346,24 @@ class PatientChartActivity : AppCompatActivity() {
             }
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(0, dp(9), 0, dp(9))
+                setPadding(0, dp(8), 0, dp(8))
             }
             val top = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
+            val stamp = pt.createdAtIso.ifBlank { pt.label }
             val tvTime = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                text = "${pt.label}  •  ${pt.predictedClass} (${String.format(Locale.US, "%.1f%%", pt.riskScorePct)})"
-                textSize = 12.5f
+                text = "$stamp  •  ${pt.predictedClass} (${String.format(Locale.US, "%.1f%%", pt.riskScorePct)})"
+                textSize = 12f
+                fontFeatureSettings = "tnum"
                 setTextColor(ContextCompat.getColor(this@PatientChartActivity, R.color.fg_text_primary))
             }
             val (bg, fg) = tierColors(pt.riskTier)
             val tvPill = TextView(this).apply {
                 text = if (pt.riskTier == "Low") "Healthy" else pt.riskTier
-                textSize = 10.5f
+                textSize = 10f
                 setPadding(dp(8), dp(2), dp(8), dp(2))
                 background = ContextCompat.getDrawable(this@PatientChartActivity, R.drawable.bg_badge)
                 backgroundTintList = ColorStateList.valueOf(bg)
@@ -313,13 +373,15 @@ class PatientChartActivity : AppCompatActivity() {
             top.addView(tvPill)
             row.addView(top)
 
+            val oodTag = if (pt.oodFlag) "  •  Verify Probe" else ""
             val tvMetrics = TextView(this).apply {
                 text = String.format(
-                    Locale.US, "ΔT %.1f°C  •  SpO₂ %.1f%%  •  Doppler %.1f cm/s",
-                    pt.tempDeltaC, pt.spo2Pct, pt.dopplerCmS
+                    Locale.US, "ΔT %.1f°C  •  SpO₂ %.1f%%  •  Doppler %.1f cm/s%s",
+                    pt.tempDeltaC, pt.spo2Pct, pt.dopplerCmS, oodTag
                 )
                 textSize = 11.5f
-                setPadding(0, dp(3), 0, 0)
+                fontFeatureSettings = "tnum"
+                setPadding(0, dp(2), 0, 0)
                 setTextColor(ContextCompat.getColor(this@PatientChartActivity, R.color.fg_text_muted))
             }
             row.addView(tvMetrics)
@@ -337,15 +399,13 @@ class PatientChartActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatLocalTime(iso: String): String? {
+    private fun parseUtcIso(iso: String): Date? {
         if (iso.isBlank()) return null
         return try {
             val clean = iso.substringBefore(".").substringBefore("+").substringBefore("Z")
-            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
-            }
-            val d = parser.parse(clean) ?: return null
-            SimpleDateFormat("HH:mm", Locale.getDefault()).format(d)
+            }.parse(clean)
         } catch (_: Exception) {
             null
         }
@@ -370,7 +430,6 @@ class PatientChartActivity : AppCompatActivity() {
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
 
     override fun onStop() {
         super.onStop()

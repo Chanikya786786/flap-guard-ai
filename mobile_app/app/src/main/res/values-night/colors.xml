@@ -1,44 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary Surgical Blue & Desaturated Clinical Teal (ICU Night — Zero Halation) -->
+    <!-- Primary Surgical Blue & Desaturated Clinical Teal (ICU Night) -->
     <color name="fg_primary">#1F6CA3</color>
     <color name="fg_primary_dark">#155280</color>
     <color name="fg_primary_text">#60B2F5</color>
-    <color name="fg_primary_soft">#162B40</color>
+    <color name="fg_primary_soft">#15283B</color>
     <color name="fg_accent">#2DD4BF</color>
-    <color name="fg_accent_soft">#112E2E</color>
+    <color name="fg_accent_soft">#102B2B</color>
 
-    <!-- OLED-Safe Deep Slate Canvas (Never Pure Black) -->
-    <color name="fg_bg">#0C131B</color>
-    <color name="fg_surface">#151F2B</color>
-    <color name="fg_surface_soft">#1C2938</color>
-    <color name="fg_input_bg">#1A2635</color>
+    <!-- OLED-Safe Deep Slate Two-Tier Surfaces -->
+    <color name="fg_bg">#0B1117</color>
+    <color name="fg_surface">#121A24</color>
+    <color name="fg_surface_soft">#1A2533</color>
+    <color name="fg_input_bg">#0F1721</color>
 
-    <!-- Soft Off-White Typography (Eliminates Astigmatic Halation) -->
+    <!-- Zero-Halation Off-White Typography -->
     <color name="fg_text_primary">#EDF2F7</color>
     <color name="fg_text_secondary">#CBD5E1</color>
     <color name="fg_text_muted">#94A3B8</color>
 
-    <!-- Subtle Night Borders -->
-    <color name="fg_divider">#223040</color>
-    <color name="fg_border">#263547</color>
-    <color name="fg_border_strong">#3B4F66</color>
+    <!-- Subtle Night Hairlines -->
+    <color name="fg_divider">#1F2D3D</color>
+    <color name="fg_border">#243446</color>
+    <color name="fg_border_strong">#394E66</color>
+
+    <!-- Switch Off Visibility (ICU Night) -->
+    <color name="fg_switch_track_off">#334457</color>
+    <color name="fg_switch_thumb_off">#CBD5E1</color>
 
     <!-- Desaturated Night Clinical Semantics -->
     <color name="fg_danger">#FB7185</color>
-    <color name="fg_danger_bg">#2E151D</color>
-    <color name="fg_danger_border">#5B2332</color>
+    <color name="fg_danger_bg">#2E141C</color>
+    <color name="fg_danger_border">#5B2231</color>
     <color name="fg_warning">#FBBF24</color>
-    <color name="fg_warning_bg">#2D2212</color>
+    <color name="fg_warning_bg">#2C2011</color>
     <color name="fg_info">#60A5FA</color>
-    <color name="fg_info_bg">#14253B</color>
+    <color name="fg_info_bg">#13243A</color>
     <color name="fg_success">#34D399</color>
-    <color name="fg_success_bg">#102B24</color>
+    <color name="fg_success_bg">#0F2A22</color>
 
     <!-- Native-Scale Chart Bands -->
-    <color name="fg_chart_grid">#243447</color>
-    <color name="fg_chart_safe_band">#1E34D399</color>
-    <color name="fg_chart_danger_band">#22FB7185</color>
+    <color name="fg_chart_grid">#223244</color>
+    <color name="fg_chart_safe_band">#1C34D399</color>
+    <color name="fg_chart_danger_band">#20FB7185</color>
 
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>

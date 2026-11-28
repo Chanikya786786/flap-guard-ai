@@ -46,15 +46,17 @@ class TrendChartView @JvmOverloads constructor(
         style = Paint.Style.FILL
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = sp(10.5f)
+        textSize = sp(10f)
+        fontFeatureSettings = "tnum"
     }
     private val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = sp(10.5f)
         isFakeBoldText = true
+        fontFeatureSettings = "tnum"
     }
     private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(2.6f)
+        strokeWidth = dp(2.4f)
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
     }
@@ -66,7 +68,7 @@ class TrendChartView @JvmOverloads constructor(
     }
     private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = dp(2f)
+        strokeWidth = dp(1.8f)
     }
 
     fun setReadings(readings: List<ReadingPoint>) {
@@ -99,10 +101,10 @@ class TrendChartView @JvmOverloads constructor(
         ringPaint.color = colSurface
         thresholdPaint.color = colDanger
 
-        val padLeft = dp(44f)
-        val padRight = dp(16f)
-        val padTop = dp(24f)
-        val padBottom = dp(26f)
+        val padLeft = dp(42f)
+        val padRight = dp(14f)
+        val padTop = dp(22f)
+        val padBottom = dp(24f)
         val plotW = w - padLeft - padRight
         val plotH = h - padTop - padBottom
         if (plotW <= 0f || plotH <= 0f) return
@@ -158,7 +160,7 @@ class TrendChartView @JvmOverloads constructor(
                 safeRange = 15.0 to maxY
                 dangerRange = 0.0 to 12.0
                 lineColor = ContextCompat.getColor(context, R.color.fg_accent)
-                valueFormatter = { v -> String.format(Locale.US, "%.1f", v) }
+                valueFormatter = { v -> String.format(Locale.US, "%.1f cm/s", v) }
                 tickFormatter = { v -> String.format(Locale.US, "%.0f", v) }
             }
             MetricMode.RISK -> {
@@ -180,13 +182,11 @@ class TrendChartView @JvmOverloads constructor(
             return padTop + plotH - frac * plotH
         }
 
-        // 1. Shaded safe & danger clinical threshold bands
         bandPaint.color = colSafeBand
         canvas.drawRect(padLeft, yFor(safeRange.second), w - padRight, yFor(safeRange.first), bandPaint)
         bandPaint.color = colDangerBand
         canvas.drawRect(padLeft, yFor(dangerRange.second), w - padRight, yFor(dangerRange.first), bandPaint)
 
-        // 2. Horizontal grid lines & Y-axis labels
         for (tick in ticks) {
             val y = yFor(tick)
             canvas.drawLine(padLeft, y, w - padRight, y, gridPaint)
@@ -195,7 +195,6 @@ class TrendChartView @JvmOverloads constructor(
             canvas.drawText(lbl, padLeft - tw - dp(6f), y + dp(3.5f), textPaint)
         }
 
-        // 3. Dashed critical threshold line
         val thY = yFor(thresholdY)
         canvas.drawLine(padLeft, thY, w - padRight, thY, thresholdPaint)
 
@@ -206,7 +205,6 @@ class TrendChartView @JvmOverloads constructor(
             return
         }
 
-        // 4. Plot line + soft vertical gradient area fill
         linePaint.color = lineColor
         dotPaint.color = lineColor
         badgeTextPaint.color = lineColor
@@ -238,7 +236,7 @@ class TrendChartView @JvmOverloads constructor(
         if (points.size > 1) {
             fillPath.lineTo(xs.last(), padTop + plotH)
             fillPath.close()
-            val topAlpha = (lineColor and 0x00FFFFFF) or 0x33000000
+            val topAlpha = (lineColor and 0x00FFFFFF) or 0x2B000000
             val botAlpha = (lineColor and 0x00FFFFFF) or 0x03000000
             fillPaint.shader = LinearGradient(
                 0f, padTop, 0f, padTop + plotH,
@@ -248,34 +246,37 @@ class TrendChartView @JvmOverloads constructor(
             canvas.drawPath(linePath, linePaint)
         }
 
-        // 5. Data point markers (skip interior dots if > 16 points to prevent clutter)
         val step = if (points.size > 16) max(1, points.size / 12) else 1
         for (i in points.indices) {
             val isEdge = (i == 0 || i == points.lastIndex)
             if (!isEdge && i % step != 0) continue
-            val r = if (i == points.lastIndex) dp(4.8f) else dp(3.2f)
+            val r = if (i == points.lastIndex) dp(4.5f) else dp(3f)
             canvas.drawCircle(xs[i], ys[i], r, dotPaint)
             canvas.drawCircle(xs[i], ys[i], r, ringPaint)
         }
 
-        // 6. Latest value readout pill in top-right of chart
         val latestTxt = "Latest: ${valueFormatter(values.last())}"
         val ltw = badgeTextPaint.measureText(latestTxt)
-        canvas.drawText(latestTxt, w - padRight - ltw, dp(14f), badgeTextPaint)
+        canvas.drawText(latestTxt, w - padRight - ltw, dp(13f), badgeTextPaint)
 
-        // 7. Clean chronological X-axis timestamps (Start, Mid, Latest)
+        // Chronological X-axis labels without overlap
         val firstLbl = points.first().label
-        canvas.drawText(firstLbl, padLeft, h - dp(6f), textPaint)
-        if (points.size > 2) {
-            val midIdx = points.size / 2
-            val midLbl = points[midIdx].label
-            val mtw = textPaint.measureText(midLbl)
-            canvas.drawText(midLbl, padLeft + (plotW - mtw) / 2f, h - dp(6f), textPaint)
-        }
+        val firstW = textPaint.measureText(firstLbl)
+        canvas.drawText(firstLbl, padLeft, h - dp(5f), textPaint)
+
+        val lastLbl = if (points.size > 1) points.last().label else ""
+        val lastW = textPaint.measureText(lastLbl)
         if (points.size > 1) {
-            val lastLbl = points.last().label
-            val tw = textPaint.measureText(lastLbl)
-            canvas.drawText(lastLbl, w - padRight - tw, h - dp(6f), textPaint)
+            canvas.drawText(lastLbl, w - padRight - lastW, h - dp(5f), textPaint)
+        }
+        if (points.size > 2) {
+            val midLbl = points[points.size / 2].label
+            val midW = textPaint.measureText(midLbl)
+            val midX = padLeft + (plotW - midW) / 2f
+            val fitsCleanly = (midX > padLeft + firstW + dp(8f)) && (midX + midW < w - padRight - lastW - dp(8f))
+            if (fitsCleanly) {
+                canvas.drawText(midLbl, midX, h - dp(5f), textPaint)
+            }
         }
     }
 }

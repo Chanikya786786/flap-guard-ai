@@ -4,27 +4,31 @@
     <color name="fg_primary">#0B3D60</color>
     <color name="fg_primary_dark">#072942</color>
     <color name="fg_primary_text">#0B3D60</color>
-    <color name="fg_primary_soft">#E7F1F9</color>
+    <color name="fg_primary_soft">#EBF3FA</color>
     <color name="fg_accent">#0D8A7E</color>
-    <color name="fg_accent_soft">#E5F6F4</color>
+    <color name="fg_accent_soft">#E6F5F3</color>
 
-    <!-- Soft Low-Glare Alabaster Surfaces -->
-    <color name="fg_bg">#F5F7FA</color>
+    <!-- Flat Two-Tier Industrial Surfaces -->
+    <color name="fg_bg">#F7F9FB</color>
     <color name="fg_surface">#FFFFFF</color>
-    <color name="fg_surface_soft">#EEF2F7</color>
-    <color name="fg_input_bg">#F1F5F9</color>
+    <color name="fg_surface_soft">#F1F5F9</color>
+    <color name="fg_input_bg">#F8FAFC</color>
 
-    <!-- Ergonomic Soft-Charcoal Typography -->
-    <color name="fg_text_primary">#111827</color>
-    <color name="fg_text_secondary">#374151</color>
+    <!-- High-Contrast Clinical Typography -->
+    <color name="fg_text_primary">#0F172A</color>
+    <color name="fg_text_secondary">#334155</color>
     <color name="fg_text_muted">#64748B</color>
 
-    <!-- Crisp Clinical Hairlines -->
-    <color name="fg_divider">#E8EDF3</color>
-    <color name="fg_border">#DCE3EC</color>
+    <!-- Crisp 1dp Hairlines -->
+    <color name="fg_divider">#E8EEF4</color>
+    <color name="fg_border">#DCE4EE</color>
     <color name="fg_border_strong">#CBD5E1</color>
 
-    <!-- Clinical Status Semantics -->
+    <!-- Switch Off Visibility (Daylight) -->
+    <color name="fg_switch_track_off">#CBD5E1</color>
+    <color name="fg_switch_thumb_off">#FFFFFF</color>
+
+    <!-- Strict Physiological Status Semantics -->
     <color name="fg_danger">#DC2626</color>
     <color name="fg_danger_bg">#FEF2F2</color>
     <color name="fg_danger_border">#FECACA</color>
@@ -37,8 +41,8 @@
 
     <!-- Native-Scale Chart Bands -->
     <color name="fg_chart_grid">#E2E8F0</color>
-    <color name="fg_chart_safe_band">#14059669</color>
-    <color name="fg_chart_danger_band">#14DC2626</color>
+    <color name="fg_chart_safe_band">#12059669</color>
+    <color name="fg_chart_danger_band">#12DC2626</color>
 
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>

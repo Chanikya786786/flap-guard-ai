@@ -302,7 +302,7 @@ def run_appium_android_suite() -> str:
         # Verify empty-start ward
         t0 = time.perf_counter()
         empty_vis = _find_by_id(driver, "card_empty_ward", timeout=12).is_displayed()
-        kpi_zero = _find_by_id(driver, "tv_kpi_total").text.strip()
+        kpi_zero = _find_by_id(driver, "chip_filter_all").text.strip().split()[-1]
         record("Mobile Empty Ward", "Verify ward starts cleanly empty", "Initial ward state", "Empty state & total=0", f"empty={empty_vis}, total={kpi_zero}", t0, empty_vis and kpi_zero == "0")
 
         # Profile -> Demo Ward Data sheet -> Load 3 Sample OMFS Cases
@@ -316,9 +316,9 @@ def run_appium_android_suite() -> str:
         _scroll_and_find(driver, "row_demo_data").click()
         _find_by_id(driver, "btn_load_samples", timeout=10).click()
         WebDriverWait(driver, 15).until(
-            lambda d: _find_by_id(d, "tv_kpi_total").text.strip() == "3"
+            lambda d: _find_by_id(d, "chip_filter_all").text.strip().split()[-1] == "3"
         )
-        total_after = _find_by_id(driver, "tv_kpi_total").text.strip()
+        total_after = _find_by_id(driver, "chip_filter_all").text.strip().split()[-1]
         record("Mobile Sample Loader", "Load 3 sample OMFS cases via Demo Ward Data sheet", "row_demo_data -> btn_load_samples", "Ward total = 3", f"total={total_after}", t0, total_after == "3")
 
         t0 = time.perf_counter()
@@ -328,12 +328,13 @@ def run_appium_android_suite() -> str:
         # 2. Ward Dashboard Controls & Sync Checks (60 checks)
         dash_controls = [
             "tv_toolbar_title",
+            "btn_ward_handoff",
+            "btn_ward_add",
             "btn_refresh_all",
-            "tv_kpi_critical",
-            "tv_kpi_high",
-            "tv_kpi_total",
+            "chip_filter_all",
+            "chip_filter_critical",
+            "chip_filter_overdue",
             "rv_patients",
-            "fab_add_patient",
             "bottom_nav",
             "nav_ward",
         ]
@@ -351,7 +352,7 @@ def run_appium_android_suite() -> str:
                 except Exception:
                     pass
                 time.sleep(0.5)
-            cnt = _find_by_id(driver, "tv_kpi_total").text.strip()
+            cnt = _find_by_id(driver, "chip_filter_all").text.strip().split()[-1]
             record("Mobile Sync", f"Ward sync count check #{i+1}", "Single-slot refresh check", "Numeric count >= 3", f"total={cnt}", t0, cnt.isdigit() and int(cnt) >= 3)
 
         # 3. Assess Tab (Borderless Vitals + AI Fusion + Simulator Bottom Sheet) (95 checks)
@@ -368,8 +369,9 @@ def run_appium_android_suite() -> str:
             "et_spo2",
             "et_doppler",
             "et_hours",
+            "tv_live_delta_preview",
+            "row_toggle_exam",
             "btn_submit_reading",
-            "row_open_simulator",
         ]
         for i in range(39):
             t0 = time.perf_counter()
@@ -417,9 +419,10 @@ def run_appium_android_suite() -> str:
                 ok = "Risk" in title_txt and len(msg_txt) > 5
                 record("Mobile AI Output", f"Validate AI card field #{sub+1} (run {i+1})", "card_prediction_result", "Risk title & guidance", f"valid={ok}", t0, ok)
 
-        # Trigger live Venous & Arterial Simulations via clean Crisis Simulator Bottom Sheet (16 checks)
+        # Trigger live Venous & Arterial Simulations via isolated Profile -> Demo & QA Tools (16 checks)
         for i in range(4):
             t0 = time.perf_counter()
+            _switch_tab(driver, "nav_profile", "section_profile")
             _scroll_and_find(driver, "row_open_simulator").click()
             _find_by_id(driver, "btn_sim_venous", timeout=10).click()
             WebDriverWait(driver, 12).until(
@@ -427,9 +430,10 @@ def run_appium_android_suite() -> str:
             )
             v_title = _scroll_and_find(driver, "tv_prediction_title").text
             v_msg = _scroll_and_find(driver, "tv_prediction_result").text
-            record("Mobile Simulator", f"Trigger Venous simulation #{i+1}", "Simulator sheet -> Venous", "Venous Compromise alert", v_title[:90], t0, "Venous" in v_title)
+            record("Mobile Simulator", f"Trigger Venous simulation #{i+1}", "Profile Demo -> Venous", "Venous Compromise alert", v_title[:90], t0, "Venous" in v_title)
 
             t0 = time.perf_counter()
+            _switch_tab(driver, "nav_profile", "section_profile")
             _scroll_and_find(driver, "row_open_simulator").click()
             _find_by_id(driver, "btn_sim_arterial", timeout=10).click()
             WebDriverWait(driver, 12).until(
@@ -464,23 +468,18 @@ def run_appium_android_suite() -> str:
             rv_el = _find_by_id(driver, "rv_alerts")
             record("Mobile Alerts UI", f"Alerts RecyclerView integrity #{i+1}", "rv_alerts", "Displayed=True", f"displayed={rv_el.is_displayed()}", t0, rv_el.is_displayed())
 
-        # 5. Profile Tab, Log Outcome Bottom Sheet & Settings Rows (42 checks)
-        _switch_tab(driver, "nav_profile", "section_profile")
-        time.sleep(0.5)
+        # 5. Patient Chart -> Log Confirmed Outcome Bottom Sheet & Pruned Profile Tab (42 checks)
+        _switch_tab(driver, "nav_ward", "section_ward")
+        time.sleep(0.4)
 
         for i in range(4):
             t0 = time.perf_counter()
             before_cnt = _app_outcome_count(app)
-            _scroll_and_find(driver, "row_log_outcome").click()
-            try:
-                note_input = WebDriverWait(driver, 6).until(
-                    EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
-                )
-            except Exception:
-                _scroll_and_find(driver, "row_log_outcome").click()
-                note_input = WebDriverWait(driver, 12).until(
-                    EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
-                )
+            _find_by_id(driver, "card_patient", timeout=10).click()
+            _find_by_id(driver, "btn_chart_outcome", timeout=10).click()
+            note_input = WebDriverWait(driver, 12).until(
+                EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
+            )
             note_input.send_keys(f"Mobile verified postoperative check #{i+1}")
             _safe_hide_keyboard(driver)
             _find_by_id(driver, "btn_save_outcome_sheet", timeout=10).click()
@@ -492,21 +491,26 @@ def run_appium_android_suite() -> str:
             )
             time.sleep(0.35)
             after_cnt = _app_outcome_count(app)
-            record("Mobile Outcomes Sync", f"Save verified outcome via Bottom Sheet #{i+1}", f"note #{i+1}", f"DB count > {before_cnt}", f"db_count={after_cnt}", t0, after_cnt > before_cnt)
+            record("Mobile Outcomes Sync", f"Save verified outcome via Patient Chart #{i+1}", f"note #{i+1}", f"DB count > {before_cnt}", f"db_count={after_cnt}", t0, after_cnt > before_cnt)
+
+        _switch_tab(driver, "nav_profile", "section_profile")
+        time.sleep(0.4)
 
         profile_ids = [
             "btn_edit_profile_photo",
             "tv_profile_name",
             "tv_profile_email",
             "tv_profile_role",
-            "tv_stat_model",
-            "tv_stat_patients",
-            "tv_stat_alerts",
-            "row_log_outcome",
-            "row_demo_data",
+            "row_theme_mode",
+            "row_bg_monitor",
+            "row_app_lock",
+            "row_screen_privacy",
             "btn_change_password",
+            "row_open_simulator",
+            "row_demo_data",
             "row_connection_mode",
             "btn_logout",
+            "tv_profile_model_basis",
         ]
         for i in range(38):
             t0 = time.perf_counter()

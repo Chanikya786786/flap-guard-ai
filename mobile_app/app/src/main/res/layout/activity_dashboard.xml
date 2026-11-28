@@ -1,47 +1,227 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:id="@+id/dashboard_root" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/fg_bg" android:orientation="vertical">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="20dp" android:paddingTop="14dp" android:paddingEnd="16dp" android:paddingBottom="10dp">
-        <ImageView android:layout_width="30dp" android:layout_height="30dp" android:contentDescription="FlapGuard AI" android:src="@drawable/ic_brand_logo" />
-        <TextView android:id="@+id/tv_toolbar_title" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Ward" android:textColor="@color/fg_text_primary" android:textSize="22sp" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btn_ward_handoff" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="6dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="11dp" android:paddingEnd="12dp" android:text="SBAR" android:textAllCaps="false" android:textColor="@color/fg_primary_text" android:textSize="12.5sp" android:textStyle="bold" android:visibility="gone" app:backgroundTint="@color/fg_primary_soft" app:cornerRadius="12dp" app:icon="@drawable/ic_handoff" app:iconSize="15dp" app:iconTint="@color/fg_primary_text" />
-        <com.google.android.material.button.MaterialButton android:id="@+id/btn_ack_all" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="4dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:text="Review All" android:textAllCaps="false" android:textColor="@color/fg_primary_text" android:textSize="13sp" android:visibility="gone" />
-        <FrameLayout android:layout_width="38dp" android:layout_height="38dp" android:background="@drawable/bg_circle_white">
-            <ImageButton android:id="@+id/btn_refresh_all" android:layout_width="match_parent" android:layout_height="match_parent" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="Refresh" android:padding="9dp" android:scaleType="fitCenter" android:src="@drawable/ic_refresh" app:tint="@color/fg_text_secondary" />
-            <ProgressBar android:id="@+id/progress_sync" android:layout_width="20dp" android:layout_height="20dp" android:layout_gravity="center" android:indeterminateTint="@color/fg_primary" android:visibility="gone" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/dashboard_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fg_bg"
+    android:orientation="vertical">
+
+    <!-- Flat Industrial Top Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fg_surface"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="10dp">
+
+        <ImageView
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:contentDescription="FlapGuard AI"
+            android:src="@drawable/ic_brand_logo" />
+
+        <TextView
+            android:id="@+id/tv_toolbar_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
+            android:text="Ward"
+            android:textColor="@color/fg_text_primary"
+            android:textSize="20sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ward_handoff"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_marginEnd="6dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="11dp"
+            android:text="SBAR"
+            android:textAllCaps="false"
+            android:textColor="@color/fg_primary_text"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:backgroundTint="@color/fg_primary_soft"
+            app:cornerRadius="9dp"
+            app:icon="@drawable/ic_handoff"
+            app:iconSize="14dp"
+            app:iconTint="@color/fg_primary_text" />
+
+        <ImageButton
+            android:id="@+id/btn_ward_add"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_segment_pill"
+            android:contentDescription="Enroll Patient"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_add"
+            android:visibility="gone"
+            app:tint="@color/white" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_ack_all"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_marginEnd="4dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="Review All"
+            android:textAllCaps="false"
+            android:textColor="@color/fg_primary_text"
+            android:textSize="12.5sp"
+            android:visibility="gone" />
+
+        <FrameLayout
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_circle_white">
+
+            <ImageButton
+                android:id="@+id/btn_refresh_all"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Refresh"
+                android:padding="7dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_refresh"
+                app:tint="@color/fg_text_secondary" />
+
+            <ProgressBar
+                android:id="@+id/progress_sync"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/fg_primary_text"
+                android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
-    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-        <FrameLayout android:id="@+id/section_ward" android:layout_width="match_parent" android:layout_height="match_parent">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp">
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_offline_queue" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true" android:visibility="gone" app:cardBackgroundColor="@color/fg_warning_bg" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeWidth="0dp">
-                    <TextView android:id="@+id/tv_offline_queue_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:paddingStart="14dp" android:paddingTop="10dp" android:paddingEnd="14dp" android:paddingBottom="10dp" android:text="" android:textColor="@color/fg_warning" android:textSize="12sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/fg_divider" />
+
+    <!-- Main Tab Content Frame -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- =============================================================== -->
+        <!-- TAB 1: WARD (Zero FAB Obstruction, Zero Redundant KPI Card)     -->
+        <!-- =============================================================== -->
+        <FrameLayout
+            android:id="@+id/section_ward"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="14dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_offline_queue"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/fg_warning_bg"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_warning"
+                    app:strokeWidth="1dp">
+
+                    <TextView
+                        android:id="@+id/tv_offline_queue_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:paddingStart="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="12dp"
+                        android:paddingBottom="8dp"
+                        android:text=""
+                        android:textColor="@color/fg_warning"
+                        android:textSize="12sp" />
                 </com.google.android.material.card.MaterialCardView>
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_ward_alert_pill" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:clickable="true" android:focusable="true" android:visibility="gone" app:cardBackgroundColor="@color/fg_danger_bg" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeWidth="0dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="11dp" android:paddingEnd="12dp" android:paddingBottom="11dp">
-                        <View android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="10dp" android:background="@drawable/bg_status_bar" android:backgroundTint="@color/fg_danger" />
-                        <TextView android:id="@+id/tv_ward_alert_text" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="" android:textColor="@color/fg_danger" android:textSize="13sp" />
-                        <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Inspect alerts" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_danger" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_ward_alert_pill"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/fg_danger_bg"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_danger_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="10dp"
+                        android:paddingBottom="8dp">
+
+                        <View
+                            android:layout_width="7dp"
+                            android:layout_height="7dp"
+                            android:layout_marginEnd="9dp"
+                            android:background="@drawable/bg_status_bar"
+                            android:backgroundTint="@color/fg_danger" />
+
+                        <TextView
+                            android:id="@+id/tv_ward_alert_text"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="sans-serif-medium"
+                            android:fontFeatureSettings="tnum"
+                            android:text=""
+                            android:textColor="@color/fg_danger"
+                            android:textSize="12.5sp" />
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:contentDescription="Inspect alerts"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/fg_danger" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="20dp" app:cardElevation="0dp" app:strokeWidth="0dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingTop="14dp" android:paddingBottom="14dp">
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_kpi_critical" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_danger" android:textSize="22sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Critical" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                        </LinearLayout>
-                        <View android:layout_width="1dp" android:layout_height="28dp" android:background="@color/fg_divider" />
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_kpi_high" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_warning" android:textSize="22sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Watch" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                        </LinearLayout>
-                        <View android:layout_width="1dp" android:layout_height="28dp" android:background="@color/fg_divider" />
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_kpi_total" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_text_primary" android:textSize="22sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Total" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-                                <!-- v4.0 Clinical Ward Search & Triage Filter Bar -->
+
+                <!-- Compact Search + Integrated Live-Count Triage Filters -->
                 <LinearLayout
                     android:id="@+id/layout_ward_triage_bar"
                     android:layout_width="match_parent"
@@ -51,16 +231,16 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="42dp"
+                        android:layout_height="38dp"
                         android:background="@drawable/bg_search_box"
                         android:gravity="center_vertical"
                         android:orientation="horizontal"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="8dp">
+                        android:paddingStart="10dp"
+                        android:paddingEnd="6dp">
 
                         <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
                             android:contentDescription="Search"
                             android:src="@drawable/ic_search"
                             app:tint="@color/fg_text_muted" />
@@ -72,21 +252,21 @@
                             android:layout_marginStart="8dp"
                             android:layout_weight="1"
                             android:background="@null"
-                            android:hint="Search patient name, MRN, or flap..."
+                            android:hint="Search name, MRN, or flap..."
                             android:imeOptions="actionSearch"
                             android:inputType="text"
                             android:maxLines="1"
                             android:textColor="@color/fg_text_primary"
                             android:textColorHint="@color/fg_text_muted"
-                            android:textSize="13.5sp" />
+                            android:textSize="13sp" />
 
                         <ImageButton
                             android:id="@+id/btn_clear_ward_search"
-                            android:layout_width="30dp"
-                            android:layout_height="30dp"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="Clear search"
-                            android:padding="6dp"
+                            android:padding="5dp"
                             android:src="@drawable/ic_close"
                             android:visibility="gone"
                             app:tint="@color/fg_text_muted" />
@@ -95,7 +275,7 @@
                     <HorizontalScrollView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="9dp"
+                        android:layout_marginTop="8dp"
                         android:scrollbars="none">
 
                         <LinearLayout
@@ -106,53 +286,57 @@
                             <TextView
                                 android:id="@+id/chip_filter_all"
                                 android:layout_width="wrap_content"
-                                android:layout_height="30dp"
-                                android:layout_marginEnd="7dp"
+                                android:layout_height="29dp"
+                                android:layout_marginEnd="6dp"
                                 android:background="@drawable/bg_pill_outline"
                                 android:fontFamily="sans-serif-medium"
+                                android:fontFeatureSettings="tnum"
                                 android:gravity="center"
-                                android:paddingStart="13dp"
-                                android:paddingEnd="13dp"
-                                android:text="All"
-                                android:textSize="12sp" />
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:text="All 0"
+                                android:textSize="11.5sp" />
 
                             <TextView
                                 android:id="@+id/chip_filter_critical"
                                 android:layout_width="wrap_content"
-                                android:layout_height="30dp"
-                                android:layout_marginEnd="7dp"
+                                android:layout_height="29dp"
+                                android:layout_marginEnd="6dp"
                                 android:background="@drawable/bg_pill_outline"
                                 android:fontFamily="sans-serif-medium"
+                                android:fontFeatureSettings="tnum"
                                 android:gravity="center"
-                                android:paddingStart="13dp"
-                                android:paddingEnd="13dp"
-                                android:text="Critical"
-                                android:textSize="12sp" />
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:text="Critical 0"
+                                android:textSize="11.5sp" />
 
                             <TextView
                                 android:id="@+id/chip_filter_overdue"
                                 android:layout_width="wrap_content"
-                                android:layout_height="30dp"
-                                android:layout_marginEnd="7dp"
+                                android:layout_height="29dp"
+                                android:layout_marginEnd="6dp"
                                 android:background="@drawable/bg_pill_outline"
                                 android:fontFamily="sans-serif-medium"
+                                android:fontFeatureSettings="tnum"
                                 android:gravity="center"
-                                android:paddingStart="13dp"
-                                android:paddingEnd="13dp"
-                                android:text="Overdue"
-                                android:textSize="12sp" />
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:text="Overdue 0"
+                                android:textSize="11.5sp" />
 
                             <TextView
                                 android:id="@+id/chip_filter_healthy"
                                 android:layout_width="wrap_content"
-                                android:layout_height="30dp"
+                                android:layout_height="29dp"
                                 android:background="@drawable/bg_pill_outline"
                                 android:fontFamily="sans-serif-medium"
+                                android:fontFeatureSettings="tnum"
                                 android:gravity="center"
-                                android:paddingStart="13dp"
-                                android:paddingEnd="13dp"
-                                android:text="Healthy"
-                                android:textSize="12sp" />
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
+                                android:text="Healthy 0"
+                                android:textSize="11.5sp" />
                         </LinearLayout>
                     </HorizontalScrollView>
                 </LinearLayout>
@@ -165,365 +349,1759 @@
                     android:padding="20dp"
                     android:text="No patients match the current search or filter."
                     android:textColor="@color/fg_text_muted"
-                    android:textSize="13sp"
+                    android:textSize="12.5sp"
                     android:visibility="gone" />
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_empty_ward" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="22dp" app:cardElevation="0dp" app:strokeWidth="0dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="vertical" android:padding="32dp">
-                        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:alpha="0.85" android:contentDescription="Empty Ward" android:src="@drawable/ic_brand_logo" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:fontFamily="sans-serif-medium" android:text="No Patients Yet" android:textColor="@color/fg_text_primary" android:textSize="17sp" />
-                        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:gravity="center" android:text="Tap Enroll to add a postoperative patient, or load sample cases from Profile." android:textColor="@color/fg_text_muted" android:textSize="13sp" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_empty_ward"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="26dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="No Active Ward Patients"
+                            android:textColor="@color/fg_text_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:gravity="center"
+                            android:text="Tap + in the top bar to enroll a postoperative patient, or load sample cases from Profile."
+                            android:textColor="@color/fg_text_muted"
+                            android:textSize="12.5sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_patients" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="84dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rv_patients"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipToPadding="false"
+                    android:paddingBottom="14dp" />
             </LinearLayout>
-            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton android:id="@+id/fab_add_patient" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|end" android:layout_margin="18dp" android:text="Enroll" android:textAllCaps="false" android:textColor="@color/white" app:backgroundTint="@color/fg_primary" app:elevation="3dp" app:icon="@drawable/ic_add" app:iconTint="@color/white" />
         </FrameLayout>
-        <ScrollView android:id="@+id/section_assess" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp" android:paddingBottom="28dp">
 
-                <!-- 2-Line Untruncated Patient Identity Header -->
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_select_patient" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                        <TextView android:id="@+id/tv_selected_avatar" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_circle_soft" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="PT" android:textColor="@color/fg_primary_text" android:textSize="13sp" />
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_marginEnd="8dp" android:layout_weight="1" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_selected_patient" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:fontFamily="sans-serif-medium" android:maxLines="1" android:text="No patients yet" android:textColor="@color/fg_text_primary" android:textSize="15.5sp" />
-                            <TextView android:id="@+id/tv_selected_patient_sub" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Tap Switch to select a ward patient" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
+        <!-- =============================================================== -->
+        <!-- TAB 2: ASSESS (Pure Clinical Entry, Live ΔT, Segmented Exam)    -->
+        <!-- =============================================================== -->
+        <ScrollView
+            android:id="@+id/section_assess"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="24dp">
+
+                <!-- Patient Selector Bar -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_select_patient"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:id="@+id/tv_selected_avatar"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_circle_soft"
+                            android:fontFamily="sans-serif-medium"
+                            android:gravity="center"
+                            android:text="PT"
+                            android:textColor="@color/fg_primary_text"
+                            android:textSize="12.5sp" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_selected_patient"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:fontFamily="sans-serif-medium"
+                                android:maxLines="1"
+                                android:text="No patients yet"
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="15sp" />
+
+                            <TextView
+                                android:id="@+id/tv_selected_patient_sub"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="1dp"
+                                android:fontFeatureSettings="tnum"
+                                android:text="Tap Switch to choose a patient"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="11sp" />
                         </LinearLayout>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_badge" android:backgroundTint="@color/fg_primary_soft" android:paddingStart="10dp" android:paddingTop="4dp" android:paddingEnd="10dp" android:paddingBottom="4dp" android:text="Switch" android:textColor="@color/fg_primary_text" android:textSize="11.5sp" android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_badge"
+                            android:backgroundTint="@color/fg_primary_soft"
+                            android:paddingStart="9dp"
+                            android:paddingTop="3.5dp"
+                            android:paddingEnd="9dp"
+                            android:paddingBottom="3.5dp"
+                            android:text="Switch"
+                            android:textColor="@color/fg_primary_text"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Optional Flap Color Scan Card -->
-                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="15dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Flap Color Scan" android:textColor="@color/fg_text_primary" android:textSize="14.5sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Optional CIE-LAB perfusion check" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
+                <!-- Unified Bedside Vitals & Exam Sheet -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="10dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Bedside Vitals"
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="14.5sp" />
+
+                            <TextView
+                                android:id="@+id/tv_live_delta_preview"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="@drawable/bg_badge"
+                                android:backgroundTint="@color/fg_surface_soft"
+                                android:fontFamily="sans-serif-medium"
+                                android:fontFeatureSettings="tnum"
+                                android:paddingStart="9dp"
+                                android:paddingTop="2.5dp"
+                                android:paddingEnd="9dp"
+                                android:paddingBottom="2.5dp"
+                                android:text="Min. 2 readings"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <!-- Row 1: Flap Temp & Control Skin -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:id="@+id/tile_ir_temp"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_vital_input"
+                                android:orientation="vertical"
+                                android:paddingStart="11dp"
+                                android:paddingTop="8dp"
+                                android:paddingEnd="11dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Flap Temp (°C)"
+                                    android:textColor="@color/fg_text_secondary"
+                                    android:textSize="11sp" />
+
+                                <EditText
+                                    android:id="@+id/et_ir_temp"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="32dp"
+                                    android:layout_marginTop="1dp"
+                                    android:background="@null"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:fontFeatureSettings="tnum"
+                                    android:hint="--.-"
+                                    android:imeOptions="actionNext"
+                                    android:inputType="numberDecimal"
+                                    android:maxLines="1"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textColorHint="@color/fg_border_strong"
+                                    android:textSize="18sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_hint_ir_temp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFeatureSettings="tnum"
+                                    android:text="Ref 35.5–37.5°C"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="10sp" />
                             </LinearLayout>
-                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_open_camera" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="36dp" android:layout_marginEnd="6dp" android:insetTop="0dp" android:insetBottom="0dp" android:paddingStart="11dp" android:paddingEnd="11dp" android:text="Camera" android:textAllCaps="false" android:textColor="@color/fg_accent" android:textSize="12sp" android:textStyle="bold" app:backgroundTint="@color/fg_accent_soft" app:cornerRadius="10dp" app:icon="@drawable/ic_camera" app:iconSize="15dp" app:iconTint="@color/fg_accent" />
-                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_pick_gallery" style="@style/Widget.Material3.Button.TonalButton" android:layout_width="wrap_content" android:layout_height="36dp" android:insetTop="0dp" android:insetBottom="0dp" android:paddingStart="11dp" android:paddingEnd="11dp" android:text="Gallery" android:textAllCaps="false" android:textColor="@color/fg_primary_text" android:textSize="12sp" android:textStyle="bold" app:backgroundTint="@color/fg_primary_soft" app:cornerRadius="10dp" />
+
+                            <LinearLayout
+                                android:id="@+id/tile_ctrl_temp"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_vital_input"
+                                android:orientation="vertical"
+                                android:paddingStart="11dp"
+                                android:paddingTop="8dp"
+                                android:paddingEnd="11dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Control Skin (°C)"
+                                    android:textColor="@color/fg_text_secondary"
+                                    android:textSize="11sp" />
+
+                                <EditText
+                                    android:id="@+id/et_ctrl_temp"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="32dp"
+                                    android:layout_marginTop="1dp"
+                                    android:background="@null"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:fontFeatureSettings="tnum"
+                                    android:hint="--.-"
+                                    android:imeOptions="actionNext"
+                                    android:inputType="numberDecimal"
+                                    android:maxLines="1"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textColorHint="@color/fg_border_strong"
+                                    android:textSize="18sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_hint_ctrl_temp"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFeatureSettings="tnum"
+                                    android:text="Normal ΔT &lt; 1.5°C"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="10sp" />
+                            </LinearLayout>
                         </LinearLayout>
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="9dp" android:gravity="center_vertical" android:orientation="horizontal">
-                            <TextView android:id="@+id/tv_control_skin_status" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Adjacent healthy skin photo: optional (lighting balance)" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                            <com.google.android.material.button.MaterialButton android:id="@+id/btn_pick_control_skin" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="30dp" android:insetTop="0dp" android:insetBottom="0dp" android:minWidth="0dp" android:minHeight="0dp" android:paddingStart="8dp" android:paddingEnd="8dp" android:text="+ Add Skin" android:textAllCaps="false" android:textColor="@color/fg_primary_text" android:textSize="11.5sp" />
+
+                        <!-- Row 2: Tissue SpO2 & Doppler -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <LinearLayout
+                                android:id="@+id/tile_spo2"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="6dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_vital_input"
+                                android:orientation="vertical"
+                                android:paddingStart="11dp"
+                                android:paddingTop="8dp"
+                                android:paddingEnd="11dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Tissue SpO₂ (%)"
+                                    android:textColor="@color/fg_text_secondary"
+                                    android:textSize="11sp" />
+
+                                <EditText
+                                    android:id="@+id/et_spo2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="32dp"
+                                    android:layout_marginTop="1dp"
+                                    android:background="@null"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:fontFeatureSettings="tnum"
+                                    android:hint="--.-"
+                                    android:imeOptions="actionNext"
+                                    android:inputType="numberDecimal"
+                                    android:maxLines="1"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textColorHint="@color/fg_border_strong"
+                                    android:textSize="18sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_hint_spo2"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFeatureSettings="tnum"
+                                    android:text="Alert &lt; 90%"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="10sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/tile_doppler"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_vital_input"
+                                android:orientation="vertical"
+                                android:paddingStart="11dp"
+                                android:paddingTop="8dp"
+                                android:paddingEnd="11dp"
+                                android:paddingBottom="8dp">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Doppler (cm/s)"
+                                    android:textColor="@color/fg_text_secondary"
+                                    android:textSize="11sp" />
+
+                                <EditText
+                                    android:id="@+id/et_doppler"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="32dp"
+                                    android:layout_marginTop="1dp"
+                                    android:background="@null"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:fontFeatureSettings="tnum"
+                                    android:hint="--.-"
+                                    android:imeOptions="actionNext"
+                                    android:inputType="numberDecimal"
+                                    android:maxLines="1"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textColorHint="@color/fg_border_strong"
+                                    android:textSize="18sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_hint_doppler"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFeatureSettings="tnum"
+                                    android:text="Alert &lt; 12 cm/s"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="10sp" />
+                            </LinearLayout>
                         </LinearLayout>
-                        <FrameLayout android:id="@+id/layout_preview_frame" android:layout_width="match_parent" android:layout_height="184dp" android:layout_marginTop="12dp" android:visibility="gone">
-                            <ImageView android:id="@+id/iv_flap_preview" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#0F172A" android:contentDescription="Flap image preview" android:scaleType="centerCrop" />
-                            <View android:layout_width="136dp" android:layout_height="92dp" android:layout_gravity="center" android:background="@drawable/bg_roi_box" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="6dp" android:background="#990F172A" android:paddingStart="9dp" android:paddingTop="2dp" android:paddingEnd="9dp" android:paddingBottom="2dp" android:text="Center 50% Flap ROI" android:textColor="@color/white" android:textSize="10sp" />
+
+                        <!-- Row 3: Hours Post-Op Override -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_vital_input"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="11dp"
+                            android:paddingTop="6dp"
+                            android:paddingEnd="11dp"
+                            android:paddingBottom="6dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Hours Post-Op"
+                                android:textColor="@color/fg_text_secondary"
+                                android:textSize="12sp" />
+
+                            <EditText
+                                android:id="@+id/et_hours"
+                                android:layout_width="0dp"
+                                android:layout_height="30dp"
+                                android:layout_marginStart="10dp"
+                                android:layout_weight="1"
+                                android:background="@null"
+                                android:fontFeatureSettings="tnum"
+                                android:gravity="end|center_vertical"
+                                android:hint="Auto"
+                                android:imeOptions="actionDone"
+                                android:inputType="numberDecimal"
+                                android:maxLines="1"
+                                android:textColor="@color/fg_text_primary"
+                                android:textColorHint="@color/fg_text_muted"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <!-- Inline Optional Flap Photo Bar -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="10dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Flap Photo (Optional)"
+                                android:textColor="@color/fg_text_secondary"
+                                android:textSize="12.5sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_open_camera"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:layout_marginEnd="6dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minWidth="0dp"
+                                android:paddingStart="10dp"
+                                android:paddingEnd="10dp"
+                                android:text="Camera"
+                                android:textAllCaps="false"
+                                android:textColor="@color/fg_accent"
+                                android:textSize="11.5sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/fg_accent_soft"
+                                app:cornerRadius="8dp"
+                                app:icon="@drawable/ic_camera"
+                                app:iconSize="14dp"
+                                app:iconTint="@color/fg_accent" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_pick_gallery"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="32dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minWidth="0dp"
+                                android:paddingStart="10dp"
+                                android:paddingEnd="10dp"
+                                android:text="Gallery"
+                                android:textAllCaps="false"
+                                android:textColor="@color/fg_primary_text"
+                                android:textSize="11.5sp"
+                                android:textStyle="bold"
+                                app:backgroundTint="@color/fg_primary_soft"
+                                app:cornerRadius="8dp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tv_control_skin_status"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Lighting balance: add adjacent skin photo (optional)"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="10.5sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_pick_control_skin"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="26dp"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minWidth="0dp"
+                                android:minHeight="0dp"
+                                android:paddingStart="6dp"
+                                android:paddingEnd="4dp"
+                                android:text="+ Skin Ref"
+                                android:textAllCaps="false"
+                                android:textColor="@color/fg_primary_text"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <FrameLayout
+                            android:id="@+id/layout_preview_frame"
+                            android:layout_width="match_parent"
+                            android:layout_height="160dp"
+                            android:layout_marginTop="8dp"
+                            android:visibility="gone">
+
+                            <ImageView
+                                android:id="@+id/iv_flap_preview"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:background="#0F172A"
+                                android:contentDescription="Flap image preview"
+                                android:scaleType="centerCrop" />
+
+                            <View
+                                android:layout_width="126dp"
+                                android:layout_height="84dp"
+                                android:layout_gravity="center"
+                                android:background="@drawable/bg_roi_box" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="bottom|center_horizontal"
+                                android:layout_marginBottom="6dp"
+                                android:background="#990F172A"
+                                android:paddingStart="8dp"
+                                android:paddingTop="2dp"
+                                android:paddingEnd="8dp"
+                                android:paddingBottom="2dp"
+                                android:text="Center 50% Flap ROI"
+                                android:textColor="@color/white"
+                                android:textSize="10sp" />
                         </FrameLayout>
-                        <TextView android:id="@+id/tv_vision_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="" android:textColor="@color/fg_text_secondary" android:textSize="12sp" android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tv_vision_result"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text=""
+                            android:textColor="@color/fg_text_secondary"
+                            android:textSize="11.5sp"
+                            android:visibility="gone" />
+
+                        <!-- Compact Single-Row Segmented Bedside Physical Exam -->
+                        <LinearLayout
+                            android:id="@+id/row_toggle_exam"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_metric_tile"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="11dp"
+                            android:paddingTop="9dp"
+                            android:paddingEnd="11dp"
+                            android:paddingBottom="9dp">
+
+                            <TextView
+                                android:id="@+id/tv_toggle_exam_label"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="+ Bedside Physical Exam (Optional)"
+                                android:textColor="@color/fg_primary_text"
+                                android:textSize="12.5sp" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/layout_exam_fields"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="4dp"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="CAPILLARY REFILL"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="9.5sp" />
+
+                            <LinearLayout
+                                android:id="@+id/seg_cap_refill"
+                                android:layout_width="match_parent"
+                                android:layout_height="34dp"
+                                android:layout_marginBottom="8dp"
+                                android:background="@drawable/bg_search_box"
+                                android:orientation="horizontal"
+                                android:padding="2dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="4dp"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="FLAP TURGOR"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="9.5sp" />
+
+                            <LinearLayout
+                                android:id="@+id/seg_turgor"
+                                android:layout_width="match_parent"
+                                android:layout_height="34dp"
+                                android:layout_marginBottom="8dp"
+                                android:background="@drawable/bg_search_box"
+                                android:orientation="horizontal"
+                                android:padding="2dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="4dp"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="PINPRICK BLEEDING"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="9.5sp" />
+
+                            <LinearLayout
+                                android:id="@+id/seg_pinprick"
+                                android:layout_width="match_parent"
+                                android:layout_height="34dp"
+                                android:layout_marginBottom="8dp"
+                                android:background="@drawable/bg_search_box"
+                                android:orientation="horizontal"
+                                android:padding="2dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="4dp"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="DOPPLER SIGNAL"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="9.5sp" />
+
+                            <LinearLayout
+                                android:id="@+id/seg_doppler_qual"
+                                android:layout_width="match_parent"
+                                android:layout_height="34dp"
+                                android:background="@drawable/bg_search_box"
+                                android:orientation="horizontal"
+                                android:padding="2dp" />
+                        </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_submit_reading"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="12dp"
+                            android:text="Assess Flap Risk"
+                            android:textAllCaps="false"
+                            android:textColor="@color/white"
+                            android:textSize="14.5sp"
+                            android:textStyle="bold"
+                            app:backgroundTint="@color/fg_primary"
+                            app:cornerRadius="10dp"
+                            app:elevation="0dp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Bug-Free Clinical Numeric Input Tiles (Zero FilledBox Cursor Overlap!) -->
-                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:gravity="center_vertical" android:orientation="horizontal">
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Bedside Vitals" android:textColor="@color/fg_text_primary" android:textSize="15sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Min. 2 readings" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                        </LinearLayout>
+                <!-- AI Fusion Result Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_prediction_result"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
 
-                        <!-- Row 1: Flap Temp & Skin Temp -->
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-                            <LinearLayout android:id="@+id/tile_ir_temp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1" android:background="@drawable/bg_vital_input" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="9dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Flap Temp (°C)" android:textColor="@color/fg_text_secondary" android:textSize="11sp" />
-                                <EditText android:id="@+id/et_ir_temp" android:layout_width="match_parent" android:layout_height="34dp" android:layout_marginTop="2dp" android:background="@null" android:hint="36.2" android:imeOptions="actionNext" android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/fg_text_primary" android:textColorHint="@color/fg_text_muted" android:textSize="17sp" />
-                                <TextView android:id="@+id/tv_hint_ir_temp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ref 35.5–37.5°C" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
 
-                            <LinearLayout android:id="@+id/tile_ctrl_temp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:background="@drawable/bg_vital_input" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="9dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Control Skin (°C)" android:textColor="@color/fg_text_secondary" android:textSize="11sp" />
-                                <EditText android:id="@+id/et_ctrl_temp" android:layout_width="match_parent" android:layout_height="34dp" android:layout_marginTop="2dp" android:background="@null" android:hint="36.7" android:imeOptions="actionNext" android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/fg_text_primary" android:textColorHint="@color/fg_text_muted" android:textSize="17sp" />
-                                <TextView android:id="@+id/tv_hint_ctrl_temp" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ΔT normal &lt; 1.5°C" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            </LinearLayout>
-                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/tv_prediction_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:fontFeatureSettings="tnum"
+                            android:text="AI Assessment"
+                            android:textColor="@color/fg_text_primary"
+                            android:textSize="15sp" />
 
-                        <!-- Row 2: SpO2 & Doppler -->
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal">
-                            <LinearLayout android:id="@+id/tile_spo2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginEnd="6dp" android:layout_weight="1" android:background="@drawable/bg_vital_input" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="9dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Tissue SpO₂ (%)" android:textColor="@color/fg_text_secondary" android:textSize="11sp" />
-                                <EditText android:id="@+id/et_spo2" android:layout_width="match_parent" android:layout_height="34dp" android:layout_marginTop="2dp" android:background="@null" android:hint="96.5" android:imeOptions="actionNext" android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/fg_text_primary" android:textColorHint="@color/fg_text_muted" android:textSize="17sp" />
-                                <TextView android:id="@+id/tv_hint_spo2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Alert &lt; 90%" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            </LinearLayout>
-
-                            <LinearLayout android:id="@+id/tile_doppler" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:background="@drawable/bg_vital_input" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="9dp">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Doppler (cm/s)" android:textColor="@color/fg_text_secondary" android:textSize="11sp" />
-                                <EditText android:id="@+id/et_doppler" android:layout_width="match_parent" android:layout_height="34dp" android:layout_marginTop="2dp" android:background="@null" android:hint="20.5" android:imeOptions="actionNext" android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/fg_text_primary" android:textColorHint="@color/fg_text_muted" android:textSize="17sp" />
-                                <TextView android:id="@+id/tv_hint_doppler" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Alert &lt; 12 cm/s" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            </LinearLayout>
-                        </LinearLayout>
-
-                        <!-- Row 3: Hours Post-Op Optional -->
-                        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/bg_vital_input" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="12dp" android:paddingTop="8dp" android:paddingEnd="12dp" android:paddingBottom="8dp">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Hours Post-Op" android:textColor="@color/fg_text_secondary" android:textSize="12sp" />
-                            <EditText android:id="@+id/et_hours" android:layout_width="0dp" android:layout_height="34dp" android:layout_marginStart="12dp" android:layout_weight="1" android:background="@null" android:gravity="end|center_vertical" android:hint="Optional (auto)" android:imeOptions="actionDone" android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/fg_text_primary" android:textColorHint="@color/fg_text_muted" android:textSize="15sp" />
-                        </LinearLayout>
-
-                        <!-- Collapsible Compact Bedside Physical Exam -->
-                        <LinearLayout android:id="@+id/row_toggle_exam" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_metric_tile" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="12dp" android:paddingTop="10dp" android:paddingEnd="12dp" android:paddingBottom="10dp">
-                            <TextView android:id="@+id/tv_toggle_exam_label" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="+ Bedside Physical Exam (Optional)" android:textColor="@color/fg_primary_text" android:textSize="13sp" />
-                        </LinearLayout>
-
-                        <LinearLayout android:id="@+id/layout_exam_fields" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_metric_tile" android:orientation="vertical" android:padding="12dp" android:visibility="gone">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginBottom="4dp" android:fontFamily="sans-serif-medium" android:text="CAPILLARY REFILL" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            <com.google.android.material.chip.ChipGroup android:id="@+id/cg_cap_refill" android:layout_width="match_parent" android:layout_height="wrap_content" app:chipSpacingHorizontal="6dp" app:chipSpacingVertical="6dp" app:singleSelection="true">
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Normal (1-3s)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Brisk &lt;1s (Venous)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sluggish &gt;3s (Art.)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Absent" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                            </com.google.android.material.chip.ChipGroup>
-
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:layout_marginBottom="4dp" android:fontFamily="sans-serif-medium" android:text="FLAP TURGOR" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            <com.google.android.material.chip.ChipGroup android:id="@+id/cg_turgor" android:layout_width="match_parent" android:layout_height="wrap_content" app:chipSpacingHorizontal="6dp" app:chipSpacingVertical="6dp" app:singleSelection="true">
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Soft / Normal" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tense / Congested" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pale / Flaccid" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                            </com.google.android.material.chip.ChipGroup>
-
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:layout_marginBottom="4dp" android:fontFamily="sans-serif-medium" android:text="PINPRICK BLEEDING" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            <com.google.android.material.chip.ChipGroup android:id="@+id/cg_pinprick" android:layout_width="match_parent" android:layout_height="wrap_content" app:chipSpacingHorizontal="6dp" app:chipSpacingVertical="6dp" app:singleSelection="true">
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bright Red (Normal)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dark Rapid (Venous)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="None / Minimal (Art.)" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                            </com.google.android.material.chip.ChipGroup>
-
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:layout_marginBottom="4dp" android:fontFamily="sans-serif-medium" android:text="DOPPLER SIGNAL" android:textColor="@color/fg_text_muted" android:textSize="10sp" />
-                            <com.google.android.material.chip.ChipGroup android:id="@+id/cg_doppler_qual" android:layout_width="match_parent" android:layout_height="wrap_content" app:chipSpacingHorizontal="6dp" app:chipSpacingVertical="6dp" app:singleSelection="true">
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Triphasic" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Biphasic" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Weak / Mono" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Venous Hum" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                                <com.google.android.material.chip.Chip style="@style/Widget.Material3.Chip.Filter" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Absent" android:textColor="@color/selector_chip_text" android:textSize="11.5sp" app:checkedIconVisible="false" app:chipBackgroundColor="@color/selector_chip_bg" app:chipMinHeight="32dp" app:chipStrokeColor="@color/fg_border" app:chipStrokeWidth="1dp" app:ensureMinTouchTargetSize="false" />
-                            </com.google.android.material.chip.ChipGroup>
-                        </LinearLayout>
-
-                        <com.google.android.material.button.MaterialButton android:id="@+id/btn_submit_reading" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="14dp" android:text="Assess Flap Risk" android:textAllCaps="false" android:textColor="@color/white" android:textSize="15sp" android:textStyle="bold" app:backgroundTint="@color/fg_primary" app:cornerRadius="14dp" app:elevation="0dp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_prediction_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-                        <TextView android:id="@+id/tv_prediction_title" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="AI Assessment" android:textColor="@color/fg_text_primary" android:textSize="15.5sp" />
-                        <TextView android:id="@+id/tv_prediction_result" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:lineSpacingMultiplier="1.2" android:text="" android:textColor="@color/fg_text_secondary" android:textSize="13sp" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginTop="10dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="TRAINING &amp; SIMULATION" android:textColor="@color/fg_text_muted" android:textSize="10.5sp" android:textStyle="bold" />
-                <com.google.android.material.card.MaterialCardView android:id="@+id/row_open_simulator" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                        <FrameLayout android:layout_width="34dp" android:layout_height="34dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
-                            <ImageView android:layout_width="17dp" android:layout_height="17dp" android:layout_gravity="center" android:contentDescription="Simulator" android:src="@drawable/ic_science" app:tint="@color/fg_text_secondary" />
-                        </FrameLayout>
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:layout_weight="1" android:orientation="vertical">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Simulate Flap Emergency" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Trigger a demo alert for workflow testing" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                        </LinearLayout>
-                        <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+                        <TextView
+                            android:id="@+id/tv_prediction_result"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:lineSpacingMultiplier="1.2"
+                            android:text=""
+                            android:textColor="@color/fg_text_secondary"
+                            android:textSize="12.5sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </LinearLayout>
         </ScrollView>
 
-        <!-- Actionable Alerts Inbox (Needs Action vs. Reviewed History) -->
-        <LinearLayout android:id="@+id/section_alerts" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="4dp" android:paddingEnd="16dp" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="38dp" android:layout_marginBottom="10dp" android:background="@drawable/bg_search_box" android:orientation="horizontal" android:padding="3dp">
-                <TextView android:id="@+id/tab_alerts_active" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_pill_outline" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="Needs Action" android:textSize="12.5sp" />
-                <TextView android:id="@+id/tab_alerts_history" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_pill_outline" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="History" android:textSize="12.5sp" />
+        <!-- =============================================================== -->
+        <!-- TAB 3: ALERTS (Flush Segmented Control + Productive Empty State)-->
+        <!-- =============================================================== -->
+        <LinearLayout
+            android:id="@+id/section_alerts"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_search_box"
+                android:orientation="horizontal"
+                android:padding="3dp">
+
+                <TextView
+                    android:id="@+id/tab_alerts_active"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_segment_pill"
+                    android:fontFamily="sans-serif-medium"
+                    android:fontFeatureSettings="tnum"
+                    android:gravity="center"
+                    android:text="Needs Action"
+                    android:textSize="12.5sp" />
+
+                <TextView
+                    android:id="@+id/tab_alerts_history"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_segment_pill"
+                    android:fontFamily="sans-serif-medium"
+                    android:fontFeatureSettings="tnum"
+                    android:gravity="center"
+                    android:text="History"
+                    android:textSize="12.5sp" />
             </LinearLayout>
-            <TextView android:id="@+id/tv_alerts_summary" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginBottom="10dp" android:text="No active alerts" android:textColor="@color/fg_text_muted" android:textSize="12.5sp" />
-            <com.google.android.material.card.MaterialCardView android:id="@+id/card_empty_alerts" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                <TextView android:id="@+id/tv_empty_alerts_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="28dp" android:text="All clear — no active flap compromise alerts." android:textColor="@color/fg_text_muted" android:textSize="13.5sp" />
+
+            <TextView
+                android:id="@+id/tv_alerts_summary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="2dp"
+                android:layout_marginBottom="8dp"
+                android:fontFeatureSettings="tnum"
+                android:text="0 pending review"
+                android:textColor="@color/fg_text_muted"
+                android:textSize="12sp" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_empty_alerts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:cardBackgroundColor="@color/fg_surface"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/fg_border"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="22dp">
+
+                    <TextView
+                        android:id="@+id/tv_empty_alerts_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="No active flap compromise alerts."
+                        android:textColor="@color/fg_text_secondary"
+                        android:textSize="13.5sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_empty_view_history"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_marginTop="12dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:text="View History"
+                        android:textAllCaps="false"
+                        android:textColor="@color/fg_primary_text"
+                        android:textSize="12.5sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        app:backgroundTint="@color/fg_primary_soft"
+                        app:cornerRadius="9dp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
-            <androidx.recyclerview.widget.RecyclerView android:id="@+id/rv_alerts" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipToPadding="false" android:paddingBottom="16dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_alerts"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="14dp" />
         </LinearLayout>
 
-        <!-- Clean Clinical Profile & Security -->
-        <ScrollView android:id="@+id/section_profile" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone">
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_horizontal" android:orientation="vertical" android:paddingStart="16dp" android:paddingTop="8dp" android:paddingEnd="16dp" android:paddingBottom="28dp">
-                <FrameLayout android:id="@+id/btn_edit_profile_photo" android:layout_width="86dp" android:layout_height="86dp" android:clickable="true" android:contentDescription="Change profile photo" android:focusable="true">
-                    <com.google.android.material.card.MaterialCardView android:layout_width="82dp" android:layout_height="82dp" android:layout_gravity="center" app:cardBackgroundColor="@color/fg_primary" app:cardCornerRadius="41dp" app:cardElevation="0dp" app:strokeColor="@color/fg_surface" app:strokeWidth="3dp">
-                        <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
-                            <TextView android:id="@+id/tv_profile_initials" android:layout_width="match_parent" android:layout_height="match_parent" android:fontFamily="sans-serif-medium" android:gravity="center" android:text="DR" android:textColor="@color/white" android:textSize="26sp" />
-                            <ImageView android:id="@+id/iv_profile_photo" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="Clinician photo" android:scaleType="centerCrop" android:visibility="gone" />
+        <!-- =============================================================== -->
+        <!-- TAB 4: PROFILE (Identity, Display, Security & Isolated Demo)    -->
+        <!-- =============================================================== -->
+        <ScrollView
+            android:id="@+id/section_profile"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="14dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="24dp">
+
+                <!-- Compact Horizontal Clinician Identity Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="14dp">
+
+                        <FrameLayout
+                            android:id="@+id/btn_edit_profile_photo"
+                            android:layout_width="58dp"
+                            android:layout_height="58dp"
+                            android:clickable="true"
+                            android:contentDescription="Change profile photo"
+                            android:focusable="true">
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="54dp"
+                                android:layout_height="54dp"
+                                android:layout_gravity="center"
+                                app:cardBackgroundColor="@color/fg_primary"
+                                app:cardCornerRadius="27dp"
+                                app:cardElevation="0dp"
+                                app:strokeWidth="0dp">
+
+                                <FrameLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent">
+
+                                    <TextView
+                                        android:id="@+id/tv_profile_initials"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:fontFamily="sans-serif-medium"
+                                        android:gravity="center"
+                                        android:text="DR"
+                                        android:textColor="@color/white"
+                                        android:textSize="18sp" />
+
+                                    <ImageView
+                                        android:id="@+id/iv_profile_photo"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="match_parent"
+                                        android:contentDescription="Clinician photo"
+                                        android:scaleType="centerCrop"
+                                        android:visibility="gone" />
+                                </FrameLayout>
+                            </com.google.android.material.card.MaterialCardView>
+
+                            <com.google.android.material.card.MaterialCardView
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:layout_gravity="bottom|end"
+                                app:cardBackgroundColor="@color/fg_accent"
+                                app:cardCornerRadius="10dp"
+                                app:cardElevation="0dp"
+                                app:strokeColor="@color/fg_surface"
+                                app:strokeWidth="1.5dp">
+
+                                <ImageView
+                                    android:layout_width="10dp"
+                                    android:layout_height="10dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Edit photo"
+                                    android:src="@drawable/ic_edit_camera"
+                                    app:tint="@color/white" />
+                            </com.google.android.material.card.MaterialCardView>
                         </FrameLayout>
-                    </com.google.android.material.card.MaterialCardView>
-                    <com.google.android.material.card.MaterialCardView android:layout_width="26dp" android:layout_height="26dp" android:layout_gravity="bottom|end" app:cardBackgroundColor="@color/fg_accent" app:cardCornerRadius="13dp" app:cardElevation="1dp" app:strokeColor="@color/fg_bg" app:strokeWidth="2dp">
-                        <ImageView android:layout_width="13dp" android:layout_height="13dp" android:layout_gravity="center" android:contentDescription="Edit photo" android:src="@drawable/ic_edit_camera" app:tint="@color/white" />
-                    </com.google.android.material.card.MaterialCardView>
-                </FrameLayout>
 
-                <TextView android:id="@+id/tv_profile_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:fontFamily="sans-serif-medium" android:text="Clinician" android:textColor="@color/fg_text_primary" android:textSize="19sp" />
-                <TextView android:id="@+id/tv_profile_email" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="clinician@hospital.org" android:textColor="@color/fg_text_muted" android:textSize="13sp" />
-                <TextView android:id="@+id/tv_profile_role" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:layout_marginBottom="16dp" android:background="@drawable/bg_badge" android:backgroundTint="@color/fg_primary_soft" android:paddingStart="12dp" android:paddingTop="4dp" android:paddingEnd="12dp" android:paddingBottom="4dp" android:text="Surgeon" android:textColor="@color/fg_primary_text" android:textSize="11sp" android:textStyle="bold" />
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
 
-                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingTop="13dp" android:paddingBottom="13dp">
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_stat_model" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="v2.0" android:textColor="@color/fg_primary_text" android:textSize="17sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                        </LinearLayout>
-                        <View android:layout_width="1dp" android:layout_height="26dp" android:background="@color/fg_divider" />
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_stat_patients" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_text_primary" android:textSize="17sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Patients" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
-                        </LinearLayout>
-                        <View android:layout_width="1dp" android:layout_height="26dp" android:background="@color/fg_divider" />
-                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical">
-                            <TextView android:id="@+id/tv_stat_alerts" android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="0" android:textColor="@color/fg_danger" android:textSize="17sp" />
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pending" android:textColor="@color/fg_text_muted" android:textSize="11sp" />
+                            <LinearLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <TextView
+                                    android:id="@+id/tv_profile_name"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginEnd="6dp"
+                                    android:layout_weight="1"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:maxLines="1"
+                                    android:text="Clinician"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_profile_role"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:background="@drawable/bg_badge"
+                                    android:backgroundTint="@color/fg_primary_soft"
+                                    android:paddingStart="9dp"
+                                    android:paddingTop="2.5dp"
+                                    android:paddingEnd="9dp"
+                                    android:paddingBottom="2.5dp"
+                                    android:text="Surgeon"
+                                    android:textColor="@color/fg_primary_text"
+                                    android:textSize="10.5sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:id="@+id/tv_profile_email"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:ellipsize="end"
+                                android:maxLines="1"
+                                android:text="clinician@hospital.org"
+                                android:textColor="@color/fg_text_muted"
+                                android:textSize="12.5sp" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="CLINICAL TOOLS &amp; DISPLAY" android:textColor="@color/fg_text_muted" android:textSize="10.5sp" android:textStyle="bold" />
-                <com.google.android.material.card.MaterialCardView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                        <LinearLayout android:id="@+id/row_sbar_handoff" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_primary_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Shift Handoff" android:src="@drawable/ic_handoff" app:tint="@color/fg_primary_text" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Shift Handoff Report (SBAR)" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Priority-sorted ward summary for shift change" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                <!-- PREFERENCES -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="5dp"
+                    android:letterSpacing="0.07"
+                    android:text="PREFERENCES"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
 
-                        <LinearLayout android:id="@+id/row_log_outcome" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_accent_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Outcome" android:src="@drawable/ic_science" app:tint="@color/fg_accent" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Record Confirmed Diagnosis" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Save verified bedside or OR findings" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
 
-                        <LinearLayout android:id="@+id/row_bg_monitor" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="11dp" android:paddingEnd="14dp" android:paddingBottom="11dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_danger_bg">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="On-call alerts" android:src="@drawable/ic_alerts" app:tint="@color/fg_danger" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Alert While Phone Is Locked" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Checks for emergencies even when screen is off" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_bg_monitor" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
 
-                        <LinearLayout android:id="@+id/row_theme_mode" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_info_bg">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Appearance" android:src="@drawable/ic_appearance" app:tint="@color/fg_info" />
+                        <LinearLayout
+                            android:id="@+id/row_theme_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Appearance"
+                                    android:src="@drawable/ic_appearance"
+                                    app:tint="@color/fg_text_secondary" />
                             </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Display Appearance" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:id="@+id/tv_active_theme_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Follow System" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Display Appearance"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_active_theme_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Follow System"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
                             </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_bg_monitor"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="13dp"
+                            android:paddingTop="10dp"
+                            android:paddingEnd="13dp"
+                            android:paddingBottom="10dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Lock-screen alerts"
+                                    android:src="@drawable/ic_alerts"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="8dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Alert While Phone Is Locked"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Checks for emergencies while screen is off"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switch_bg_monitor"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="SECURITY &amp; ACCOUNT" android:textColor="@color/fg_text_muted" android:textSize="10.5sp" android:textStyle="bold" />
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_profile_security" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                        <LinearLayout android:id="@+id/row_app_lock" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="11dp" android:paddingEnd="14dp" android:paddingBottom="11dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_primary_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Biometric Lock" android:src="@drawable/ic_fingerprint" app:tint="@color/fg_primary_text" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Unlock with Fingerprint / PIN" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Require phone lock when opening FlapGuard" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_app_lock" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                <!-- SECURITY & ACCOUNT -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="5dp"
+                    android:letterSpacing="0.07"
+                    android:text="SECURITY &amp; ACCOUNT"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
 
-                        <LinearLayout android:id="@+id/row_screen_privacy" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="14dp" android:paddingTop="11dp" android:paddingEnd="14dp" android:paddingBottom="11dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Hide Screenshots" android:src="@drawable/ic_visibility_off" app:tint="@color/fg_text_secondary" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Hide Screen from Screenshots" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blocks screenshots &amp; app-switcher previews" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_screen_privacy" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_profile_security"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
 
-                        <LinearLayout android:id="@+id/btn_change_password" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Password" android:src="@drawable/ic_lock" app:tint="@color/fg_text_secondary" />
-                            </FrameLayout>
-                            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:text="Change Password" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
 
-                        <LinearLayout android:id="@+id/row_sign_out_all" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_warning_bg">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Sign Out Other Devices" android:src="@drawable/ic_devices" app:tint="@color/fg_warning" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Sign Out Other Devices" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Revoke active sessions on other phones" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                        <LinearLayout
+                            android:id="@+id/row_app_lock"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="13dp"
+                            android:paddingTop="10dp"
+                            android:paddingEnd="13dp"
+                            android:paddingBottom="10dp">
 
-                        <LinearLayout android:id="@+id/row_delete_account" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_danger_bg">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Delete Account" android:src="@drawable/ic_delete" app:tint="@color/fg_danger" />
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Biometric Lock"
+                                    android:src="@drawable/ic_fingerprint"
+                                    app:tint="@color/fg_text_secondary" />
                             </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Delete Account" android:textColor="@color/fg_danger" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="30-day recovery window · keeps ward records safe" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="8dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Unlock with Fingerprint / PIN"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Require phone lock when opening FlapGuard"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
                             </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switch_app_lock"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_screen_privacy"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingStart="13dp"
+                            android:paddingTop="10dp"
+                            android:paddingEnd="13dp"
+                            android:paddingBottom="10dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Hide Screenshots"
+                                    android:src="@drawable/ic_visibility_off"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="8dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Hide Screen from Screenshots"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Blocks screenshots &amp; app-switcher previews"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switch_screen_privacy"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/btn_change_password"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Password"
+                                    android:src="@drawable/ic_lock"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Change Password"
+                                android:textColor="@color/fg_text_primary"
+                                android:textSize="14sp" />
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_sign_out_all"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Sign Out Other Devices"
+                                    android:src="@drawable/ic_devices"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Sign Out Other Devices"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Revoke active sessions on other phones"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_delete_account"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_danger_bg">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Delete Account"
+                                    android:src="@drawable/ic_delete"
+                                    app:tint="@color/fg_danger" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Delete Account"
+                                    android:textColor="@color/fg_danger"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="30-day recovery window · keeps ward records safe"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_marginBottom="6dp" android:letterSpacing="0.08" android:text="DEMO &amp; CONNECTION" android:textColor="@color/fg_text_muted" android:textSize="10.5sp" android:textStyle="bold" />
-                <com.google.android.material.card.MaterialCardView android:id="@+id/card_profile_demo_tools" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="18dp" app:cardElevation="0dp" app:strokeColor="@color/fg_border" app:strokeWidth="1dp">
-                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                        <LinearLayout android:id="@+id/row_demo_data" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_accent_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Ward data" android:src="@drawable/ic_ward" app:tint="@color/fg_accent" />
-                            </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Sample Ward Cases" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Load demo patients or reset ward" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
-                            </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
-                        </LinearLayout>
-                        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="64dp" android:background="@color/fg_divider" />
+                <!-- ISOLATED DEMO & QA TOOLS (Moved Out of Clinical Assess) -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="5dp"
+                    android:letterSpacing="0.07"
+                    android:text="DEMO &amp; QA TOOLS"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10.5sp"
+                    android:textStyle="bold" />
 
-                        <LinearLayout android:id="@+id/row_connection_mode" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp">
-                            <FrameLayout android:layout_width="36dp" android:layout_height="36dp" android:background="@drawable/bg_circle_soft" android:backgroundTint="@color/fg_surface_soft">
-                                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:layout_gravity="center" android:contentDescription="Connection" android:src="@drawable/ic_cloud" app:tint="@color/fg_text_secondary" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_profile_demo_tools"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="14dp"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_border"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/row_open_simulator"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Simulate Emergency"
+                                    android:src="@drawable/ic_science"
+                                    app:tint="@color/fg_text_secondary" />
                             </FrameLayout>
-                            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:layout_weight="1" android:orientation="vertical">
-                                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:text="Server Connection" android:textColor="@color/fg_text_primary" android:textSize="14sp" />
-                                <TextView android:id="@+id/tv_active_server_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Live Cloud" android:textColor="@color/fg_text_muted" android:textSize="11.5sp" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Simulate Flap Emergency"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Trigger synthetic compromise alert for testing"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
                             </LinearLayout>
-                            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:contentDescription="Open" android:src="@drawable/ic_chevron_right" app:tint="@color/fg_border_strong" />
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_demo_data"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Ward data"
+                                    android:src="@drawable/ic_ward"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Sample Ward Cases"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Load demo patients or reset ward"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="56dp"
+                            android:background="@color/fg_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/row_connection_mode"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:padding="13dp">
+
+                            <FrameLayout
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:background="@drawable/bg_circle_soft"
+                                android:backgroundTint="@color/fg_surface_soft">
+
+                                <ImageView
+                                    android:layout_width="16dp"
+                                    android:layout_height="16dp"
+                                    android:layout_gravity="center"
+                                    android:contentDescription="Connection"
+                                    android:src="@drawable/ic_cloud"
+                                    app:tint="@color/fg_text_secondary" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="12dp"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Server Connection"
+                                    android:textColor="@color/fg_text_primary"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:id="@+id/tv_active_server_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Live Cloud"
+                                    android:textColor="@color/fg_text_muted"
+                                    android:textSize="11.5sp" />
+                            </LinearLayout>
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:contentDescription="Open"
+                                android:src="@drawable/ic_chevron_right"
+                                app:tint="@color/fg_text_muted" />
                         </LinearLayout>
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.google.android.material.card.MaterialCardView android:id="@+id/btn_logout" android:layout_width="match_parent" android:layout_height="wrap_content" android:clickable="true" android:focusable="true" app:cardBackgroundColor="@color/fg_surface" app:cardCornerRadius="16dp" app:cardElevation="0dp" app:strokeColor="@color/fg_danger_border" app:strokeWidth="1dp">
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:gravity="center" android:padding="14dp" android:text="Sign Out" android:textColor="@color/fg_danger" android:textSize="14.5sp" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/btn_logout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    app:cardBackgroundColor="@color/fg_surface"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/fg_danger_border"
+                    app:strokeWidth="1dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:padding="13dp"
+                        android:text="Sign Out"
+                        android:textColor="@color/fg_danger"
+                        android:textSize="14sp" />
                 </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:id="@+id/tv_profile_model_basis"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center"
+                    android:text="FlapGuard AI v2.0 • Research prototype — confirm clinically at bedside"
+                    android:textColor="@color/fg_text_muted"
+                    android:textSize="10.5sp" />
             </LinearLayout>
         </ScrollView>
     </FrameLayout>
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/fg_divider" />
-    <com.google.android.material.bottomnavigation.BottomNavigationView android:id="@+id/bottom_nav" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/fg_surface" app:elevation="0dp" app:itemActiveIndicatorStyle="@style/Widget.FlapGuard.BottomNav.Indicator" app:itemIconTint="@color/selector_bottom_nav" app:itemTextColor="@color/selector_bottom_nav" app:labelVisibilityMode="labeled" app:menu="@menu/bottom_nav_menu" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/fg_divider" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fg_surface"
+        app:elevation="0dp"
+        app:itemActiveIndicatorStyle="@style/Widget.FlapGuard.BottomNav.Indicator"
+        app:itemIconTint="@color/selector_bottom_nav"
+        app:itemTextColor="@color/selector_bottom_nav"
+        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_menu" />
 </LinearLayout>

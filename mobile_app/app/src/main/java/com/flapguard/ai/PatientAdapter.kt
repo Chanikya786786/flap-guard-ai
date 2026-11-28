@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -15,14 +17,10 @@ import java.util.Locale
 class PatientAdapter(
     private val onCardClick: (PatientItem) -> Unit,
     private val onAssessClick: (PatientItem) -> Unit = {}
-) : RecyclerView.Adapter<PatientAdapter.PatientViewHolder>() {
+) : ListAdapter<PatientItem, PatientAdapter.PatientViewHolder>(DIFF) {
 
-    private val items = mutableListOf<PatientItem>()
-
-    fun submitList(newItems: List<PatientItem>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+    override fun submitList(list: List<PatientItem>?) {
+        super.submitList(list?.toList())
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PatientViewHolder {
@@ -32,7 +30,7 @@ class PatientAdapter(
     }
 
     override fun onBindViewHolder(holder: PatientViewHolder, position: Int) {
-        val item = items[position]
+        val item = getItem(position)
         val ctx = holder.itemView.context
         val density = ctx.resources.displayMetrics.density
 
@@ -82,6 +80,8 @@ class PatientAdapter(
             holder.tvCheckSchedule.visibility = View.GONE
         }
 
+        holder.tvOodBadge.visibility = if (item.oodFlag) View.VISIBLE else View.GONE
+
         val colNormal = ContextCompat.getColor(ctx, R.color.fg_text_primary)
         val colDanger = ContextCompat.getColor(ctx, R.color.fg_danger)
 
@@ -90,7 +90,7 @@ class PatientAdapter(
             holder.tvVitals.visibility = View.GONE
             holder.tvMetricDelta.text = String.format(Locale.US, "%.1f°C", item.tempDeltaC)
             holder.tvMetricSpo2.text = String.format(Locale.US, "%.1f%%", item.spo2Pct)
-            holder.tvMetricDoppler.text = String.format(Locale.US, "%.1f", item.dopplerCmS)
+            holder.tvMetricDoppler.text = String.format(Locale.US, "%.1f cm/s", item.dopplerCmS)
 
             holder.tvMetricDelta.setTextColor(if (item.tempDeltaC >= 1.8) colDanger else colNormal)
             holder.tvMetricSpo2.setTextColor(if (item.spo2Pct < 90.0) colDanger else colNormal)
@@ -98,16 +98,24 @@ class PatientAdapter(
         } else {
             holder.layoutVitalsStrip.visibility = View.GONE
             holder.tvVitals.visibility = View.VISIBLE
-            holder.tvVitals.text = "Awaiting initial flap assessment — tap card to open chart"
+            holder.tvVitals.text = "Awaiting initial flap assessment — tap to open chart"
         }
 
         holder.btnCardAssess.setOnClickListener { onAssessClick(item) }
         holder.card.setOnClickListener { onCardClick(item) }
     }
 
-    override fun getItemCount(): Int = items.size
-
     private data class Quad(val a: String, val b: Int, val c: Int, val d: Int)
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<PatientItem>() {
+            override fun areItemsTheSame(oldItem: PatientItem, newItem: PatientItem): Boolean =
+                oldItem.id == newItem.id
+
+            override fun areContentsTheSame(oldItem: PatientItem, newItem: PatientItem): Boolean =
+                oldItem == newItem
+        }
+    }
 
     class PatientViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val card: MaterialCardView = view.findViewById(R.id.card_patient)
@@ -117,6 +125,7 @@ class PatientAdapter(
         val tvBadge: TextView = view.findViewById(R.id.tv_risk_badge)
         val tvFlap: TextView = view.findViewById(R.id.tv_patient_flap)
         val tvCheckSchedule: TextView = view.findViewById(R.id.tv_check_schedule)
+        val tvOodBadge: TextView = view.findViewById(R.id.tv_card_ood_badge)
         val layoutVitalsStrip: LinearLayout = view.findViewById(R.id.layout_vitals_strip)
         val tvMetricDelta: TextView = view.findViewById(R.id.tv_metric_delta)
         val tvMetricSpo2: TextView = view.findViewById(R.id.tv_metric_spo2)

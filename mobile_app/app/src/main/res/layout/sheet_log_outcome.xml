@@ -9,13 +9,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingStart="20dp"
+        android:paddingStart="18dp"
         android:paddingTop="12dp"
-        android:paddingEnd="20dp"
+        android:paddingEnd="18dp"
         android:paddingBottom="18dp">
 
         <View
-            android:layout_width="38dp"
+            android:layout_width="36dp"
             android:layout_height="4dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="10dp"
@@ -27,21 +27,21 @@
             android:fontFamily="sans-serif-medium"
             android:text="Record Confirmed Diagnosis"
             android:textColor="@color/fg_text_primary"
-            android:textSize="19sp" />
+            android:textSize="18sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:layout_marginBottom="10dp"
-            android:text="Verified bedside or OR findings improve continuous model accuracy."
+            android:layout_marginBottom="12dp"
+            android:text="Bedside or OR findings logged for continuous learning."
             android:textColor="@color/fg_text_muted"
             android:textSize="12sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="5dp"
             android:fontFamily="sans-serif-medium"
             android:text="PATIENT"
             android:textColor="@color/fg_text_muted"
@@ -49,8 +49,8 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="10dp"
+            android:layout_height="44dp"
+            android:layout_marginBottom="12dp"
             android:background="@drawable/bg_vital_input"
             android:paddingStart="10dp"
             android:paddingEnd="6dp">
@@ -64,7 +64,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="7dp"
             android:fontFamily="sans-serif-medium"
             android:text="CONFIRMED CLINICAL OUTCOME"
             android:textColor="@color/fg_text_muted"
@@ -74,142 +74,211 @@
             android:id="@+id/chip_group_outcome"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp"
+            android:layout_marginBottom="12dp"
             android:orientation="vertical">
 
-            <LinearLayout
+            <!-- Option 1: Normal -->
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/chip_outcome_normal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_vital_input"
                 android:clickable="true"
                 android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="10dp">
-
-                <View
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:layout_marginEnd="11dp"
-                    android:background="@drawable/bg_status_bar"
-                    android:backgroundTint="@color/fg_success" />
+                app:cardBackgroundColor="@color/fg_surface"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/fg_border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="11dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="11dp"
+                        android:background="@drawable/bg_status_bar"
+                        android:backgroundTint="@color/fg_success" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_outcome_normal_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Normal"
+                            android:textColor="@color/fg_text_primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Healthy perfusion, viable free flap"
+                            android:textColor="@color/fg_text_muted"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
 
                     <TextView
-                        android:id="@+id/tv_outcome_normal_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Normal"
-                        android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Healthy perfusion, viable free flap"
-                        android:textColor="@color/fg_text_muted"
-                        android:textSize="11.5sp" />
+                        android:id="@+id/tv_check_normal"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:background="@drawable/bg_circle_soft"
+                        android:backgroundTint="@color/fg_success"
+                        android:gravity="center"
+                        android:text="✓"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="invisible" />
                 </LinearLayout>
-            </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <LinearLayout
+            <!-- Option 2: Venous Compromise -->
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/chip_outcome_venous"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_vital_input"
                 android:clickable="true"
                 android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="10dp">
-
-                <View
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:layout_marginEnd="11dp"
-                    android:background="@drawable/bg_status_bar"
-                    android:backgroundTint="@color/fg_warning" />
+                app:cardBackgroundColor="@color/fg_surface"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/fg_border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="11dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="11dp"
+                        android:background="@drawable/bg_status_bar"
+                        android:backgroundTint="@color/fg_warning" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_outcome_venous_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Venous Compromise"
+                            android:textColor="@color/fg_text_primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Congestion, dark ooze, brisk refill"
+                            android:textColor="@color/fg_text_muted"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
 
                     <TextView
-                        android:id="@+id/tv_outcome_venous_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Venous Compromise"
-                        android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Congestion, dark ooze, brisk refill"
-                        android:textColor="@color/fg_text_muted"
-                        android:textSize="11.5sp" />
+                        android:id="@+id/tv_check_venous"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:background="@drawable/bg_circle_soft"
+                        android:backgroundTint="@color/fg_warning"
+                        android:gravity="center"
+                        android:text="✓"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="invisible" />
                 </LinearLayout>
-            </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <LinearLayout
+            <!-- Option 3: Arterial Compromise -->
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/chip_outcome_arterial"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_vital_input"
                 android:clickable="true"
                 android:focusable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="10dp">
-
-                <View
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
-                    android:layout_marginEnd="11dp"
-                    android:background="@drawable/bg_status_bar"
-                    android:backgroundTint="@color/fg_danger" />
+                app:cardBackgroundColor="@color/fg_surface"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/fg_border"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="11dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="11dp"
+                        android:background="@drawable/bg_status_bar"
+                        android:backgroundTint="@color/fg_danger" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_outcome_arterial_title"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="Arterial Compromise"
+                            android:textColor="@color/fg_text_primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Pallor, cool flap, sluggish/absent inflow"
+                            android:textColor="@color/fg_text_muted"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
 
                     <TextView
-                        android:id="@+id/tv_outcome_arterial_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="Arterial Compromise"
-                        android:textColor="@color/fg_text_primary"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pallor, cool flap, sluggish/absent inflow"
-                        android:textColor="@color/fg_text_muted"
-                        android:textSize="11.5sp" />
+                        android:id="@+id/tv_check_arterial"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:background="@drawable/bg_circle_soft"
+                        android:backgroundTint="@color/fg_danger"
+                        android:gravity="center"
+                        android:text="✓"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="invisible" />
                 </LinearLayout>
-            </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="5dp"
             android:fontFamily="sans-serif-medium"
             android:text="SURGEON NOTES (OPTIONAL)"
             android:textColor="@color/fg_text_muted"
@@ -218,9 +287,9 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="14dp"
             android:background="@drawable/bg_vital_input"
-            android:padding="12dp">
+            android:padding="10dp">
 
             <EditText
                 android:id="@+id/et_outcome_notes_sheet"
@@ -234,20 +303,20 @@
                 android:minLines="2"
                 android:textColor="@color/fg_text_primary"
                 android:textColorHint="@color/fg_text_muted"
-                android:textSize="13.5sp" />
+                android:textSize="13sp" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save_outcome_sheet"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="48dp"
             android:text="Save Verified Outcome"
             android:textAllCaps="false"
             android:textColor="@color/white"
             android:textSize="14.5sp"
             android:textStyle="bold"
             app:backgroundTint="@color/fg_primary"
-            app:cornerRadius="14dp"
+            app:cornerRadius="10dp"
             app:elevation="0dp" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
