@@ -1478,3 +1478,80 @@ def shift_handoff_report():
 def mobile_shift_handoff():
     sbar = _build_current_ward_sbar(request.mobile_user.full_name)
     return jsonify(sbar)
+
+
+@bp.route("/manifest.webmanifest", methods=["GET"])
+def pwa_manifest():
+    from flask import Response
+    manifest = {
+        "name": "FlapGuard AI — Free-Flap Monitoring",
+        "short_name": "FlapGuard AI",
+        "description": "Multisensor free-flap perfusion monitoring, alerts, and SBAR shift handoffs for OMFS and microsurgery teams.",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "orientation": "portrait-primary",
+        "background_color": "#f4f7fa",
+        "theme_color": "#0f4c81",
+        "icons": [
+            {"src": "/static/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/static/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},
+        ],
+    }
+    return Response(json.dumps(manifest), mimetype="application/manifest+json")
+
+
+@bp.route("/sw.js", methods=["GET"])
+def pwa_service_worker():
+    from flask import Response
+    # Clinical-safe SW: caches ONLY static UI assets; NEVER caches private patient HTML/API responses.
+    sw_js = """
+const STATIC_CACHE = "flapguard-static-v321";
+const STATIC_ASSETS = [
+  "/static/css/style.css",
+  "/static/img/logo.svg",
+  "/static/img/apple-touch-icon.png",
+  "/static/img/icon-192.png",
+  "/static/img/icon-512.png"
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== STATIC_CACHE).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin === self.location.origin && url.pathname.startsWith("/static/")) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        const net = fetch(req).then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        }).catch(() => cached);
+        return cached || net;
+      })
+    );
+  }
+});
+""".strip()
+    resp = Response(sw_js, mimetype="application/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp

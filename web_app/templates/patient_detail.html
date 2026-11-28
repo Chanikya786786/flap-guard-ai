@@ -22,14 +22,24 @@
       </form>
     </div>
   </div>
-  {% if latest %}
+  {% set sched = get_check_schedule(patient, latest) %}
   <div id="trend-meta-strip" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:0.82rem;">
-    <span class="badge badge-moderate">Trajectory: {{ latest.trend_status }}</span>
-    <span class="badge badge-low">Reliability: {{ latest.confidence_label }}</span>
-    {% if latest.ood_flag %}
-      <span class="badge badge-critical">OOD Sensor Warning — Verify Probe</span>
+    <span id="patient-schedule-badge" class="badge badge-{{ 'critical' if sched.badge_tone == 'danger' else ('high' if sched.badge_tone == 'warning' else 'low') }}">Schedule: {{ sched.status_label }}</span>
+    {% if latest %}
+      <span class="badge badge-moderate">Trajectory: {{ latest.trend_status }}</span>
+      <span class="badge badge-low">Reliability: {{ latest.confidence_label }}</span>
+      {% if latest.ood_flag %}
+        <span class="badge badge-critical">OOD Sensor Warning — Verify Probe</span>
+      {% endif %}
     {% endif %}
   </div>
+  {% if latest %}
+    {% set latest_exam = format_bedside_exam({'capillary_refill': latest.capillary_refill, 'flap_turgor': latest.flap_turgor, 'pinprick_bleeding': latest.pinprick_bleeding, 'doppler_quality': latest.doppler_quality}) %}
+    {% if latest_exam %}
+    <div id="latest-bedside-exam" style="margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:0.84rem;">
+      <strong>Latest Bedside Exam:</strong> {{ latest_exam }}
+    </div>
+    {% endif %}
   {% endif %}
   {% if latest and latest.clinical_notes %}
   <ul class="notes-list">
@@ -207,6 +217,7 @@
           <th>Fusion Index</th>
           <th>Prediction</th>
           <th>Risk Tier</th>
+          <th>Bedside Exam</th>
           <th>Mode</th>
         </tr>
       </thead>
@@ -221,6 +232,7 @@
           <td>{{ r.perfusion_fusion_index }}</td>
           <td><strong>{{ r.predicted_class }}</strong> ({{ r.risk_score_pct }}%)</td>
           <td><span class="badge badge-{{ r.risk_tier|lower }}">{{ r.risk_tier }}</span></td>
+          <td class="muted" style="font-size:0.82rem;">{{ format_bedside_exam({"capillary_refill": r.capillary_refill, "flap_turgor": r.flap_turgor, "pinprick_bleeding": r.pinprick_bleeding, "doppler_quality": r.doppler_quality}) or "-" }}</td>
           <td class="muted">{{ r.source_mode }}</td>
         </tr>
         {% endfor %}

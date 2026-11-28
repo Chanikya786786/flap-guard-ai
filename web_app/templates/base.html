@@ -2,9 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="theme-color" content="#0f4c81">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FlapGuard AI">
   <title>{% block title %}FlapGuard AI{% endblock %}</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -20,6 +26,7 @@
     {% if current_user.is_authenticated %}
     <div class="nav-links">
       <a id="nav-dashboard" class="{{ 'active' if request.endpoint == 'main.dashboard' else '' }}" href="{{ url_for('main.dashboard') }}">Ward</a>
+      <a id="nav-handoff" class="{{ 'active' if request.endpoint == 'main.shift_handoff_report' else '' }}" href="{{ url_for('main.shift_handoff_report') }}">Handoff</a>
       <a id="nav-alerts" class="{{ 'active' if request.endpoint == 'main.alerts_center' else '' }}" href="{{ url_for('main.alerts_center') }}">Alerts</a>
       <a id="nav-learning" class="{{ 'active' if request.endpoint == 'main.learning_center' else '' }}" href="{{ url_for('main.learning_center') }}">Learning</a>
       {% if current_user.role in ("Surgeon", "Admin") %}<a id="nav-audit" class="{{ 'active' if request.endpoint == 'main.audit_center' else '' }}" href="{{ url_for('main.audit_center') }}">Audit</a>{% endif %}
@@ -58,6 +65,13 @@
     FlapGuard AI &mdash; Clinical Decision Support for Oral &amp; Maxillofacial Surgeons and Post-Op ICU Teams. Always confirm findings clinically.
   </footer>
 
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js").catch(function () {});
+      });
+    }
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

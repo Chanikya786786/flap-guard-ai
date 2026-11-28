@@ -5,7 +5,7 @@ Clinical Workflow Utilities for FlapGuard AI (v3.2):
 - Priority-sorted SBAR (Situation, Background, Assessment, Recommendation) shift handoff generator
 """
 
-from datetime import timezone
+from datetime import timedelta, timezone
 from typing import Dict, List, Optional
 
 from web_app.models import utc_now
@@ -144,7 +144,9 @@ def build_bedside_exam_notes(exam: Optional[Dict[str, Optional[str]]]) -> List[s
 def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_alerts_count: int, generated_by: str) -> Dict[str, object]:
     """Generate a structured & plain-text SBAR shift handoff report for the active ward."""
     tier_priority = {"Critical": 0, "High": 1, "Moderate": 2, "Low": 3, "Unassessed": 4}
-    now_str = utc_now().strftime("%d %b %Y, %H:%M UTC")
+    _now_utc = utc_now()
+    _now_ist = _now_utc.astimezone(timezone(timedelta(hours=5, minutes=30)))
+    now_str = f"{_now_ist.strftime('%d %b %Y, %H:%M IST')} ({_now_utc.strftime('%H:%M UTC')})"
 
     items = []
     overdue_count = 0
@@ -218,7 +220,7 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
         "FLAPGUARD AI — SHIFT HANDOFF REPORT (SBAR)",
         f"Generated: {now_str} | By: {generated_by}",
         f"Ward Summary: {len(items)} active patients | {critical_high_count} Critical/High | {overdue_count} Overdue Checks | {active_alerts_count} Pending Alerts",
-        "=" * 54,
+        "=" * 36,
     ]
     if not items:
         lines.append("No active postoperative flap patients currently enrolled.")
@@ -231,7 +233,7 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
                     f"   B: {it['background']}",
                     f"   A: {it['assessment']}",
                     f"   R: {it['recommendation']}",
-                    "-" * 54,
+                    "-" * 36,
                 ]
             )
     lines.append("Note: Research & engineering prototype — confirm all findings clinically at bedside.")

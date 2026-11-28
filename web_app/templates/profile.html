@@ -1,36 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Clinician Profile | FlapGuard AI
-<div class="grid-2" style="margin-top:16px;">
-  <div class="card">
-    <h3>Active Sessions &amp; Devices</h3>
-    <p class="muted" style="margin-bottom:14px;">
-      Immediately revoke authentication tokens on all Android devices signed into your account.
-    </p>
-    <form method="POST" action="{{ url_for('main.profile_sign_out_all') }}" style="margin:0;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button id="sign-out-all-btn" type="submit" class="btn btn-outline">Sign Out All Mobile Devices</button>
-    </form>
-  </div>
-
-  <div class="card" style="border-left:4px solid #dc2626;">
-    <h3 style="color:#991b1b;">Delete Account (30-Day Grace Period)</h3>
-    <p class="muted" style="margin-bottom:12px;">
-      Schedules your personal profile for permanent deletion in <strong>30 days</strong>. You can sign back in anytime before the deadline to restore your account. Historical patient charts and audit logs remain anonymized.
-    </p>
-    <form method="POST" action="{{ url_for('main.profile_delete_account') }}" id="delete-account-form" onsubmit="return confirm('Schedule your account for permanent deletion in 30 days? You will be signed out immediately.');">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="form-group">
-        <label for="confirm-delete-pw">Confirm Password to Schedule Deletion</label>
-        <input id="confirm-delete-pw" name="confirm_delete_password" type="password" required placeholder="Enter current password">
-      </div>
-      <button id="schedule-delete-btn" type="submit" class="btn btn-outline-danger">Schedule Deletion in 30 Days</button>
-    </form>
-  </div>
-</div>
-{% endblock %}
+{% block title %}Clinician Profile | FlapGuard AI{% endblock %}
 {% block content %}
 <div class="page-header">
   <h1>Clinician Profile &amp; Ward Settings</h1>
+  <div class="btn-row">
+    <a id="profile-handoff-btn" class="btn btn-outline" href="{{ url_for('main.shift_handoff_report') }}">Shift Handoff Report (SBAR)</a>
+  </div>
 </div>
 
 <div class="grid-2">
@@ -52,7 +27,7 @@
       </div>
 
       <form method="POST" action="{{ url_for('main.profile_update_photo') }}" enctype="multipart/form-data" style="padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:12px;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="profile-photo-input" class="muted" style="display:block;font-weight:600;margin-bottom:6px;">Profile Photo (Syncs with Android App)</label>
         <div class="btn-row">
           <input id="profile-photo-input" name="photo" type="file" accept="image/*" style="flex:1;font-size:0.84rem;">
@@ -76,11 +51,11 @@
       </p>
       <div class="btn-row">
         <form method="POST" action="{{ url_for('main.profile_load_samples') }}" style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button id="load-samples-btn" type="submit" class="btn btn-accent">Load Sample OMFS Cases (3)</button>
         </form>
         <form method="POST" action="{{ url_for('main.profile_clear_ward') }}" style="margin:0;" onsubmit="return confirm('Clear all patients, readings, and alerts from the ward?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button id="clear-ward-btn" type="submit" class="btn btn-outline-danger">Clear Entire Ward</button>
         </form>
       </div>
@@ -90,7 +65,7 @@
   <div class="card">
     <h3>Change Password</h3>
     <form method="POST" action="{{ url_for('main.profile') }}" id="password-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-group">
         <label for="current-pw">Current Password</label>
         <input id="current-pw" name="current_password" type="password" required placeholder="Enter current password">
@@ -104,6 +79,34 @@
         <input id="confirm-pw" name="confirm_password" type="password" minlength="8" required placeholder="Confirm new password">
       </div>
       <button id="change-pw-submit" type="submit" class="btn">Update Password</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:16px;">
+  <div class="card">
+    <h3>Active Sessions &amp; Devices</h3>
+    <p class="muted" style="margin-bottom:14px;">
+      Immediately revoke authentication tokens on all mobile devices signed into your account.
+    </p>
+    <form method="POST" action="{{ url_for('main.profile_sign_out_all') }}" style="margin:0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button id="sign-out-all-btn" type="submit" class="btn btn-outline">Sign Out All Mobile Devices</button>
+    </form>
+  </div>
+
+  <div class="card" style="border-left:4px solid #dc2626;">
+    <h3 style="color:#991b1b;">Delete Account (30-Day Grace Period)</h3>
+    <p class="muted" style="margin-bottom:12px;">
+      Schedules your personal profile for permanent deletion in <strong>30 days</strong>. You can sign back in anytime before the deadline to restore your account. Historical patient charts and audit logs remain anonymized.
+    </p>
+    <form method="POST" action="{{ url_for('main.profile_delete_account') }}" id="delete-account-form" onsubmit="return confirm('Schedule your account for permanent deletion in 30 days? You will be signed out immediately.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label for="confirm-delete-pw">Confirm Password to Schedule Deletion</label>
+        <input id="confirm-delete-pw" name="confirm_delete_password" type="password" required placeholder="Enter current password">
+      </div>
+      <button id="schedule-delete-btn" type="submit" class="btn btn-outline-danger">Schedule Deletion in 30 Days</button>
     </form>
   </div>
 </div>

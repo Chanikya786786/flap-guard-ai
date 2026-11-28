@@ -1242,8 +1242,17 @@ class DashboardActivity : AppCompatActivity() {
         }
         cardPredictionResult.setCardBackgroundColor(Color.parseColor(bg))
         tvPredictionTitle.setTextColor(Color.parseColor(titleColor))
-        tvPredictionTitle.text = "$predClass  •  $tier Risk (${String.format(Locale.US, "%.0f%%", riskPct)})"
-        tvPredictionResult.text = msg
+        val cleanMsg = msg
+            .replace(Regex("""^(URGENT|WARNING|WATCH|MONITOR)\s*\[[^\]]+\]:\s*""", RegexOption.IGNORE_CASE), "")
+            .trim()
+        val trend = r.optString("trend_status", "")
+        val conf = r.optString("confidence_label", "")
+        val metaLine = buildList {
+            if (trend.isNotBlank()) add("Trend: $trend")
+            if (conf.isNotBlank()) add("Reliability: $conf")
+        }.joinToString(" · ")
+        tvPredictionTitle.text = "$predClass  •  $tier Risk (${String.format(Locale.US, "%.1f%%", riskPct)})"
+        tvPredictionResult.text = if (metaLine.isNotBlank()) "$cleanMsg\n$metaLine" else cleanMsg
     }
 
     private fun fetchAlerts(silent: Boolean) {

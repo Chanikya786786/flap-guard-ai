@@ -335,6 +335,56 @@ def run_validation_suite() -> str:
     ))
     idx += 1
 
+    # v3.2.1 Web & iOS PWA Parity: Manifest, Service Worker, Profile HTML Fix & Patient Detail Schedule
+    t0 = time.perf_counter()
+    pwa_app = _create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "SEED_SAMPLE_PATIENTS": True})
+    pwac = pwa_app.test_client()
+    r_man = pwac.get("/manifest.webmanifest")
+    r_sw = pwac.get("/sw.js")
+    r_ico = pwac.get("/static/img/apple-touch-icon.png")
+    man_json = r_man.get_json() or {}
+    pwa_ok = (
+        r_man.status_code == 200
+        and man_json.get("display") == "standalone"
+        and r_sw.status_code == 200
+        and "flapguard-static" in r_sw.get_data(as_text=True)
+        and r_ico.status_code == 200
+    )
+    rows.append(make_row(
+        "VAL", idx, "v3.2.1 Web & iOS PWA Parity", "Serve standalone PWA manifest, clinical-safe SW & iOS PNG icon",
+        "GET /manifest.webmanifest, /sw.js, /static/img/apple-touch-icon.png", "All 200 OK with standalone display",
+        f"man={r_man.status_code}, sw={r_sw.status_code}, icon={r_ico.status_code}",
+        (time.perf_counter() - t0) * 1000, pwa_ok,
+    ))
+    idx += 1
+
+    t0 = time.perf_counter()
+    pwac.post(
+        "/register",
+        data={"full_name": "Dr. Web Parity", "email": "webparity@hospital.org", "role": "Surgeon", "password": "Password@123", "confirm_password": "Password@123"},
+        follow_redirects=True,
+    )
+    prof_html = pwac.get("/profile").get_data(as_text=True)
+    pd_html = pwac.get("/patients/1").get_data(as_text=True)
+    ho_html = pwac.get("/handoff").get_data(as_text=True)
+    title_end = prof_html.find("</title>")
+    web_parity_ok = (
+        title_end > 0
+        and "delete-account-form" not in prof_html[:title_end]
+        and "delete-account-form" in prof_html[title_end:]
+        and "sign-out-all-btn" in prof_html[title_end:]
+        and "patient-schedule-badge" in pd_html
+        and "<th>Bedside Exam</th>" in pd_html
+        and "Shift Handoff Report (SBAR)" in ho_html
+    )
+    rows.append(make_row(
+        "VAL", idx, "v3.2.1 Web Parity Audit", "Profile deletion/sessions inside body, Patient Detail schedule/exam & /handoff",
+        "GET /profile, /patients/1, /handoff", "Valid <title>, body controls, schedule badge, Bedside Exam column & SBAR",
+        f"title_clean={('delete-account-form' not in prof_html[:title_end])}, pd_sched={('patient-schedule-badge' in pd_html)}",
+        (time.perf_counter() - t0) * 1000, web_parity_ok,
+    ))
+    idx += 1
+
     return write_excel_report("validation-test-report.xlsx", "Validation Test Report", rows)
 
 
