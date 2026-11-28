@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
     private var isRegisterMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        SecurePrefs.applySavedTheme(this)
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)

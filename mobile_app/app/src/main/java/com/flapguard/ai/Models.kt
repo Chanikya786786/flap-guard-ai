@@ -32,7 +32,8 @@ data class AlertItem(
     val acknowledged: Boolean,
     val acknowledgedBy: String,
     val patientId: Int = -1,
-    val createdAtIso: String = ""
+    val createdAtIso: String = "",
+    val groupedCount: Int = 1
 )
 
 data class ReadingPoint(

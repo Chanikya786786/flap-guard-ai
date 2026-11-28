@@ -25,6 +25,8 @@ import java.util.concurrent.Executors
 class SbarHandoffActivity : AppCompatActivity() {
 
     private val executor = Executors.newSingleThreadExecutor()
+    private var wasBackgroundedForLock = false
+    private var suppressChildLock = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private lateinit var tvMeta: TextView
@@ -42,6 +44,7 @@ class SbarHandoffActivity : AppCompatActivity() {
     private var latestSbarText: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        SecurePrefs.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         if (intent.getBooleanExtra("flag_secure", false)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -84,6 +87,7 @@ class SbarHandoffActivity : AppCompatActivity() {
                 putExtra(Intent.EXTRA_SUBJECT, "FlapGuard AI — Shift Handoff Report (SBAR)")
                 putExtra(Intent.EXTRA_TEXT, latestSbarText)
             }
+            suppressChildLock = true
             startActivity(Intent.createChooser(share, "Share Shift Handoff"))
         }
 
@@ -200,6 +204,23 @@ class SbarHandoffActivity : AppCompatActivity() {
                 }
             }
             llCards.addView(cardView)
+        }
+    }
+
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && !isFinishing && !suppressChildLock && SecurePrefs.isAppLockEnabled(this)) {
+            wasBackgroundedForLock = true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        suppressChildLock = false
+        if (wasBackgroundedForLock && SecurePrefs.isAppLockEnabled(this)) {
+            wasBackgroundedForLock = false
+            finish()
         }
     }
 

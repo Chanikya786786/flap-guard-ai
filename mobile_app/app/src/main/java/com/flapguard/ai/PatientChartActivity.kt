@@ -24,6 +24,8 @@ import java.util.concurrent.Executors
 class PatientChartActivity : AppCompatActivity() {
 
     private val executor = Executors.newSingleThreadExecutor()
+    private var wasBackgroundedForLock = false
+    private var suppressChildLock = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private lateinit var chartView: TrendChartView
@@ -36,6 +38,7 @@ class PatientChartActivity : AppCompatActivity() {
     private lateinit var tvRecentEmpty: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        SecurePrefs.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         if (intent.getBooleanExtra("flag_secure", false)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -367,6 +370,23 @@ class PatientChartActivity : AppCompatActivity() {
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && !isFinishing && !suppressChildLock && SecurePrefs.isAppLockEnabled(this)) {
+            wasBackgroundedForLock = true
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        suppressChildLock = false
+        if (wasBackgroundedForLock && SecurePrefs.isAppLockEnabled(this)) {
+            wasBackgroundedForLock = false
+            finish()
+        }
+    }
 
     override fun onDestroy() {
         super.onDestroy()

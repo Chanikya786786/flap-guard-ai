@@ -1,6 +1,6 @@
 {
   "version": "v2.0",
-  "trained_at_utc": "2026-11-28T10:37:45.588665+00:00",
+  "trained_at_utc": "2026-11-28T11:05:11.317493+00:00",
   "algorithm": "CalibratedRandomForest (Platt Sigmoid + Multisensor Fusion)",
   "calibration_method": "sigmoid (3-fold Platt scaling)",
   "base_samples": 1500,

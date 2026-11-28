@@ -206,15 +206,25 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var layoutPreviewFrame: FrameLayout
     private lateinit var ivFlapPreview: ImageView
     private lateinit var tvVisionResult: TextView
-    private lateinit var tilIrTemp: TextInputLayout
-    private lateinit var tilCtrlTemp: TextInputLayout
-    private lateinit var tilSpo2: TextInputLayout
-    private lateinit var tilDoppler: TextInputLayout
-    private lateinit var etIrTemp: TextInputEditText
-    private lateinit var etCtrlTemp: TextInputEditText
-    private lateinit var etSpo2: TextInputEditText
-    private lateinit var etDoppler: TextInputEditText
-    private lateinit var etHours: TextInputEditText
+    private lateinit var tvSelectedPatientSub: TextView
+    private lateinit var tileIrTemp: LinearLayout
+    private lateinit var tileCtrlTemp: LinearLayout
+    private lateinit var tileSpo2: LinearLayout
+    private lateinit var tileDoppler: LinearLayout
+    private lateinit var tvHintIrTemp: TextView
+    private lateinit var tvHintCtrlTemp: TextView
+    private lateinit var tvHintSpo2: TextView
+    private lateinit var tvHintDoppler: TextView
+    private lateinit var etIrTemp: EditText
+    private lateinit var etCtrlTemp: EditText
+    private lateinit var etSpo2: EditText
+    private lateinit var etDoppler: EditText
+    private lateinit var etHours: EditText
+    private lateinit var tabAlertsActive: TextView
+    private lateinit var tabAlertsHistory: TextView
+    private lateinit var tvEmptyAlertsText: TextView
+    private lateinit var tvActiveThemeLabel: TextView
+    private var alertTabMode: String = "ACTIVE"
     private lateinit var cardPredictionResult: MaterialCardView
     private lateinit var tvPredictionTitle: TextView
     private lateinit var tvPredictionResult: TextView
@@ -285,6 +295,7 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        SecurePrefs.applySavedTheme(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
 
@@ -457,10 +468,19 @@ class DashboardActivity : AppCompatActivity() {
         layoutPreviewFrame = findViewById(R.id.layout_preview_frame)
         ivFlapPreview = findViewById(R.id.iv_flap_preview)
         tvVisionResult = findViewById(R.id.tv_vision_result)
-        tilIrTemp = findViewById(R.id.til_ir_temp)
-        tilCtrlTemp = findViewById(R.id.til_ctrl_temp)
-        tilSpo2 = findViewById(R.id.til_spo2)
-        tilDoppler = findViewById(R.id.til_doppler)
+        tvSelectedPatientSub = findViewById(R.id.tv_selected_patient_sub)
+        tileIrTemp = findViewById(R.id.tile_ir_temp)
+        tileCtrlTemp = findViewById(R.id.tile_ctrl_temp)
+        tileSpo2 = findViewById(R.id.tile_spo2)
+        tileDoppler = findViewById(R.id.tile_doppler)
+        tvHintIrTemp = findViewById(R.id.tv_hint_ir_temp)
+        tvHintCtrlTemp = findViewById(R.id.tv_hint_ctrl_temp)
+        tvHintSpo2 = findViewById(R.id.tv_hint_spo2)
+        tvHintDoppler = findViewById(R.id.tv_hint_doppler)
+        tabAlertsActive = findViewById(R.id.tab_alerts_active)
+        tabAlertsHistory = findViewById(R.id.tab_alerts_history)
+        tvEmptyAlertsText = findViewById(R.id.tv_empty_alerts_text)
+        tvActiveThemeLabel = findViewById(R.id.tv_active_theme_label)
         etIrTemp = findViewById(R.id.et_ir_temp)
         etCtrlTemp = findViewById(R.id.et_ctrl_temp)
         etSpo2 = findViewById(R.id.et_spo2)
@@ -602,11 +622,12 @@ class DashboardActivity : AppCompatActivity() {
         }
         btnWardHandoff.setOnClickListener { showSbarHandoffSheet() }
         setupWardTriageControls()
+        setupPhase2Controls()
         findViewById<LinearLayout>(R.id.row_sbar_handoff).setOnClickListener { showSbarHandoffSheet() }
         findViewById<LinearLayout>(R.id.row_toggle_exam).setOnClickListener {
             val expand = layoutExamFields.visibility != View.VISIBLE
             layoutExamFields.visibility = if (expand) View.VISIBLE else View.GONE
-            tvToggleExamLabel.text = if (expand) "− Bedside Physical Exam (Optional)" else "+ Bedside Physical Exam (Optional)"
+            updateExamToggleBadge()
         }
         findViewById<LinearLayout>(R.id.row_delete_account).setOnClickListener {
             showDeleteAccountSheet()
@@ -903,6 +924,136 @@ class DashboardActivity : AppCompatActivity() {
         patientAdapter.submitList(filtered)
     }
 
+    private fun setupPhase2Controls() {
+        tabAlertsActive.setOnClickListener {
+            alertTabMode = "ACTIVE"
+            renderFilteredAlerts()
+        }
+        tabAlertsHistory.setOnClickListener {
+            alertTabMode = "HISTORY"
+            renderFilteredAlerts()
+        }
+        renderFilteredAlerts()
+
+        findViewById<LinearLayout>(R.id.row_theme_mode).setOnClickListener {
+            showThemeModeDialog()
+        }
+        refreshThemeModeLabel()
+
+        val examGroups = listOf(cgCapRefill, cgTurgor, cgPinprick, cgDopplerQual)
+        examGroups.forEach { cg ->
+            cg.setOnCheckedStateChangeListener { _, _ -> updateExamToggleBadge() }
+        }
+        updateExamToggleBadge()
+    }
+
+    private fun updateExamToggleBadge() {
+        val count = listOf(cgCapRefill, cgTurgor, cgPinprick, cgDopplerQual)
+            .count { it.checkedChipId != View.NO_ID }
+        val expanded = layoutExamFields.visibility == View.VISIBLE
+        val prefix = if (expanded) "−" else "+"
+        tvToggleExamLabel.text = if (count > 0) {
+            "$prefix Bedside Physical Exam ($count selected)"
+        } else {
+            "$prefix Bedside Physical Exam (Optional)"
+        }
+    }
+
+    private fun resetVitalTileHints() {
+        val muted = ContextCompat.getColor(this, R.color.fg_text_muted)
+        listOf(tileIrTemp, tileCtrlTemp, tileSpo2, tileDoppler).forEach {
+            it.setBackgroundResource(R.drawable.bg_vital_input)
+        }
+        tvHintIrTemp.text = "Ref 35.5–37.5°C"
+        tvHintCtrlTemp.text = "ΔT normal < 1.5°C"
+        tvHintSpo2.text = "Alert < 90%"
+        tvHintDoppler.text = "Alert < 12 cm/s"
+        listOf(tvHintIrTemp, tvHintCtrlTemp, tvHintSpo2, tvHintDoppler).forEach { it.setTextColor(muted) }
+    }
+
+    private fun setVitalTileError(tile: LinearLayout, hintView: TextView, errText: String) {
+        tile.setBackgroundResource(R.drawable.bg_vital_input_error)
+        hintView.text = errText
+        hintView.setTextColor(ContextCompat.getColor(this, R.color.fg_danger))
+    }
+
+    private fun renderFilteredAlerts() {
+        val activeList = currentAlerts.filter { !it.acknowledged }
+        val reviewedRaw = currentAlerts.filter { it.acknowledged }
+
+        val groupedHistory = mutableListOf<AlertItem>()
+        val seenKeys = LinkedHashMap<String, MutableList<AlertItem>>()
+        for (a in reviewedRaw) {
+            val normMsg = a.message.replace(Regex("""^(URGENT|WARNING|WATCH|MONITOR)\s*\[[^\]]+\]:\s*""", RegexOption.IGNORE_CASE), "").trim()
+            val key = "${a.patientName}|${a.riskTier}|$normMsg"
+            seenKeys.getOrPut(key) { mutableListOf() }.add(a)
+        }
+        for ((_, group) in seenKeys) {
+            val head = group.first()
+            groupedHistory.add(head.copy(groupedCount = group.size))
+        }
+
+        tabAlertsActive.text = if (activeList.isNotEmpty()) "Needs Action (${activeList.size})" else "Needs Action"
+        tabAlertsHistory.text = if (reviewedRaw.isNotEmpty()) "History (${reviewedRaw.size})" else "History"
+
+        val activeBg = ContextCompat.getColor(this, R.color.fg_primary)
+        val activeFg = ContextCompat.getColor(this, R.color.white)
+        val idleBg = android.graphics.Color.TRANSPARENT
+        val idleFg = ContextCompat.getColor(this, R.color.fg_text_secondary)
+
+        val showingActive = (alertTabMode == "ACTIVE")
+        tabAlertsActive.backgroundTintList = ColorStateList.valueOf(if (showingActive) activeBg else idleBg)
+        tabAlertsActive.setTextColor(if (showingActive) activeFg else idleFg)
+        tabAlertsHistory.backgroundTintList = ColorStateList.valueOf(if (!showingActive) activeBg else idleBg)
+        tabAlertsHistory.setTextColor(if (!showingActive) activeFg else idleFg)
+
+        val displayList = if (showingActive) activeList else groupedHistory
+        tvAlertsSummary.text = if (showingActive) {
+            if (activeList.isEmpty()) "All clear — 0 alerts pending review"
+            else "${activeList.size} pending clinical review"
+        } else {
+            if (reviewedRaw.isEmpty()) "No reviewed alerts yet"
+            else "${reviewedRaw.size} reviewed (${groupedHistory.size} grouped)"
+        }
+
+        if (displayList.isEmpty()) {
+            cardEmptyAlerts.visibility = View.VISIBLE
+            rvAlerts.visibility = View.GONE
+            tvEmptyAlertsText.text = if (showingActive) {
+                "All clear — no active flap compromise alerts pending review."
+            } else {
+                "No reviewed alert history recorded yet."
+            }
+        } else {
+            cardEmptyAlerts.visibility = View.GONE
+            rvAlerts.visibility = View.VISIBLE
+        }
+        alertAdapter.submitList(displayList)
+    }
+
+    private fun refreshThemeModeLabel() {
+        tvActiveThemeLabel.text = when (SecurePrefs.getThemeMode(this)) {
+            "light" -> "Daylight (Clinical Light)"
+            "dark" -> "ICU Night (Low-Glare Dark)"
+            else -> "Follow System"
+        }
+    }
+
+    private fun showThemeModeDialog() {
+        val labels = arrayOf("Follow System", "Daylight (Clinical Light)", "ICU Night (Low-Glare Dark)")
+        val values = arrayOf("system", "light", "dark")
+        val current = SecurePrefs.getThemeMode(this)
+        val idx = values.indexOf(current).coerceAtLeast(0)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Display Appearance")
+            .setSingleChoiceItems(labels, idx) { dialog, which ->
+                SecurePrefs.setThemeMode(this, values[which])
+                refreshThemeModeLabel()
+                dialog.dismiss()
+            }
+            .show()
+    }
+
     private fun selectedPatient(): PatientItem? {
         return if (selectedPatientIndex in patientsList.indices) patientsList[selectedPatientIndex] else null
     }
@@ -911,10 +1062,16 @@ class DashboardActivity : AppCompatActivity() {
         val p = selectedPatient()
         if (p != null) {
             tvSelectedAvatar.text = initialsOf(p.fullName)
-            tvSelectedPatient.text = "${p.fullName}  •  ${p.mrn}"
+            tvSelectedPatient.text = p.fullName
+            tvSelectedPatientSub.text = String.format(
+                Locale.US, "%s  •  %s  •  %.1fh post-op", p.mrn, p.flapType, p.hoursPostOp
+            )
+            etSpo2.hint = p.spo2Pct?.let { String.format(Locale.US, "Last %.1f", it) } ?: "96.5"
+            etDoppler.hint = p.dopplerCmS?.let { String.format(Locale.US, "Last %.1f", it) } ?: "20.5"
         } else {
             tvSelectedAvatar.text = "--"
             tvSelectedPatient.text = "No patients yet"
+            tvSelectedPatientSub.text = "Enroll a patient in Ward to begin assessments"
         }
     }
 
@@ -1208,7 +1365,7 @@ class DashboardActivity : AppCompatActivity() {
             return
         }
 
-        listOf(tilIrTemp, tilCtrlTemp, tilSpo2, tilDoppler).forEach { it.error = null }
+        resetVitalTileHints()
 
         val irTemp = etIrTemp.text?.toString()?.trim()?.toDoubleOrNull()
         val ctrlTemp = etCtrlTemp.text?.toString()?.trim()?.toDoubleOrNull()
@@ -1218,17 +1375,17 @@ class DashboardActivity : AppCompatActivity() {
 
         val providedCount = listOf(irTemp, ctrlTemp, spo2, doppler).count { it != null }
         if (providedCount < 2) {
-            if (irTemp == null) tilIrTemp.error = "Needed"
-            if (spo2 == null) tilSpo2.error = "Needed"
+            if (irTemp == null) setVitalTileError(tileIrTemp, tvHintIrTemp, "Enter reading")
+            if (spo2 == null) setVitalTileError(tileSpo2, tvHintSpo2, "Enter reading")
             showNotice("Enter at least 2 bedside readings to assess flap risk.")
             return
         }
 
         var rangeOk = true
-        if (irTemp != null && (irTemp < 20.0 || irTemp > 43.0)) { tilIrTemp.error = "20–43°C"; rangeOk = false }
-        if (ctrlTemp != null && (ctrlTemp < 30.0 || ctrlTemp > 43.0)) { tilCtrlTemp.error = "30–43°C"; rangeOk = false }
-        if (spo2 != null && (spo2 < 0.0 || spo2 > 100.0)) { tilSpo2.error = "0–100%"; rangeOk = false }
-        if (doppler != null && (doppler < 0.0 || doppler > 60.0)) { tilDoppler.error = "0–60 cm/s"; rangeOk = false }
+        if (irTemp != null && (irTemp < 20.0 || irTemp > 43.0)) { setVitalTileError(tileIrTemp, tvHintIrTemp, "Range 20–43°C"); rangeOk = false }
+        if (ctrlTemp != null && (ctrlTemp < 30.0 || ctrlTemp > 43.0)) { setVitalTileError(tileCtrlTemp, tvHintCtrlTemp, "Range 30–43°C"); rangeOk = false }
+        if (spo2 != null && (spo2 < 0.0 || spo2 > 100.0)) { setVitalTileError(tileSpo2, tvHintSpo2, "Range 0–100%"); rangeOk = false }
+        if (doppler != null && (doppler < 0.0 || doppler > 60.0)) { setVitalTileError(tileDoppler, tvHintDoppler, "Range 0–60 cm/s"); rangeOk = false }
         if (!rangeOk) return
 
         beginSync()
@@ -1393,10 +1550,7 @@ class DashboardActivity : AppCompatActivity() {
 
                 currentAlerts.clear()
                 currentAlerts.addAll(list)
-                tvAlertsSummary.text = if (unack > 0) "$unack pending review" else "All alerts reviewed"
-                cardEmptyAlerts.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
-                rvAlerts.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
-                alertAdapter.submitList(list)
+                renderFilteredAlerts()
             }
         }
     }
@@ -1856,13 +2010,42 @@ class DashboardActivity : AppCompatActivity() {
             android.R.layout.simple_spinner_dropdown_item,
             patientsList.map { "${it.fullName} (${it.mrn})" }
         )
-        val chipGroup = view.findViewById<ChipGroup>(R.id.chip_group_outcome)
-        val etNotes = view.findViewById<TextInputEditText>(R.id.et_outcome_notes_sheet)
+        if (selectedPatientIndex in patientsList.indices) {
+            spPatient.setSelection(selectedPatientIndex)
+        }
+
+        val optNormal = view.findViewById<LinearLayout>(R.id.chip_outcome_normal)
+        val optVenous = view.findViewById<LinearLayout>(R.id.chip_outcome_venous)
+        val optArterial = view.findViewById<LinearLayout>(R.id.chip_outcome_arterial)
+        val options = listOf(
+            optNormal to "Normal",
+            optVenous to "Venous Compromise",
+            optArterial to "Arterial Compromise"
+        )
+        var chosenOutcome = "Normal"
+
+        fun updateOutcomeSelection() {
+            val activeBg = ContextCompat.getColor(this, R.color.fg_primary_soft)
+            val idleBg = ContextCompat.getColor(this, R.color.fg_input_bg)
+            for ((cardOpt, value) in options) {
+                cardOpt.backgroundTintList = ColorStateList.valueOf(
+                    if (value == chosenOutcome) activeBg else idleBg
+                )
+            }
+        }
+        for ((cardOpt, value) in options) {
+            cardOpt.setOnClickListener {
+                chosenOutcome = value
+                updateOutcomeSelection()
+            }
+        }
+        updateOutcomeSelection()
+
+        val etNotes = view.findViewById<EditText>(R.id.et_outcome_notes_sheet)
         val btnSave = view.findViewById<MaterialButton>(R.id.btn_save_outcome_sheet)
 
         btnSave.setOnClickListener {
             val patient = patientsList[spPatient.selectedItemPosition]
-            val outcome = view.findViewById<Chip>(chipGroup.checkedChipId)?.text?.toString() ?: "Normal"
             val notes = etNotes.text?.toString()?.trim().orEmpty()
 
             btnSave.isEnabled = false
@@ -1870,7 +2053,7 @@ class DashboardActivity : AppCompatActivity() {
             executor.execute {
                 val body = JSONObject().apply {
                     put("patient_id", patient.id)
-                    put("verified_outcome", outcome)
+                    put("verified_outcome", chosenOutcome)
                     put("surgeon_notes", notes)
                 }
                 val res = ApiClient.request(serverUrl(), "/mobile/outcomes", "POST", body, authToken)
@@ -1879,7 +2062,7 @@ class DashboardActivity : AppCompatActivity() {
                     btnSave.isEnabled = true
                     if (res.ok) {
                         sheet.dismiss()
-                        showNotice("Outcome saved for continuous learning.")
+                        showNotice("Confirmed outcome saved for continuous learning.")
                     } else {
                         showNotice("Failed: ${res.errorMessage}")
                     }

@@ -1,6 +1,7 @@
 package com.flapguard.ai
 
 import android.content.Context
+import androidx.appcompat.app.AppCompatDelegate
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -24,6 +25,7 @@ object SecurePrefs {
     private const val LEGACY_TOKEN_KEY = "auth_token"
     private const val PREF_SCREEN_PRIVACY = "screen_privacy_secure_flag"
     private const val PREF_APP_LOCK = "device_biometric_app_lock"
+    private const val PREF_THEME_MODE = "ui_theme_mode"
 
     private fun getOrCreateKey(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
@@ -135,5 +137,27 @@ object SecurePrefs {
             .edit()
             .putBoolean(PREF_APP_LOCK, enabled)
             .apply()
+    }
+
+    fun getThemeMode(context: Context): String {
+        return context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(PREF_THEME_MODE, "system") ?: "system"
+    }
+
+    fun setThemeMode(context: Context, mode: String) {
+        context.getSharedPreferences(ApiClient.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_THEME_MODE, mode)
+            .apply()
+        applySavedTheme(context)
+    }
+
+    fun applySavedTheme(context: Context) {
+        val target = when (getThemeMode(context)) {
+            "light" -> AppCompatDelegate.MODE_NIGHT_NO
+            "dark" -> AppCompatDelegate.MODE_NIGHT_YES
+            else -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        AppCompatDelegate.setDefaultNightMode(target)
     }
 }

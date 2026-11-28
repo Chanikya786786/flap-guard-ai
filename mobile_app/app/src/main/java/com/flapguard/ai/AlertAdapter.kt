@@ -1,13 +1,14 @@
 package com.flapguard.ai
 
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -60,39 +61,58 @@ class AlertAdapter(
 
     override fun onBindViewHolder(holder: AlertViewHolder, position: Int) {
         val item = items[position]
+        val ctx = holder.itemView.context
+        val density = ctx.resources.displayMetrics.density
+
         holder.tvPatient.text = item.patientName
 
         val formattedTime = formatTimestamp(item.createdAtIso)
         holder.tvTime.visibility = View.VISIBLE
         holder.tvTime.text = if (formattedTime.isNotBlank()) {
-            "$formattedTime  ·  Tap to view trend"
+            "$formattedTime  ·  Tap to open chart"
         } else {
-            "Tap to view patient trend"
+            "Tap to open patient chart"
         }
 
         val cleanMsg = item.message
-            .replace(Regex("^URGENT\\s*\\[[^]]+]:\\s*"), "")
+            .replace(Regex("""^(URGENT|WARNING|WATCH|MONITOR)\s*\[[^\]]+\]:\s*""", RegexOption.IGNORE_CASE), "")
             .trim()
         holder.tvMessage.text = cleanMsg.ifBlank { item.message }
 
         holder.itemView.setOnClickListener { onCardClick(item) }
 
         if (item.acknowledged) {
-            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#059669"))
-            holder.tvTier.text = "Reviewed"
-            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#ECFDF5"))
-            holder.tvTier.setTextColor(Color.parseColor("#059669"))
+            val colOk = ContextCompat.getColor(ctx, R.color.fg_success)
+            val colOkBg = ContextCompat.getColor(ctx, R.color.fg_success_bg)
+            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(colOk)
+            holder.tvTier.text = if (item.groupedCount > 1) "Reviewed ×${item.groupedCount}" else "Reviewed"
+            holder.tvTier.backgroundTintList = ColorStateList.valueOf(colOkBg)
+            holder.tvTier.setTextColor(colOk)
+            holder.card.strokeColor = ContextCompat.getColor(ctx, R.color.fg_border)
+            holder.card.strokeWidth = (1f * density).toInt()
             holder.btnAck.visibility = View.GONE
             holder.tvAckedBy.visibility = View.VISIBLE
-            holder.tvAckedBy.text = "Reviewed by ${item.acknowledgedBy}"
+            holder.tvAckedBy.text = if (item.groupedCount > 1) {
+                "Reviewed by ${item.acknowledgedBy}  ·  ${item.groupedCount} similar events"
+            } else {
+                "Reviewed by ${item.acknowledgedBy}"
+            }
         } else {
-            val accent = if (item.riskTier == "Critical") "#E11D48" else "#D97706"
-            val bg = if (item.riskTier == "Critical") "#FFF1F2" else "#FFFBEB"
-            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(Color.parseColor(accent))
+            val isCrit = item.riskTier == "Critical"
+            val accent = ContextCompat.getColor(ctx, if (isCrit) R.color.fg_danger else R.color.fg_warning)
+            val bg = ContextCompat.getColor(ctx, if (isCrit) R.color.fg_danger_bg else R.color.fg_warning_bg)
+            holder.viewAccent.backgroundTintList = ColorStateList.valueOf(accent)
             holder.tvTier.text = item.riskTier
-            holder.tvTier.backgroundTintList = ColorStateList.valueOf(Color.parseColor(bg))
-            holder.tvTier.setTextColor(Color.parseColor(accent))
+            holder.tvTier.backgroundTintList = ColorStateList.valueOf(bg)
+            holder.tvTier.setTextColor(accent)
+            holder.card.strokeColor = ContextCompat.getColor(
+                ctx,
+                if (isCrit) R.color.fg_danger_border else R.color.fg_border
+            )
+            holder.card.strokeWidth = ((if (isCrit) 1.5f else 1f) * density).toInt()
             holder.btnAck.visibility = View.VISIBLE
+            holder.btnAck.setTextColor(accent)
+            holder.btnAck.backgroundTintList = ColorStateList.valueOf(bg)
             holder.tvAckedBy.visibility = View.GONE
             holder.btnAck.setOnClickListener { onAcknowledge(item) }
         }
@@ -101,6 +121,7 @@ class AlertAdapter(
     override fun getItemCount(): Int = items.size
 
     class AlertViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val card: MaterialCardView = view.findViewById(R.id.card_alert)
         val viewAccent: View = view.findViewById(R.id.view_alert_accent)
         val tvPatient: TextView = view.findViewById(R.id.tv_alert_patient)
         val tvTime: TextView = view.findViewById(R.id.tv_alert_time)
