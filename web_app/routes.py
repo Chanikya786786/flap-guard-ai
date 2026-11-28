@@ -1506,9 +1506,10 @@ def pwa_service_worker():
     from flask import Response
     # Clinical-safe SW: caches ONLY static UI assets; NEVER caches private patient HTML/API responses.
     sw_js = """
-const STATIC_CACHE = "flapguard-static-v321";
+const STATIC_CACHE = "flapguard-static-v400";
 const STATIC_ASSETS = [
   "/static/css/style.css",
+  "/static/js/patient_monitor.js",
   "/static/img/logo.svg",
   "/static/img/apple-touch-icon.png",
   "/static/img/icon-192.png",

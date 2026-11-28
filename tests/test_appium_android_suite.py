@@ -472,15 +472,25 @@ def run_appium_android_suite() -> str:
             t0 = time.perf_counter()
             before_cnt = _app_outcome_count(app)
             _scroll_and_find(driver, "row_log_outcome").click()
-            note_input = WebDriverWait(driver, 12).until(
-                EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
-            )
+            try:
+                note_input = WebDriverWait(driver, 6).until(
+                    EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
+                )
+            except Exception:
+                _scroll_and_find(driver, "row_log_outcome").click()
+                note_input = WebDriverWait(driver, 12).until(
+                    EC.presence_of_element_located((AppiumBy.ACCESSIBILITY_ID, "outcome_notes_input"))
+                )
             note_input.send_keys(f"Mobile verified postoperative check #{i+1}")
             _safe_hide_keyboard(driver)
             _find_by_id(driver, "btn_save_outcome_sheet", timeout=10).click()
             WebDriverWait(driver, 12).until(
                 lambda d: _app_outcome_count(app) > before_cnt
             )
+            WebDriverWait(driver, 10).until(
+                EC.invisibility_of_element_located((AppiumBy.ID, _rid("btn_save_outcome_sheet")))
+            )
+            time.sleep(0.35)
             after_cnt = _app_outcome_count(app)
             record("Mobile Outcomes Sync", f"Save verified outcome via Bottom Sheet #{i+1}", f"note #{i+1}", f"DB count > {before_cnt}", f"db_count={after_cnt}", t0, after_cnt > before_cnt)
 
