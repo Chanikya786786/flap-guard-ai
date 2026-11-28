@@ -93,8 +93,15 @@ class Patient(db.Model):
     def latest_reading(self):
         return self.readings.first()
 
+    @property
+    def live_hours_post_op(self) -> float:
+        from web_app.clinical_workflow import compute_live_hours_post_op
+        return compute_live_hours_post_op(self, self.latest_reading)
+
     def to_dict(self) -> dict:
+        from web_app.clinical_workflow import compute_live_hours_post_op
         latest = self.latest_reading
+        recorded = latest.hours_post_op if latest else self.hours_post_op
         return {
             "id": self.id,
             "mrn": self.mrn,
@@ -102,7 +109,8 @@ class Patient(db.Model):
             "age": self.age,
             "flap_type": self.flap_type,
             "surgery_site": self.surgery_site,
-            "hours_post_op": latest.hours_post_op if latest else self.hours_post_op,
+            "hours_post_op": compute_live_hours_post_op(self, latest),
+            "recorded_hours_post_op": recorded,
             "assigned_surgeon": self.assigned_surgeon.full_name if self.assigned_surgeon else "Unassigned",
             "is_archived": bool(self.is_archived),
             "latest_reading": latest.to_dict() if latest else None,

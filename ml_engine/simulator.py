@@ -5,7 +5,7 @@ readings for Healthy, Venous Deterioration, and Arterial Deterioration scenarios
 """
 
 import random
-from typing import Dict
+from typing import Dict, List, Optional
 
 from ml_engine.model_service import predict_flap_status
 
@@ -17,6 +17,8 @@ def generate_simulated_reading(
     scenario: str = "normal",
     step: int = 0,
     seed: int = None,
+    history: Optional[List[object]] = None,
+    base_hours_post_op: Optional[float] = None,
 ) -> Dict[str, object]:
     """
     Generate one realistic sensor reading at time-step `step` (0..10)
@@ -60,6 +62,11 @@ def generate_simulated_reading(
     cyanosis = round(max(0.0, min(1.0, cyanosis)), 4)
     pallor = round(max(0.0, min(1.0, pallor)), 4)
 
+    if base_hours_post_op is not None:
+        sim_hours = round(min(720.0, max(0.0, float(base_hours_post_op)) + max(0.2, step * 0.25)), 1)
+    else:
+        sim_hours = round(6.0 + step * 1.5, 1)
+
     prediction = predict_flap_status(
         ir_flap_temp_c=ir_flap_temp,
         control_skin_temp_c=control_temp,
@@ -68,7 +75,8 @@ def generate_simulated_reading(
         visual_redness_index=redness,
         visual_cyanosis_index=cyanosis,
         visual_pallor_index=pallor,
-        hours_post_op=round(6.0 + step * 1.5, 1),
+        hours_post_op=sim_hours,
+        history=history,
     )
 
     return {

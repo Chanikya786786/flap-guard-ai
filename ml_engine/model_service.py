@@ -322,6 +322,21 @@ def evaluate_ood(features: Dict[str, float], metadata: Dict[str, object]) -> Tup
             if z >= 5.5 and not any(col in r for r in reasons):
                 reasons.append(f"{col} deviates strongly from training distribution (z={z:.1f})")
 
+    # Cross-sensor physiological discordance guardrails (probable probe detachment / artifact)
+    td = float(features.get("temp_delta_c", 0.0))
+    sp = float(features.get("spo2_pct", 96.0))
+    dp = float(features.get("doppler_flow_cm_s", 20.0))
+    if (td >= 4.5 or sp <= 55.0) and dp >= 18.0:
+        reasons.append(
+            f"Discordant sensors: severe thermal/SpO2 drop (ΔT={td:.1f}°C, SpO2={sp:.1f}%) "
+            f"with strong Doppler ({dp:.1f} cm/s) — verify probe contact"
+        )
+    if dp <= 2.0 and sp >= 95.0 and td <= 0.6:
+        reasons.append(
+            f"Discordant sensors: absent Doppler ({dp:.1f} cm/s) with warm, well-oxygenated tissue "
+            f"(SpO2={sp:.1f}%, ΔT={td:.1f}°C) — verify Doppler placement"
+        )
+
     return len(reasons) > 0, reasons, round(max_z, 2)
 
 
@@ -602,3 +617,11 @@ def retrain_from_postop_outcomes(
         "metadata": cand_meta,
         "model": cand_model,
     }
+
+
+def get_evaluation_basis(metadata: Dict[str, object], verified_outcomes_count: int = 0) -> str:
+    """Honest, surgeon-transparent disclosure of model validation basis."""
+    n = int(verified_outcomes_count or metadata.get("postop_outcomes_added") or 0)
+    if n > 0:
+        return f"Synthetic OMFS benchmark + {n} surgeon-verified outcome(s) (prospective clinical validation pending)"
+    return "Synthetic OMFS benchmark only (prospective clinical validation pending)"

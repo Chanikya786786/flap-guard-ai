@@ -27,6 +27,7 @@ from sqlalchemy.orm import joinedload
 
 from ml_engine.fusion import classify_visual_triage
 from ml_engine.model_service import (
+    get_evaluation_basis,
     load_model_and_metadata,
     predict_flap_status,
     retrain_from_postop_outcomes,
@@ -269,6 +270,8 @@ def health():
                 "model_accuracy": meta["accuracy"],
                 "model_brier_score": meta.get("brier_score"),
                 "calibration": meta.get("calibration_method", "sigmoid"),
+                "verified_outcomes_count": int(PostOpOutcome.query.count()),
+                "evaluation_basis": get_evaluation_basis(meta, int(PostOpOutcome.query.count())),
                 "patients_count": int(patients_count),
             }
         )
@@ -683,7 +686,7 @@ def add_reading(patient_id: int):
         control_temp = float(request.form.get("control_skin_temp_c", ""))
         spo2 = float(request.form.get("spo2_pct", ""))
         doppler = float(request.form.get("doppler_flow_cm_s", ""))
-        hours_post_op = float(request.form.get("hours_post_op") or patient.hours_post_op)
+        hours_post_op = float(request.form.get("hours_post_op") or patient.live_hours_post_op)
         redness = float(request.form.get("visual_redness_index") or 0.14)
         cyanosis = float(request.form.get("visual_cyanosis_index") or 0.03)
         pallor = float(request.form.get("visual_pallor_index") or 0.42)
@@ -783,7 +786,12 @@ def simulate_step(patient_id: int):
     if scenario not in SCENARIOS:
         return jsonify({"error": f"Invalid scenario. Choose from {SCENARIOS}."}), 400
 
-    sim = generate_simulated_reading(scenario=scenario, step=step)
+    sim = generate_simulated_reading(
+        scenario=scenario,
+        step=step,
+        history=_recent_patient_history(patient),
+        base_hours_post_op=patient.live_hours_post_op,
+    )
     reading = _save_prediction_reading(
         patient=patient,
         recorded_by_id=current_user.id,
@@ -1155,7 +1163,8 @@ def mobile_add_reading(patient_id: int):
         control_temp = _opt_float("control_skin_temp_c")
         spo2 = _opt_float("spo2_pct")
         doppler = _opt_float("doppler_flow_cm_s")
-        hours_post_op = float(data.get("hours_post_op", patient.hours_post_op))
+        raw_hrs = data.get("hours_post_op")
+        hours_post_op = float(raw_hrs) if raw_hrs not in (None, "") else patient.live_hours_post_op
         redness = float(data.get("visual_redness_index", 0.14))
         cyanosis = float(data.get("visual_cyanosis_index", 0.03))
         pallor = float(data.get("visual_pallor_index", 0.42))
@@ -1198,7 +1207,12 @@ def mobile_simulate(patient_id: int):
     step = int(data.get("step", 7))
     if scenario not in SCENARIOS:
         return jsonify({"error": "Invalid scenario."}), 400
-    sim = generate_simulated_reading(scenario=scenario, step=step)
+    sim = generate_simulated_reading(
+        scenario=scenario,
+        step=step,
+        history=_recent_patient_history(patient),
+        base_hours_post_op=patient.live_hours_post_op,
+    )
     sim_label = {
         "normal": "Normal",
         "venous_deteriorating": "Venous",
@@ -1300,6 +1314,8 @@ def mobile_profile():
             "unacknowledged_alerts": int(unack_alerts),
             "model_version": meta["version"],
             "model_accuracy": meta["accuracy"],
+            "verified_outcomes_count": int(PostOpOutcome.query.count()),
+            "evaluation_basis": get_evaluation_basis(meta, int(PostOpOutcome.query.count())),
         }
     )
 

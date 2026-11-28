@@ -140,6 +140,18 @@ def analyze_temporal_trend(
             notes.append("Sustained multi-reading deterioration across both SpO2 and flap temperature.")
             _bump("High")
 
+    prev_spo2_step = round(curr["spo2_pct"] - prev["spo2_pct"], 2)
+    prev_temp_step = round(curr["temp_delta_c"] - prev["temp_delta_c"], 2)
+    critically_impaired = (
+        curr["spo2_pct"] < 88.0
+        or curr["temp_delta_c"] >= 2.0
+        or curr["doppler_flow_cm_s"] < 10.0
+    )
+    recovering = (
+        (spo2_change >= 5.0 and temp_delta_change <= -0.5)
+        or (prev_spo2_step >= 6.0 and prev_temp_step <= -0.3 and curr["spo2_pct"] >= 90.0)
+    )
+
     if escalation == "Critical":
         status = "Rapid Deterioration"
     elif escalation == "High":
@@ -148,6 +160,16 @@ def analyze_temporal_trend(
         status = "Early Watch"
         escalation = "Moderate"
         notes.append("Mild downward drift from patient baseline — shorten monitoring interval.")
+    elif recovering:
+        status = "Improving"
+        notes.append(
+            f"Perfusion improving (SpO2 {spo2_change:+.1f}% vs baseline, Delta-T {temp_delta_change:+.2f} C)."
+        )
+    elif critically_impaired:
+        status = "Persistent Compromise"
+        notes.append(
+            "Flap perfusion remains critically impaired without recovery — urgent bedside re-evaluation required."
+        )
     else:
         status = "Stable"
         notes.append(

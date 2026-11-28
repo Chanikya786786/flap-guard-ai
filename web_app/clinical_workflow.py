@@ -1,8 +1,9 @@
 """
-Clinical Workflow Utilities for FlapGuard AI (v3.2):
+Clinical Workflow Utilities for FlapGuard AI (v10.0):
+- Dynamic live post-op clock (elapsed wall-clock hours from anchor reading/enrollment)
 - Post-op surveillance protocol schedule (Q1h / Q2h / Q4h) & overdue detection
-- Bedside physical exam clinical finding interpreter (Capillary Refill, Turgor, Pinprick, Doppler)
-- Priority-sorted SBAR (Situation, Background, Assessment, Recommendation) shift handoff generator
+- Bedside physical exam clinical finding interpreter
+- Priority-sorted structured & plain-text SBAR shift handoff generator
 """
 
 from datetime import timedelta, timezone
@@ -27,6 +28,26 @@ def _fmt_duration(minutes: int) -> str:
     return f"{mins}m"
 
 
+def compute_live_hours_post_op(patient, latest_reading=None) -> float:
+    """
+    Compute current elapsed postoperative hours without freezing at enrollment/last reading.
+    Uses latest_reading.hours_post_op anchored at latest_reading.created_at when available,
+    otherwise falls back to patient.hours_post_op anchored at patient.created_at.
+    """
+    if latest_reading is not None and getattr(latest_reading, "hours_post_op", None) is not None:
+        anchor_hours = float(latest_reading.hours_post_op)
+        anchor_time = _norm_utc(getattr(latest_reading, "created_at", None))
+    else:
+        anchor_hours = float(getattr(patient, "hours_post_op", 0.0) or 0.0)
+        anchor_time = _norm_utc(getattr(patient, "created_at", None))
+
+    if anchor_time is None:
+        return round(max(0.0, min(720.0, anchor_hours)), 1)
+
+    elapsed_hr = max(0.0, (utc_now() - anchor_time).total_seconds() / 3600.0)
+    return round(max(0.0, min(720.0, anchor_hours + elapsed_hr)), 1)
+
+
 def compute_check_schedule(patient, latest_reading=None) -> Dict[str, object]:
     """
     Standard microsurgical free-flap bedside surveillance schedule:
@@ -35,7 +56,7 @@ def compute_check_schedule(patient, latest_reading=None) -> Dict[str, object]:
     - > 72h post-op: Q4h (every 240 minutes)
     Advisory protocol helper; institutional nursing orders take precedence.
     """
-    hours = float(getattr(patient, "hours_post_op", 0.0) or 0.0)
+    hours = compute_live_hours_post_op(patient, latest_reading)
     if hours <= 24.0:
         protocol, interval_min = "Q1h", 60
     elif hours <= 72.0:
@@ -49,6 +70,7 @@ def compute_check_schedule(patient, latest_reading=None) -> Dict[str, object]:
             "interval_minutes": interval_min,
             "overdue": True,
             "minutes_until_due": 0,
+            "live_hours_post_op": hours,
             "status_label": f"{protocol} · Initial Check Due",
             "badge_tone": "warning",
         }
@@ -64,6 +86,7 @@ def compute_check_schedule(patient, latest_reading=None) -> Dict[str, object]:
             "interval_minutes": interval_min,
             "overdue": True,
             "minutes_until_due": remaining_min,
+            "live_hours_post_op": hours,
             "status_label": f"{protocol} · Overdue {_fmt_duration(overdue_by)}",
             "badge_tone": "danger",
         }
@@ -73,6 +96,7 @@ def compute_check_schedule(patient, latest_reading=None) -> Dict[str, object]:
         "interval_minutes": interval_min,
         "overdue": False,
         "minutes_until_due": remaining_min,
+        "live_hours_post_op": hours,
         "status_label": f"{protocol} · Next in {_fmt_duration(remaining_min)}",
         "badge_tone": "warning" if remaining_min <= 15 else "ok",
     }
@@ -142,11 +166,12 @@ def build_bedside_exam_notes(exam: Optional[Dict[str, Optional[str]]]) -> List[s
 
 
 def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_alerts_count: int, generated_by: str) -> Dict[str, object]:
-    """Generate a structured & plain-text SBAR shift handoff report for the active ward."""
+    """Generate a concise, structured & plain-text SBAR shift handoff report for the active ward."""
     tier_priority = {"Critical": 0, "High": 1, "Moderate": 2, "Low": 3, "Unassessed": 4}
     _now_utc = utc_now()
     _now_ist = _now_utc.astimezone(timezone(timedelta(hours=5, minutes=30)))
-    now_str = f"{_now_ist.strftime('%d %b %Y, %H:%M IST')} ({_now_utc.strftime('%H:%M UTC')})"
+    local_str = _now_ist.strftime("%d %b · %H:%M IST")
+    full_ts_str = f"{_now_ist.strftime('%d %b %Y, %H:%M IST')} ({_now_utc.strftime('%H:%M UTC')})"
 
     items = []
     overdue_count = 0
@@ -156,6 +181,7 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
         p = entry["patient"]
         r = entry["latest"]
         tier = entry["tier"]
+        live_hours = compute_live_hours_post_op(p, r)
         sched = compute_check_schedule(p, r)
         if sched["overdue"]:
             overdue_count += 1
@@ -171,22 +197,32 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
         exam_summary = format_bedside_exam_summary(exam_dict)
 
         if r:
-            situation = f"{p.full_name} ({p.mrn}) — {tier} Risk ({r.predicted_class}, {r.risk_score_pct:.1f}%). Schedule: {sched['status_label']}."
+            ood_tag = " · Verify Probe (OOD)" if r.ood_flag else ""
+            situation = f"{r.predicted_class} ({r.risk_score_pct:.1f}% risk) · {r.trend_status}{ood_tag}."
             assessment = (
-                f"ΔT {r.temp_delta_c:.1f}°C | SpO2 {r.spo2_pct:.1f}% | Doppler {r.doppler_flow_cm_s:.1f} cm/s | "
-                f"Visual {r.visual_perfusion_score:.0f}/100 | Trend: {r.trend_status} | Reliability: {r.confidence_label}."
+                f"ΔT {r.temp_delta_c:.1f}°C · SpO2 {r.spo2_pct:.1f}% · Doppler {r.doppler_flow_cm_s:.1f} cm/s · "
+                f"Visual {r.visual_perfusion_score:.0f}/100 ({r.confidence_label})."
             )
             if exam_summary:
                 assessment += f" Bedside Exam: {exam_summary}."
-            if r.ood_flag:
-                assessment += " [OOD sensor warning — re-verify probes]"
+            vitals_obj = {
+                "temp_delta_c": round(float(r.temp_delta_c), 2),
+                "spo2_pct": round(float(r.spo2_pct), 1),
+                "doppler_flow_cm_s": round(float(r.doppler_flow_cm_s), 1),
+                "visual_perfusion_score": round(float(r.visual_perfusion_score), 0),
+                "risk_score_pct": round(float(r.risk_score_pct), 1),
+                "predicted_class": r.predicted_class,
+            }
         else:
-            situation = f"{p.full_name} ({p.mrn}) — Awaiting initial flap check ({sched['status_label']})."
+            situation = f"Awaiting initial postoperative flap check ({sched['status_label']})."
             assessment = "No sensor readings recorded yet."
+            vitals_obj = None
 
-        background = f"{p.age}y, {p.flap_type} ({p.surgery_site}), {p.hours_post_op:.1f}h post-op."
+        background = f"{p.age}y · {p.flap_type} ({p.surgery_site}) · {live_hours:.1f}h post-op."
 
-        if tier == "Critical":
+        if r and r.ood_flag:
+            recommendation = "Verify probe placement and repeat bedside assessment immediately; inspect flap clinically."
+        elif tier == "Critical":
             recommendation = "IMMEDIATE surgical bedside inspection; verify pedicle/anastomosis and prepare for possible OR take-back."
         elif tier == "High":
             recommendation = "Urgent bedside flap evaluation within 15 minutes; repeat full multisensor + physical exam."
@@ -203,7 +239,13 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
                 "patient_name": p.full_name,
                 "mrn": p.mrn,
                 "tier": tier,
-                "priority": (tier_priority.get(tier, 4), 0 if sched["overdue"] else 1, -float(p.hours_post_op or 0.0)),
+                "hours_post_op": live_hours,
+                "ood_flag": bool(r.ood_flag) if r else False,
+                "trend_status": r.trend_status if r else "Awaiting Baseline",
+                "confidence_label": r.confidence_label if r else "Unassessed",
+                "bedside_exam": exam_summary,
+                "vitals": vitals_obj,
+                "priority": (tier_priority.get(tier, 4), 0 if sched["overdue"] else 1, -float(live_hours)),
                 "schedule": sched,
                 "situation": situation,
                 "background": background,
@@ -218,7 +260,7 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
 
     lines = [
         "FLAPGUARD AI — SHIFT HANDOFF REPORT (SBAR)",
-        f"Generated: {now_str} | By: {generated_by}",
+        f"Generated: {full_ts_str} | By: {generated_by}",
         f"Ward Summary: {len(items)} active patients | {critical_high_count} Critical/High | {overdue_count} Overdue Checks | {active_alerts_count} Pending Alerts",
         "=" * 36,
     ]
@@ -228,7 +270,7 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
         for i, it in enumerate(items, 1):
             lines.extend(
                 [
-                    f"{i}. [{it['tier'].upper()}] {it['patient_name']} ({it['mrn']})",
+                    f"{i}. [{it['tier'].upper()}] {it['patient_name']} ({it['mrn']}) — {it['schedule']['status_label']}",
                     f"   S: {it['situation']}",
                     f"   B: {it['background']}",
                     f"   A: {it['assessment']}",
@@ -239,7 +281,9 @@ def generate_ward_sbar(patients_with_latest: List[Dict[str, object]], active_ale
     lines.append("Note: Research & engineering prototype — confirm all findings clinically at bedside.")
 
     return {
-        "generated_at_utc": now_str,
+        "generated_at_utc": local_str,
+        "generated_at_local": local_str,
+        "generated_at_full": full_ts_str,
         "generated_by": generated_by,
         "total_patients": len(items),
         "critical_high_count": critical_high_count,

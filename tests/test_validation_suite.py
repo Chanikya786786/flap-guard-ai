@@ -414,6 +414,61 @@ def run_validation_suite() -> str:
     ))
     idx += 1
 
+    # v10.0 M1 Clinical Engine & Trust: Live Post-Op Clock, Trajectory, Cross-Sensor OOD, SBAR & Benchmark Basis
+    t0 = time.perf_counter()
+    from types import SimpleNamespace
+    from datetime import timedelta as _td
+    from web_app.clinical_workflow import compute_live_hours_post_op as _live_hrs
+    from web_app.models import utc_now as _utc_now
+    from ml_engine.model_service import evaluate_ood as _eval_ood, load_model_and_metadata as _load_meta
+    from ml_engine.simulator import generate_simulated_reading as _gen_sim
+    from ml_engine.trend_engine import analyze_temporal_trend as _trend
+
+    # 1) Live clock advances 10.0h + 20h elapsed -> 30.0h (Q2h protocol)
+    p_aged = SimpleNamespace(hours_post_op=10.0, created_at=_utc_now() - _td(hours=20))
+    r_aged = SimpleNamespace(hours_post_op=10.0, created_at=_utc_now() - _td(hours=20))
+    live_h = _live_hrs(p_aged, r_aged)
+    sched_aged = _calc_sched(p_aged, r_aged)
+    clock_ok = (29.5 <= live_h <= 30.5) and sched_aged["protocol"] == "Q2h"
+
+    # 2) History-aware simulator computes real trajectory & advances post-op hours
+    base_hist = [{"temp_delta_c": 0.4, "spo2_pct": 97.0, "doppler_flow_cm_s": 21.0, "visual_perfusion_score": 90.0, "hours_post_op": 20.0}]
+    sim_out = _gen_sim("venous_deteriorating", step=7, seed=42, history=base_hist, base_hours_post_op=20.0)
+    sim_pred = sim_out["prediction"]
+    sim_trend_ok = sim_pred["trend_status"] != "Baseline Established" and sim_pred["features"]["hours_post_op"] > 20.0
+
+    # 3) Persistent compromise & recovery states in trend_engine
+    persist_res = _trend(
+        {"temp_delta_c": 2.4, "spo2_pct": 80.0, "doppler_flow_cm_s": 8.0, "hours_post_op": 14.0},
+        history=[{"temp_delta_c": 2.3, "spo2_pct": 80.5, "doppler_flow_cm_s": 8.5, "hours_post_op": 12.0}],
+    )
+    improv_res = _trend(
+        {"temp_delta_c": 0.5, "spo2_pct": 96.0, "doppler_flow_cm_s": 20.0, "hours_post_op": 16.0},
+        history=[{"temp_delta_c": 2.2, "spo2_pct": 78.0, "doppler_flow_cm_s": 9.0, "hours_post_op": 14.0}],
+    )
+    trend_states_ok = persist_res["trend_status"] == "Persistent Compromise" and improv_res["trend_status"] == "Improving"
+
+    # 4) Cross-sensor OOD guardrail flags discordant thermal/SpO2 drop with strong Doppler flow
+    ood_flag_x, ood_reasons_x, _ = _eval_ood(
+        {"ir_flap_temp_c": 31.5, "control_skin_temp_c": 36.7, "temp_delta_c": 5.2, "spo2_pct": 52.0, "doppler_flow_cm_s": 21.0},
+        _load_meta()[1],
+    )
+    ood_cross_ok = ood_flag_x and any("Discordant" in r for r in ood_reasons_x)
+
+    # 5) /health exposes honest evaluation_basis & verified_outcomes_count
+    health_j = pwac.get("/health").get_json() or {}
+    basis_ok = "evaluation_basis" in health_j and "verified_outcomes_count" in health_j
+
+    m1_ok = clock_ok and sim_trend_ok and trend_states_ok and ood_cross_ok and basis_ok
+    rows.append(make_row(
+        "VAL", idx, "v10.0 M1 Clinical Engine", "Dynamic post-op clock, simulator trajectory, persistent/improving trends, cross-sensor OOD & honest basis",
+        "live_clock + simulator(history) + trend_engine + evaluate_ood + GET /health",
+        "All 5 clinical trust invariants pass",
+        f"clock={clock_ok}({live_h}h/{sched_aged['protocol']}), sim_trend={sim_trend_ok}({sim_pred['trend_status']}), states={trend_states_ok}, ood_cross={ood_cross_ok}, basis={basis_ok}",
+        (time.perf_counter() - t0) * 1000, m1_ok,
+    ))
+    idx += 1
+
     return write_excel_report("validation-test-report.xlsx", "Validation Test Report", rows)
 
 
