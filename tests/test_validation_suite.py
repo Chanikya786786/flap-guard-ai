@@ -385,6 +385,35 @@ def run_validation_suite() -> str:
     ))
     idx += 1
 
+    # v4.0 Phase 3 Web Clinical UI: Adaptive Day/Night CSS, Ward Triage, Native-Scale Tabs & Visual SBAR
+    t0 = time.perf_counter()
+    css_txt = pwac.get("/static/css/style.css").get_data(as_text=True)
+    js_txt = pwac.get("/static/js/patient_monitor.js").get_data(as_text=True)
+    dash_html = pwac.get("/").get_data(as_text=True)
+    alerts_html = pwac.get("/alerts").get_data(as_text=True)
+    has_dark_css = '[data-theme="dark"]' in css_txt
+    has_box_fix = "* {" in css_txt and "box-sizing: border-box;" in css_txt
+    no_legacy_scale = "Doppler (x3)" not in js_txt and "Delta-T (x20)" not in js_txt
+    has_sbar_cards = "sbar-letter-s" in ho_html
+    v40_web_ok = (
+        has_dark_css
+        and has_box_fix
+        and "theme-toggle-btn" in dash_html
+        and "ward-search-input" in dash_html
+        and "chart-metric-tabs" in pd_html
+        and "alerts-triage-bar" in alerts_html
+        and has_sbar_cards
+        and no_legacy_scale
+    )
+    rows.append(make_row(
+        "VAL", idx, "v4.0 Phase 3 Web Clinical UI", "Day/Night CSS, Ward triage, native-scale chart tabs & visual SBAR cards",
+        "GET /, /patients/1, /alerts, /handoff, /static/css/style.css, /static/js/patient_monitor.js",
+        "Adaptive dark tokens, triage bars, native-scale chart tabs, no x20/x3 multipliers",
+        f"dark_css={has_dark_css}, no_x20={no_legacy_scale}, sbar_cards={has_sbar_cards}",
+        (time.perf_counter() - t0) * 1000, v40_web_ok,
+    ))
+    idx += 1
+
     return write_excel_report("validation-test-report.xlsx", "Validation Test Report", rows)
 
 

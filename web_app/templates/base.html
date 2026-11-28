@@ -4,11 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="theme-color" content="#0f4c81">
+  <meta name="theme-color" content="#0b3d60">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="FlapGuard AI">
   <title>{% block title %}FlapGuard AI{% endblock %}</title>
+  <script>
+    (function () {
+      var saved = localStorage.getItem("fg_theme_mode") || "system";
+      if (saved === "light" || saved === "dark") {
+        document.documentElement.setAttribute("data-theme", saved);
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
+    })();
+  </script>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
@@ -31,6 +41,7 @@
       <a id="nav-learning" class="{{ 'active' if request.endpoint == 'main.learning_center' else '' }}" href="{{ url_for('main.learning_center') }}">Learning</a>
       {% if current_user.role in ("Surgeon", "Admin") %}<a id="nav-audit" class="{{ 'active' if request.endpoint == 'main.audit_center' else '' }}" href="{{ url_for('main.audit_center') }}">Audit</a>{% endif %}
       <a id="nav-profile" class="{{ 'active' if request.endpoint == 'main.profile' else '' }}" href="{{ url_for('main.profile') }}">Profile</a>
+      <button id="theme-toggle-btn" type="button" class="theme-toggle-btn" title="Switch Display Appearance">Theme: Auto</button>
       <span class="nav-user-pill">
         {% if current_user.profile_photo %}
           <img class="nav-avatar" src="{{ current_user.profile_photo }}" alt="{{ current_user.full_name }}">
@@ -43,6 +54,7 @@
     </div>
     {% else %}
     <div class="nav-links">
+      <button id="theme-toggle-btn" type="button" class="theme-toggle-btn" title="Switch Display Appearance">Theme: Auto</button>
       <a id="nav-login" class="{{ 'active' if request.endpoint == 'main.login' else '' }}" href="{{ url_for('main.login') }}">Sign In</a>
       <a id="nav-register" class="{{ 'active' if request.endpoint == 'main.register' else '' }}" href="{{ url_for('main.register') }}">Create Account</a>
     </div>
@@ -66,11 +78,36 @@
   </footer>
 
   <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker.register("/sw.js").catch(function () {});
-      });
-    }
+    (function () {
+      var order = ["system", "light", "dark"];
+      var labels = { system: "Theme: Auto", light: "Theme: Day", dark: "Theme: ICU Night" };
+      function applyTheme(mode) {
+        if (mode === "light" || mode === "dark") {
+          document.documentElement.setAttribute("data-theme", mode);
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+        }
+        localStorage.setItem("fg_theme_mode", mode);
+        var btn = document.getElementById("theme-toggle-btn");
+        if (btn) btn.textContent = labels[mode] || "Theme: Auto";
+        window.dispatchEvent(new CustomEvent("flapguard:themechange", { detail: { mode: mode } }));
+      }
+      var current = localStorage.getItem("fg_theme_mode") || "system";
+      applyTheme(current);
+      var btn = document.getElementById("theme-toggle-btn");
+      if (btn) {
+        btn.addEventListener("click", function () {
+          var cur = localStorage.getItem("fg_theme_mode") || "system";
+          var next = order[(order.indexOf(cur) + 1) % order.length];
+          applyTheme(next);
+        });
+      }
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        });
+      }
+    })();
   </script>
   {% block scripts %}{% endblock %}
 </body>

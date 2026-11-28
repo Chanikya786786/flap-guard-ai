@@ -1,7 +1,7 @@
-/* Pure Offline JavaScript for FlapGuard AI:
-- HTML5 Canvas Multisensor Trend Chart (Zero external libraries)
-- Guided CIE-LAB Flap ROI Scanner & Quality Diagnostics
-- Live Virtual Sensor Stream Simulator with Real-Time Badge Updates
+/* FlapGuard AI v4.0 Clinical Frontend Engine (Zero External Dependencies):
+- HiDPI Native-Scale Multisensor Perfusion Chart (SpO2, Delta-T, Doppler, AI Risk)
+- Adaptive Day/Night Canvas Theme Sync + Shaded Clinical Threshold Bands
+- Guided CIE-LAB Flap ROI Scanner & Live Deterioration Simulator
 */
 
 (function () {
@@ -10,85 +10,201 @@
     return m ? m.getAttribute("content") || "" : "";
   }
 
-  function drawTrendChart(canvasId, points) {
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+
+  const METRIC_CFG = {
+    spo2: {
+      caption: "Tissue SpO₂ (%) · Shaded safe (>92%) & critical (<90%) clinical bands",
+      colorVar: "--moderate",
+      threshold: 90,
+      fmtVal: (v) => v.toFixed(1) + "%",
+      fmtTick: (v) => Math.round(v) + "%",
+      bounds: (vals) => {
+        const lo = vals.length ? Math.min(...vals) : 90;
+        const minY = lo < 50 ? Math.max(0, lo - 10) : 50;
+        return { minY, maxY: 100, ticks: [minY, (minY + 90) / 2, 90, 100], safe: [92, 100], danger: [minY, 90] };
+      },
+    },
+    temp_delta: {
+      caption: "Thermal Drop ΔT (°C) · Shaded safe (<1.5°C) & critical (≥1.8°C) bands",
+      colorVar: "--high",
+      threshold: 1.8,
+      fmtVal: (v) => v.toFixed(1) + "°C",
+      fmtTick: (v) => v.toFixed(1) + "°",
+      bounds: (vals) => {
+        const hi = vals.length ? Math.max(...vals) : 0;
+        const maxY = Math.max(4.0, hi * 1.15);
+        return { minY: 0, maxY, ticks: [0, 1.8, maxY], safe: [0, 1.5], danger: [1.8, maxY] };
+      },
+    },
+    doppler: {
+      caption: "Doppler Flow Velocity (cm/s) · Shaded safe (>15 cm/s) & critical (<12 cm/s) bands",
+      colorVar: "--accent",
+      threshold: 12,
+      fmtVal: (v) => v.toFixed(1) + " cm/s",
+      fmtTick: (v) => Math.round(v) + "",
+      bounds: (vals) => {
+        const hi = vals.length ? Math.max(...vals) : 0;
+        const maxY = Math.max(30, hi * 1.15);
+        return { minY: 0, maxY, ticks: [0, 12, maxY], safe: [15, maxY], danger: [0, 12] };
+      },
+    },
+    risk: {
+      caption: "AI Compromise Risk (%) · Shaded low (<30%) & critical (≥70%) clinical bands",
+      colorVar: "--critical",
+      threshold: 70,
+      fmtVal: (v) => v.toFixed(1) + "%",
+      fmtTick: (v) => Math.round(v) + "%",
+      bounds: () => ({ minY: 0, maxY: 100, ticks: [0, 35, 70, 100], safe: [0, 30], danger: [70, 100] }),
+    },
+  };
+
+  let activeMetric = "spo2";
+
+  function drawTrendChart(canvasId, points, metricKey) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const w = (canvas.width = canvas.clientWidth || 680);
-    const h = (canvas.height = 240);
+    const mode = METRIC_CFG[metricKey] ? metricKey : "spo2";
+    const cfg = METRIC_CFG[mode];
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, w, h);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cssW = canvas.clientWidth || 680;
+    const cssH = 250;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const colSurface = cssVar("--surface", "#ffffff");
+    const colGrid = cssVar("--chart-grid", "#e2e8f0");
+    const colSubtle = cssVar("--subtle", "#64748b");
+    const colDanger = cssVar("--critical", "#dc2626");
+    const colSafeBand = cssVar("--chart-safe-band", "rgba(5, 150, 105, 0.08)");
+    const colDangerBand = cssVar("--chart-danger-band", "rgba(220, 38, 38, 0.08)");
+    const colLine = cssVar(cfg.colorVar, "#2563eb");
+
+    ctx.fillStyle = colSurface;
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    const pad = { top: 28, right: 20, bottom: 30, left: 48 };
+    const plotW = cssW - pad.left - pad.right;
+    const plotH = cssH - pad.top - pad.bottom;
+
+    const vals = (points || []).map((pt) => Number(pt[mode] || 0));
+    const b = cfg.bounds(vals);
+
+    function yFor(v) {
+      const clamped = Math.max(b.minY, Math.min(b.maxY, v));
+      const frac = b.maxY > b.minY ? (clamped - b.minY) / (b.maxY - b.minY) : 0;
+      return pad.top + plotH - frac * plotH;
+    }
+
+    // 1. Shaded safe & danger clinical threshold bands
+    ctx.fillStyle = colSafeBand;
+    ctx.fillRect(pad.left, yFor(b.safe[1]), plotW, yFor(b.safe[0]) - yFor(b.safe[1]));
+    ctx.fillStyle = colDangerBand;
+    ctx.fillRect(pad.left, yFor(b.danger[1]), plotW, yFor(b.danger[0]) - yFor(b.danger[1]));
+
+    // 2. Horizontal grid lines & Y-axis labels
+    ctx.strokeStyle = colGrid;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = colSubtle;
+    ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    ctx.textAlign = "right";
+    b.ticks.forEach((tk) => {
+      const y = yFor(tk);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(cssW - pad.right, y);
+      ctx.stroke();
+      ctx.fillText(cfg.fmtTick(tk), pad.left - 8, y + 4);
+    });
+
+    // 3. Dashed critical threshold line
+    const thY = yFor(cfg.threshold);
+    ctx.save();
+    ctx.strokeStyle = colDanger;
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, thY);
+    ctx.lineTo(cssW - pad.right, thY);
+    ctx.stroke();
+    ctx.restore();
 
     if (!points || points.length === 0) {
-      ctx.fillStyle = "#64748b";
-      ctx.font = "14px sans-serif";
-      ctx.fillText("No readings yet — log a bedside assessment or start a simulated stream.", 20, h / 2);
+      ctx.textAlign = "center";
+      ctx.fillStyle = colSubtle;
+      ctx.font = "13px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      ctx.fillText("No readings yet — log a bedside assessment or start the simulator.", pad.left + plotW / 2, pad.top + plotH / 2);
       return;
     }
 
-    const pad = { top: 28, right: 20, bottom: 32, left: 42 };
-    const plotW = w - pad.left - pad.right;
-    const plotH = h - pad.top - pad.bottom;
+    // 4. Native-scale line + subtle area gradient
+    const coords = vals.map((v, idx) => ({
+      x: points.length === 1 ? pad.left + plotW / 2 : pad.left + (idx / (points.length - 1)) * plotW,
+      y: yFor(v),
+    }));
 
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 1;
-    ctx.fillStyle = "#64748b";
-    ctx.font = "11px sans-serif";
-    for (let yVal = 0; yVal <= 100; yVal += 25) {
-      const y = pad.top + plotH - (yVal / 100) * plotH;
+    if (coords.length > 1) {
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+      grad.addColorStop(0, colLine + "33");
+      grad.addColorStop(1, colLine + "04");
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.moveTo(pad.left, y);
-      ctx.lineTo(w - pad.right, y);
+      ctx.moveTo(coords[0].x, pad.top + plotH);
+      coords.forEach((c) => ctx.lineTo(c.x, c.y));
+      ctx.lineTo(coords[coords.length - 1].x, pad.top + plotH);
+      ctx.closePath();
+      // Only fill hex colors cleanly (fallback safe opacity otherwise)
+      if (/^#[0-9a-fA-F]{6}$/.test(colLine)) {
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = colLine;
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      coords.forEach((c, idx) => (idx === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y)));
       ctx.stroke();
-      ctx.fillText(String(yVal), 8, y + 4);
     }
 
-    const series = [
-      { key: "spo2", label: "SpO2 (%)", color: "#2563eb", scale: (v) => Math.max(0, Math.min(100, v)) },
-      { key: "risk", label: "AI Risk (%)", color: "#dc2626", scale: (v) => Math.max(0, Math.min(100, v)) },
-      { key: "doppler", label: "Doppler (x3)", color: "#15803d", scale: (v) => Math.max(0, Math.min(100, v * 3.0)) },
-      { key: "temp_delta", label: "Delta-T (x20)", color: "#d97706", scale: (v) => Math.max(0, Math.min(100, v * 20.0)) },
-    ];
-
-    series.forEach((s) => {
-      ctx.strokeStyle = s.color;
-      ctx.lineWidth = 2.2;
+    // 5. Data point dots with clean ring halo
+    coords.forEach((c, idx) => {
+      const isLast = idx === coords.length - 1;
+      const r = isLast ? 4.8 : 3.2;
       ctx.beginPath();
-      points.forEach((pt, idx) => {
-        const x = points.length === 1 ? pad.left + plotW / 2 : pad.left + (idx / (points.length - 1)) * plotW;
-        const y = pad.top + plotH - (s.scale(Number(pt[s.key] || 0)) / 100) * plotH;
-        if (idx === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = colLine;
+      ctx.fill();
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = colSurface;
       ctx.stroke();
-
-      ctx.fillStyle = s.color;
-      points.forEach((pt, idx) => {
-        const x = points.length === 1 ? pad.left + plotW / 2 : pad.left + (idx / (points.length - 1)) * plotW;
-        const y = pad.top + plotH - (s.scale(Number(pt[s.key] || 0)) / 100) * plotH;
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      });
     });
 
-    let lx = pad.left;
-    series.forEach((s) => {
-      ctx.fillStyle = s.color;
-      ctx.fillRect(lx, 8, 10, 10);
-      ctx.fillStyle = "#0f172a";
-      ctx.font = "11px sans-serif";
-      ctx.fillText(s.label, lx + 14, 17);
-      lx += 118;
-    });
+    // 6. Top-right latest value readout
+    ctx.textAlign = "right";
+    ctx.fillStyle = colLine;
+    ctx.font = "700 12px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    ctx.fillText("Latest: " + cfg.fmtVal(vals[vals.length - 1]), cssW - pad.right, 16);
 
-    ctx.fillStyle = "#475569";
-    ctx.fillText(points[0].label || "Start", pad.left, h - 10);
+    // 7. Chronological X-axis labels (Start, Mid, Latest)
+    ctx.fillStyle = colSubtle;
+    ctx.font = "11px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(points[0].label || "Start", pad.left, cssH - 9);
+    if (points.length > 2) {
+      ctx.textAlign = "center";
+      ctx.fillText(points[Math.floor(points.length / 2)].label || "", pad.left + plotW / 2, cssH - 9);
+    }
     if (points.length > 1) {
-      const lastLabel = points[points.length - 1].label || "Latest";
-      ctx.fillText(lastLabel, w - pad.right - 52, h - 10);
+      ctx.textAlign = "right";
+      ctx.fillText(points[points.length - 1].label || "Latest", cssW - pad.right, cssH - 9);
     }
   }
 
@@ -134,15 +250,35 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     const payloadEl = document.getElementById("chart-data-json");
+    const captionEl = document.getElementById("chart-threshold-caption");
     let chartPoints = [];
+
+    function renderChart() {
+      if (captionEl && METRIC_CFG[activeMetric]) {
+        captionEl.textContent = METRIC_CFG[activeMetric].caption;
+      }
+      drawTrendChart("sensor-trend-chart", chartPoints, activeMetric);
+    }
+
     if (payloadEl) {
       try {
         chartPoints = JSON.parse(payloadEl.textContent || "[]");
       } catch (e) {
         chartPoints = [];
       }
-      drawTrendChart("sensor-trend-chart", chartPoints);
-      window.addEventListener("resize", () => drawTrendChart("sensor-trend-chart", chartPoints));
+      renderChart();
+      window.addEventListener("resize", renderChart);
+      window.addEventListener("flapguard:themechange", renderChart);
+
+      document.querySelectorAll("#chart-metric-tabs [data-metric]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          activeMetric = btn.dataset.metric || "spo2";
+          document.querySelectorAll("#chart-metric-tabs [data-metric]").forEach(function (b) {
+            b.classList.toggle("active", b === btn);
+          });
+          renderChart();
+        });
+      });
     }
 
     const videoEl = document.getElementById("webcam-video");
@@ -298,7 +434,7 @@
           risk: r.risk_score_pct,
         });
         if (chartPoints.length > 30) chartPoints.shift();
-        drawTrendChart("sensor-trend-chart", chartPoints);
+        renderChart();
 
         simStep += 1;
         if (simStep > 8) {

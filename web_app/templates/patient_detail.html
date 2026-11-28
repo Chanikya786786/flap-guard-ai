@@ -10,18 +10,19 @@
     </div>
     <div class="btn-row">
       {% if latest %}
-        <span id="current-risk-badge" class="badge badge-{{ latest.risk_tier|lower }}" style="font-size:0.88rem;padding:7px 14px;">
-          {{ latest.risk_tier }} Risk &mdash; {{ latest.predicted_class }} ({{ latest.risk_score_pct }}%)
+        <span id="current-risk-badge" class="badge badge-{{ latest.risk_tier|lower }}" style="font-size:0.86rem;padding:7px 14px;">
+          {{ latest.risk_tier }} Risk &mdash; {{ latest.predicted_class }} ({{ "%.1f"|format(latest.risk_score_pct) }}%)
         </span>
       {% else %}
-        <span id="current-risk-badge" class="badge badge-unassessed" style="font-size:0.88rem;padding:7px 14px;">Awaiting First Reading</span>
+        <span id="current-risk-badge" class="badge badge-unassessed" style="font-size:0.86rem;padding:7px 14px;">Awaiting First Reading</span>
       {% endif %}
       <form method="POST" action="{{ url_for('main.delete_patient', patient_id=patient.id) }}" style="margin:0;" onsubmit="return confirm('Remove {{ patient.full_name }} and all associated readings?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
       </form>
     </div>
   </div>
+
   {% set sched = get_check_schedule(patient, latest) %}
   <div id="trend-meta-strip" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:0.82rem;">
     <span id="patient-schedule-badge" class="badge badge-{{ 'critical' if sched.badge_tone == 'danger' else ('high' if sched.badge_tone == 'warning' else 'low') }}">Schedule: {{ sched.status_label }}</span>
@@ -33,14 +34,39 @@
       {% endif %}
     {% endif %}
   </div>
+
   {% if latest %}
-    {% set latest_exam = format_bedside_exam({'capillary_refill': latest.capillary_refill, 'flap_turgor': latest.flap_turgor, 'pinprick_bleeding': latest.pinprick_bleeding, 'doppler_quality': latest.doppler_quality}) %}
-    {% if latest_exam %}
-    <div id="latest-bedside-exam" style="margin-top:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;font-size:0.84rem;">
-      <strong>Latest Bedside Exam:</strong> {{ latest_exam }}
+  <div class="vital-tiles-4">
+    <div class="vital-tile">
+      <div class="vital-tile-label">Temp Drop (&Delta;T)</div>
+      <div class="vital-tile-val {{ 'vital-alert' if latest.temp_delta_c >= 1.8 else '' }}">{{ "%.2f"|format(latest.temp_delta_c) }} &deg;C</div>
+      <div class="vital-tile-ref">Normal &lt; 1.5&deg;C</div>
     </div>
-    {% endif %}
+    <div class="vital-tile">
+      <div class="vital-tile-label">Tissue SpO<sub>2</sub></div>
+      <div class="vital-tile-val {{ 'vital-alert' if latest.spo2_pct < 90.0 else '' }}">{{ "%.1f"|format(latest.spo2_pct) }}%</div>
+      <div class="vital-tile-ref">Normal &gt; 92%</div>
+    </div>
+    <div class="vital-tile">
+      <div class="vital-tile-label">Doppler Flow</div>
+      <div class="vital-tile-val {{ 'vital-alert' if latest.doppler_flow_cm_s < 12.0 else '' }}">{{ "%.1f"|format(latest.doppler_flow_cm_s) }} cm/s</div>
+      <div class="vital-tile-ref">Normal &gt; 15 cm/s</div>
+    </div>
+    <div class="vital-tile">
+      <div class="vital-tile-label">Visual Perfusion</div>
+      <div class="vital-tile-val">{{ "%.0f"|format(latest.visual_perfusion_score) }} / 100</div>
+      <div class="vital-tile-ref">CIE-LAB Score</div>
+    </div>
+  </div>
+
+  {% set latest_exam = format_bedside_exam({'capillary_refill': latest.capillary_refill, 'flap_turgor': latest.flap_turgor, 'pinprick_bleeding': latest.pinprick_bleeding, 'doppler_quality': latest.doppler_quality}) %}
+  {% if latest_exam %}
+  <div id="latest-bedside-exam" style="margin-top:12px;padding:10px 13px;background:var(--surface-soft);border:1px solid var(--border);border-radius:10px;font-size:0.85rem;">
+    <strong>Latest Bedside Exam:</strong> {{ latest_exam }}
+  </div>
   {% endif %}
+  {% endif %}
+
   {% if latest and latest.clinical_notes %}
   <ul class="notes-list">
     {% for note in latest.clinical_notes %}
@@ -90,11 +116,11 @@
       Enter thermal, tissue oximetry, and Doppler metrics. Visual color indices auto-populate when a photo is scanned.
     </p>
     <form method="POST" action="{{ url_for('main.add_reading', patient_id=patient.id) }}" id="sensor-reading-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input id="source-mode-input" type="hidden" name="source_mode" value="Bedside + Camera Fusion">
       <div class="form-grid">
         <div class="form-group">
-          <label for="ir-temp-input">IR Flap Temp (&deg;C)</label>
+          <label for="ir-temp-input">IR Flap Temp (&deg;C) <span class="muted">Ref 35.5–37.5</span></label>
           <input id="ir-temp-input" name="ir_flap_temp_c" type="number" step="0.1" required placeholder="e.g., 36.2" value="{{ latest.ir_flap_temp_c if latest else '' }}">
         </div>
         <div class="form-group">
@@ -102,11 +128,11 @@
           <input id="ctrl-temp-input" name="control_skin_temp_c" type="number" step="0.1" required placeholder="e.g., 36.7" value="{{ latest.control_skin_temp_c if latest else '' }}">
         </div>
         <div class="form-group">
-          <label for="spo2-input">Tissue SpO<sub>2</sub> (%)</label>
+          <label for="spo2-input">Tissue SpO<sub>2</sub> (%) <span class="muted">Alert &lt; 90</span></label>
           <input id="spo2-input" name="spo2_pct" type="number" step="0.1" required placeholder="e.g., 96.5" value="{{ latest.spo2_pct if latest else '' }}">
         </div>
         <div class="form-group">
-          <label for="doppler-input">Doppler Flow (cm/s)</label>
+          <label for="doppler-input">Doppler Flow (cm/s) <span class="muted">Alert &lt; 12</span></label>
           <input id="doppler-input" name="doppler_flow_cm_s" type="number" step="0.1" required placeholder="e.g., 20.5" value="{{ latest.doppler_flow_cm_s if latest else '' }}">
         </div>
         <div class="form-group">
@@ -133,10 +159,10 @@
         </div>
       </details>
 
-      <details style="margin:10px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;">
-        <summary style="cursor:pointer;font-weight:600;font-size:0.88rem;color:#0f4c81;">Optional Bedside Physical Exam (Capillary Refill, Turgor, Pinprick, Doppler)</summary>
-        <div class="form-grid" style="margin-top:10px;">
-          <div class="form-group">
+      <details class="advanced-drawer" id="bedside-exam-drawer">
+        <summary>Optional Bedside Physical Exam (Capillary Refill, Turgor, Pinprick, Doppler)</summary>
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="form-group" style="margin-bottom:0;">
             <label for="exam-cap-refill">Capillary Refill</label>
             <select id="exam-cap-refill" name="capillary_refill">
               <option value="">Not recorded</option>
@@ -146,7 +172,7 @@
               <option value="Absent">Absent</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:0;">
             <label for="exam-turgor">Flap Turgor</label>
             <select id="exam-turgor" name="flap_turgor">
               <option value="">Not recorded</option>
@@ -155,7 +181,7 @@
               <option value="Pale / Flaccid">Pale / Flaccid</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:0;">
             <label for="exam-pinprick">Pinprick Bleeding</label>
             <select id="exam-pinprick" name="pinprick_bleeding">
               <option value="">Not recorded</option>
@@ -164,7 +190,7 @@
               <option value="None / Minimal (Arterial)">None / Minimal (Arterial)</option>
             </select>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:0;">
             <label for="exam-doppler">Doppler Signal Quality</label>
             <select id="exam-doppler" name="doppler_quality">
               <option value="">Not recorded</option>
@@ -183,13 +209,13 @@
 </div>
 
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+  <div class="chart-header">
     <div>
-      <h3 style="margin-bottom:2px;">3. Multisensor Perfusion Trend &amp; Live Deterioration Simulator</h3>
-      <span class="muted">Tracks SpO<sub>2</sub>, Doppler velocity, &Delta;T, and AI compromise probability over time.</span>
+      <h3 style="margin-bottom:2px;">3. Native-Scale Perfusion Trajectory &amp; Live Simulator</h3>
+      <span class="muted" id="chart-threshold-caption">Tissue SpO<sub>2</sub> (%) &middot; Shaded safe (&gt;92%) &amp; critical (&lt;90%) clinical bands</span>
     </div>
     <div class="btn-row">
-      <select id="sim-scenario" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.86rem;">
+      <select id="sim-scenario" style="padding:7px 10px;border:1px solid var(--border-strong);border-radius:8px;font-size:0.84rem;background:var(--input-bg);color:var(--ink);">
         <option value="normal">Healthy Post-Op Course</option>
         <option value="venous_deteriorating">Venous Congestion Crisis</option>
         <option value="arterial_deteriorating">Arterial Ischemia Crisis</option>
@@ -197,6 +223,12 @@
       <button id="sim-start-btn" type="button" class="btn btn-sm btn-danger" data-patient-id="{{ patient.id }}">Start Live Stream</button>
       <button id="sim-stop-btn" type="button" class="btn btn-sm btn-secondary" disabled>Stop</button>
     </div>
+  </div>
+  <div class="chart-tabs" id="chart-metric-tabs" style="margin-bottom:12px;">
+    <button type="button" class="chart-tab active" data-metric="spo2">SpO<sub>2</sub> (%)</button>
+    <button type="button" class="chart-tab" data-metric="temp_delta">&Delta;T (&deg;C)</button>
+    <button type="button" class="chart-tab" data-metric="doppler">Doppler (cm/s)</button>
+    <button type="button" class="chart-tab" data-metric="risk">AI Risk (%)</button>
   </div>
   <div id="sim-live-status" class="flash flash-info" style="display:none;"></div>
   <canvas id="sensor-trend-chart" class="chart-canvas"></canvas>
@@ -225,13 +257,13 @@
         {% for r in readings %}
         <tr>
           <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') if r.created_at else '-' }}</td>
-          <td>{{ r.ir_flap_temp_c }} / {{ r.control_skin_temp_c }} (&Delta;{{ r.temp_delta_c }})</td>
-          <td>{{ r.spo2_pct }}%</td>
-          <td>{{ r.doppler_flow_cm_s }} cm/s</td>
+          <td class="{{ 'vital-alert' if r.temp_delta_c >= 1.8 else '' }}">{{ r.ir_flap_temp_c }} / {{ r.control_skin_temp_c }} (&Delta;{{ r.temp_delta_c }})</td>
+          <td class="{{ 'vital-alert' if r.spo2_pct < 90.0 else '' }}">{{ r.spo2_pct }}%</td>
+          <td class="{{ 'vital-alert' if r.doppler_flow_cm_s < 12.0 else '' }}">{{ r.doppler_flow_cm_s }} cm/s</td>
           <td>{{ r.visual_perfusion_score }}</td>
           <td>{{ r.perfusion_fusion_index }}</td>
           <td><strong>{{ r.predicted_class }}</strong> ({{ r.risk_score_pct }}%)</td>
-          <td><span class="badge badge-{{ r.risk_tier|lower }}">{{ r.risk_tier }}</span></td>
+          <td><span class="badge badge-{{ r.risk_tier|lower }}">{{ 'Healthy' if r.risk_tier == 'Low' else r.risk_tier }}</span></td>
           <td class="muted" style="font-size:0.82rem;">{{ format_bedside_exam({"capillary_refill": r.capillary_refill, "flap_turgor": r.flap_turgor, "pinprick_bleeding": r.pinprick_bleeding, "doppler_quality": r.doppler_quality}) or "-" }}</td>
           <td class="muted">{{ r.source_mode }}</td>
         </tr>

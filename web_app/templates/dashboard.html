@@ -13,36 +13,37 @@
 </div>
 
 <div class="grid-4">
-  <div class="kpi kpi-critical">
+  <div class="kpi kpi-critical" data-filter="critical" title="Filter Critical &amp; High risk patients">
     <div class="kpi-label">Critical Risk</div>
     <div class="kpi-value" id="kpi-critical">{{ tier_counts['Critical'] }}</div>
   </div>
-  <div class="kpi kpi-high">
+  <div class="kpi kpi-high" data-filter="critical" title="Filter Critical &amp; High risk patients">
     <div class="kpi-label">High Risk</div>
     <div class="kpi-value" id="kpi-high">{{ tier_counts['High'] }}</div>
   </div>
-  <div class="kpi kpi-moderate">
+  <div class="kpi kpi-moderate" data-filter="all" title="Show all ward patients">
     <div class="kpi-label">Moderate Risk</div>
     <div class="kpi-value" id="kpi-moderate">{{ tier_counts['Moderate'] }}</div>
   </div>
-  <div class="kpi kpi-low">
+  <div class="kpi kpi-low" data-filter="healthy" title="Filter Healthy patients">
     <div class="kpi-label">Low Risk / Healthy</div>
     <div class="kpi-value" id="kpi-low">{{ tier_counts['Low'] }}</div>
   </div>
 </div>
 
 {% if active_alerts %}
-<div class="card" style="border-left:5px solid #dc2626;background:#fef2f2;">
-  <h3 style="color:#991b1b;">Active Unacknowledged Surgeon Alerts ({{ active_alerts|length }})</h3>
+<div class="card alert-banner-card">
+  <h3>Active Unacknowledged Surgeon Alerts ({{ active_alerts|length }})</h3>
   {% for alert in active_alerts[:3] %}
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #fecaca;">
+  <div class="alert-banner-row">
     <div>
-      <strong>{{ alert.patient.full_name }} ({{ alert.patient.mrn }})</strong> &mdash; {{ alert.alert_message }}
+      <strong>{{ alert.patient.full_name }} ({{ alert.patient.mrn }})</strong> &mdash;
+      {{ alert.alert_message.split(']: ', 1)[-1] }}
     </div>
     <div class="btn-row">
-      <a class="btn btn-sm" href="{{ url_for('main.patient_detail', patient_id=alert.patient_id) }}">Inspect</a>
+      <a class="btn btn-sm" href="{{ url_for('main.patient_detail', patient_id=alert.patient_id) }}">Inspect Chart</a>
       <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=alert.id) }}" style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-secondary">Acknowledge</button>
       </form>
     </div>
@@ -52,8 +53,21 @@
 {% endif %}
 
 <div class="card">
-  <h2>Monitored Patients</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+    <h2 style="margin:0;">Monitored Patients</h2>
+    <span id="ward-visible-count" class="muted">{{ patient_cards|length }} active</span>
+  </div>
   {% if patient_cards %}
+  <div class="triage-bar" id="ward-triage-bar">
+    <input id="ward-search-input" class="search-input" type="search" placeholder="Search patient name, MRN, or flap type...">
+    <div class="filter-pills">
+      <button type="button" class="filter-pill active" data-ward-filter="all">All</button>
+      <button type="button" class="filter-pill" data-ward-filter="critical">Critical / High</button>
+      <button type="button" class="filter-pill" data-ward-filter="overdue">Overdue</button>
+      <button type="button" class="filter-pill" data-ward-filter="healthy">Healthy</button>
+    </div>
+  </div>
+
   <div class="table-wrap">
     <table id="risk-dashboard-table">
       <thead>
@@ -74,19 +88,20 @@
         {% for item in patient_cards %}
         {% set p = item.patient %}
         {% set r = item.latest %}
-        <tr>
-          <td><span class="badge badge-{{ item.tier|lower }}">{{ item.tier }}</span></td>
+        {% set sched = get_check_schedule(p, r) %}
+        <tr data-tier="{{ item.tier|lower }}" data-overdue="{{ '1' if sched.overdue else '0' }}" data-search="{{ (p.full_name ~ ' ' ~ p.mrn ~ ' ' ~ p.flap_type ~ ' ' ~ p.surgery_site)|lower }}">
+          <td><span class="badge badge-{{ item.tier|lower }}">{{ 'Healthy' if item.tier == 'Low' else item.tier }}</span></td>
           <td><strong>{{ p.full_name }}</strong><br><span class="muted">{{ p.mrn }} &middot; {{ p.age }}y</span></td>
           <td>{{ p.flap_type }}<br><span class="muted">{{ p.surgery_site }}</span></td>
-          <td>{% set sched = get_check_schedule(p, r) %}<span class="badge badge-{{ 'critical' if sched.badge_tone == 'danger' else ('high' if sched.badge_tone == 'warning' else 'low') }}">{{ sched.status_label }}</span></td>
-          <td>{{ "%.2f"|format(r.temp_delta_c) if r else "-" }}</td>
-          <td>{{ "%.1f"|format(r.spo2_pct) if r else "-" }}</td>
-          <td>{{ "%.1f"|format(r.doppler_flow_cm_s) if r else "-" }}</td>
+          <td><span class="badge badge-{{ 'critical' if sched.badge_tone == 'danger' else ('high' if sched.badge_tone == 'warning' else 'low') }}">{{ sched.status_label }}</span></td>
+          <td class="{{ 'vital-alert' if r and r.temp_delta_c >= 1.8 else '' }}">{{ "%.2f"|format(r.temp_delta_c) if r else "-" }}</td>
+          <td class="{{ 'vital-alert' if r and r.spo2_pct < 90.0 else '' }}">{{ "%.1f"|format(r.spo2_pct) if r else "-" }}</td>
+          <td class="{{ 'vital-alert' if r and r.doppler_flow_cm_s < 12.0 else '' }}">{{ "%.1f"|format(r.doppler_flow_cm_s) if r else "-" }}</td>
           <td>{{ "%.1f"|format(r.visual_perfusion_score) if r else "-" }}</td>
           <td>
             {% if r %}
               <strong>{{ r.predicted_class }}</strong><br>
-              <span class="muted">{{ r.risk_score_pct }}% risk</span>
+              <span class="muted">{{ "%.1f"|format(r.risk_score_pct) }}% risk</span>
             {% else %}
               <span class="muted">Awaiting assessment</span>
             {% endif %}
@@ -95,7 +110,7 @@
             <div class="btn-row">
               <a class="btn btn-sm open-patient-btn" href="{{ url_for('main.patient_detail', patient_id=p.id) }}">Monitor</a>
               <form method="POST" action="{{ url_for('main.delete_patient', patient_id=p.id) }}" style="margin:0;" onsubmit="return confirm('Remove {{ p.full_name }} from ward monitoring?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
               </form>
             </div>
@@ -127,7 +142,7 @@
       <button type="button" class="modal-close" id="close-enroll-modal-btn" aria-label="Close">&times;</button>
     </div>
     <form method="POST" action="{{ url_for('main.create_patient') }}" id="add-patient-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="form-grid">
         <div class="form-group">
           <label for="patient-mrn">MRN / Hospital ID</label>
@@ -204,6 +219,49 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") closeModal();
   });
+
+  // v4.0 Live Ward Search & Triage Filtering
+  const searchInput = document.getElementById("ward-search-input");
+  const pills = document.querySelectorAll("[data-ward-filter]");
+  const rows = document.querySelectorAll("#risk-dashboard-table tbody tr");
+  const countEl = document.getElementById("ward-visible-count");
+  let activeFilter = "all";
+
+  function applyWardFilter() {
+    const q = (searchInput ? searchInput.value : "").trim().toLowerCase();
+    let visible = 0;
+    rows.forEach(function (tr) {
+      const tier = tr.dataset.tier || "";
+      const overdue = tr.dataset.overdue === "1";
+      const hay = tr.dataset.search || "";
+      const matchFilter =
+        activeFilter === "all" ||
+        (activeFilter === "critical" && (tier === "critical" || tier === "high")) ||
+        (activeFilter === "overdue" && overdue) ||
+        (activeFilter === "healthy" && tier === "low");
+      const matchQuery = !q || hay.indexOf(q) !== -1;
+      const show = matchFilter && matchQuery;
+      tr.style.display = show ? "" : "none";
+      if (show) visible += 1;
+    });
+    if (countEl) countEl.textContent = visible + " shown";
+  }
+
+  function setFilter(mode) {
+    activeFilter = mode;
+    pills.forEach(function (btn) {
+      btn.classList.toggle("active", btn.dataset.wardFilter === mode);
+    });
+    applyWardFilter();
+  }
+
+  pills.forEach(function (btn) {
+    btn.addEventListener("click", function () { setFilter(btn.dataset.wardFilter); });
+  });
+  document.querySelectorAll(".kpi[data-filter]").forEach(function (kpi) {
+    kpi.addEventListener("click", function () { setFilter(kpi.dataset.filter); });
+  });
+  if (searchInput) searchInput.addEventListener("input", applyWardFilter);
 })();
 </script>
 {% endblock %}

@@ -9,6 +9,16 @@
 </div>
 
 <div class="card">
+  {% set pending_count = alerts|selectattr('alert_acknowledged', 'equalto', False)|list|length %}
+  {% set reviewed_count = alerts|length - pending_count %}
+  <div class="triage-bar" id="alerts-triage-bar">
+    <div class="filter-pills">
+      <button type="button" class="filter-pill active" data-alert-filter="all">All ({{ alerts|length }})</button>
+      <button type="button" class="filter-pill" data-alert-filter="pending">Needs Action ({{ pending_count }})</button>
+      <button type="button" class="filter-pill" data-alert-filter="reviewed">Reviewed ({{ reviewed_count }})</button>
+    </div>
+  </div>
+
   <div class="table-wrap">
     <table id="alerts-table">
       <thead>
@@ -23,11 +33,11 @@
       </thead>
       <tbody>
         {% for a in alerts %}
-        <tr>
+        <tr data-alert-status="{{ 'reviewed' if a.alert_acknowledged else 'pending' }}">
           <td>#{{ a.id }}</td>
           <td><a href="{{ url_for('main.patient_detail', patient_id=a.patient_id) }}"><strong>{{ a.patient.full_name }}</strong></a><br><span class="muted">{{ a.patient.mrn }}</span></td>
           <td><span class="badge badge-{{ a.risk_tier|lower }}">{{ a.risk_tier }}</span></td>
-          <td>{{ a.alert_message }}</td>
+          <td>{{ a.alert_message.split(']: ', 1)[-1] }}</td>
           <td>
             {% if a.alert_acknowledged %}
               <span class="badge badge-low">Acknowledged by {{ a.acknowledged_by }}</span>
@@ -38,7 +48,7 @@
           <td>
             {% if not a.alert_acknowledged %}
             <form method="POST" action="{{ url_for('main.acknowledge_alert', reading_id=a.id) }}" style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm ack-alert-btn">Acknowledge</button>
             </form>
             {% else %}
@@ -53,4 +63,23 @@
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const pills = document.querySelectorAll("[data-alert-filter]");
+  const rows = document.querySelectorAll("#alerts-table tbody tr[data-alert-status]");
+  pills.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      const mode = btn.dataset.alertFilter;
+      pills.forEach(function (p) { p.classList.toggle("active", p === btn); });
+      rows.forEach(function (tr) {
+        const st = tr.dataset.alertStatus;
+        tr.style.display = (mode === "all" || st === mode) ? "" : "none";
+      });
+    });
+  });
+})();
+</script>
 {% endblock %}
