@@ -1,4 +1,3 @@
-from web_app.clinical_workflow import compute_check_schedule, format_bedside_exam_summary
 """
 Fast Ward Query, Sample Case Seeding, and Soft-Archive Cleanup Service for FlapGuard AI.
 Preserves historical patient records and readings for clinical audit traceability.
@@ -11,6 +10,7 @@ from sqlalchemy import func
 
 from ml_engine.fusion import classify_visual_triage
 from ml_engine.model_service import predict_flap_status
+from web_app.clinical_workflow import compute_check_schedule, format_bedside_exam_summary
 from web_app.models import Patient, SensorReading, User, db, utc_now
 
 
@@ -138,7 +138,6 @@ def fetch_patients_with_latest_readings(include_archived: bool = False) -> List[
                 "visual_triage_label": latest.visual_triage_label,
                 "perfusion_fusion_index": latest.perfusion_fusion_index,
                 "hours_post_op": latest.hours_post_op,
-        "check_schedule": compute_check_schedule(latest, latest),
                 "predicted_class": latest.predicted_class,
                 "risk_tier": latest.risk_tier,
                 "risk_score_pct": latest.risk_score_pct,
@@ -174,6 +173,7 @@ def fetch_patients_with_latest_readings(include_archived: bool = False) -> List[
                 "hours_post_op": latest.hours_post_op if latest else p.hours_post_op,
                 "assigned_surgeon": surgeons_by_id.get(p.assigned_surgeon_id, "Unassigned"),
                 "is_archived": bool(p.is_archived),
+                "check_schedule": compute_check_schedule(p, latest),
                 "latest_reading": latest_dict,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
             }
